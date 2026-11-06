@@ -297,7 +297,7 @@
   {
     "id": "hold-the-line",
     "name": "Hold the Line",
-    "description": "Sets its feet on the worn ring and stops giving ground.",
+    "description": "Sets its feet in the worn ring, square in the hollow its own weight has made.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -1009,7 +1009,7 @@
   {
     "id": "gets-up",
     "name": "Gets Up",
-    "description": "Now it gets up.",
+    "description": "It sets both hands on the arms of its seat and, for the first time, gets up.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -1426,7 +1426,7 @@
   {
     "id": "paid-in-full",
     "name": "Paid In Full",
-    "description": "Ropes of tissue snap out of the dark, two or three of them, each finding someone.",
+    "description": "Ropes of tissue snap out of the dark, more than one, each finding someone.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -1529,7 +1529,7 @@
   {
     "id": "the-answer",
     "name": "The Answer",
-    "description": "The floor answers him. It comes up through the stone, under every one of you.",
+    "description": "Something comes up through the stone at once, under every one of you.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [

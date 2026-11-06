@@ -453,7 +453,7 @@
   {
     "id": "hushed-bell",
     "name": "Hushed Bell",
-    "description": "A small brass bell with the clapper bound in felt. Shaken, it makes no sound, and the room goes quiet around it.",
+    "description": "A small brass bell with the clapper bound in felt. Shaken, it makes no sound, and the felt is worn through on one side.",
     "target": "allAllies",
     "effects": [
       {
@@ -481,7 +481,7 @@
   {
     "id": "pitch-pipe",
     "name": "Pitch Pipe",
-    "description": "A short reed pipe that gives one note and no other. Blown once in a room, everyone in it begins to hum the same pitch.",
+    "description": "A short reed pipe that gives one note and no other. The mouthpiece is chewed flat where someone held it between their teeth.",
     "target": "allAllies",
     "effects": [
       {
@@ -560,7 +560,7 @@
   {
     "id": "smelling-salts",
     "name": "Smelling Salts",
-    "description": "Pale crystals in a brass case. One sniff and the eyes water, and whoever was down gets up.",
+    "description": "Pale crystals in a brass case. One sniff and the eyes stream, and the head jerks back from it.",
     "target": "singleAlly",
     "effects": [
       {
@@ -590,7 +590,7 @@
   {
     "id": "purge-draught",
     "name": "Purge Draught",
-    "description": "Cloudy, and it tastes of ash and river water. Whoever drinks it is sick within the minute, and better after.",
+    "description": "Cloudy, and it tastes of ash and river water. Whoever drinks it is sick within the minute, on their knees.",
     "target": "allAllies",
     "effects": [
       {
@@ -628,7 +628,7 @@
   {
     "id": "vermin-hide",
     "name": "Vermin Hide",
-    "description": "Strips of hide peeled from the small things that live under the floors. Some of it is fur, some of it is skin, and it has all dried to the same grey.",
+    "description": "Strips of hide peeled from the small things that live under the floors. Fur or bare skin, it has all dried to the same grey.",
     "target": "self",
     "effects": [],
     "tier": "uncommon",
@@ -643,7 +643,7 @@
   {
     "id": "predator-sinew",
     "name": "Predator Sinew",
-    "description": "A length of sinew as long as a forearm, still pulled tight by whatever it was cut from. It will not lie flat on any surface.",
+    "description": "A length of sinew as long as a forearm, still pulled tight by whatever it was cut from. It will not lie flat.",
     "target": "self",
     "effects": [],
     "tier": "unique",
@@ -656,7 +656,7 @@
   {
     "id": "chitin-shard",
     "name": "Chitin Shard",
-    "description": "Scale or plate; it is hard to say which. One edge of the shard is a seam that came apart clean, the other was broken off.",
+    "description": "Scale or plate, it is hard to say. One edge is a seam that came apart clean; the other was broken off.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -684,7 +684,7 @@
   {
     "id": "grave-cloth",
     "name": "Grave Cloth",
-    "description": "Burial linen, brown at the folds and stiff where it was wet. It has been wrapped round something and unwrapped since, and the creases have not given.",
+    "description": "Burial linen, brown at the folds and stiff where it was wet. It was unwrapped from something, and the creases have not given.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -727,7 +727,7 @@
   {
     "id": "warband-trophy",
     "name": "Warband Trophy",
-    "description": "A cord hung with teeth, a brass ring and a few small bones, knotted by someone who wanted them counted. It hangs heavier at one end.",
+    "description": "A cord hung with teeth, a brass ring and a few small bones, knotted by someone who counted them. It hangs heavier at one end.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -741,7 +741,7 @@
   {
     "id": "elemental-core",
     "name": "Elemental Core",
-    "description": "A fist-sized stone that is a different temperature every time it is picked up. Wherever it is set down it leaves a ring, damp or scorched, never the same twice.",
+    "description": "A fist-sized stone, a different temperature each time it is picked up. Set down, it leaves a ring, damp or scorched, never the same twice.",
     "target": "self",
     "effects": [],
     "tier": "unique",
@@ -767,7 +767,7 @@
   {
     "id": "stone-core",
     "name": "Stone Core",
-    "description": "A rough grey lump with one flat face, cut level by something that does not draw a straight line by eye. Tapped, it answers a little late.",
+    "description": "A rough grey lump with one flat face, cut level by something that does not draw by eye. Tapped, it answers a little late.",
     "target": "self",
     "effects": [],
     "tier": "epic",
@@ -792,7 +792,7 @@
   {
     "id": "bear-claw",
     "name": "Bear Claw",
-    "description": "A claw as long as a hand, blunted at the tip from years of being dragged along stone. Three grooves run down the flat side, deep as a thumbnail.",
+    "description": "A claw as long as a hand, blunted at the tip from being dragged along stone. Three grooves run down the flat side.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -803,7 +803,7 @@
   {
     "id": "silk-gland",
     "name": "Silk Gland",
-    "description": "Dried, no bigger than a thumbnail, the sac still trails a fine thread from one end. Pulled gently, it comes out a hand's length and stops.",
+    "description": "Dried, no bigger than a thumbnail, the sac still trails a fine thread. Pulled gently, it comes out a hand's length and stops.",
     "target": "self",
     "effects": [],
     "tier": "uncommon",
@@ -836,7 +836,7 @@
   {
     "id": "bone-shield-fragment",
     "name": "Bone Shield Fragment",
-    "description": "A curved slice of bone from a rim. Two small holes run through the inside, worn oval by the strap that used to pass through them.",
+    "description": "A curved slice of bone from a shield rim. Two small holes run through it, worn oval by the strap that used to pass through.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -858,7 +858,7 @@
   {
     "id": "knuckle-guard",
     "name": "Knuckle Guard",
-    "description": "A bar of iron bent to fit a fist, the finger hollows worn deeper on one side. The hand it was made for was larger than yours.",
+    "description": "A bar of iron bent to fit a fist, the finger hollows worn deeper on one side. The hand it fitted was larger than yours.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -891,7 +891,7 @@
   {
     "id": "core-fragment",
     "name": "Core Fragment",
-    "description": "A chip of dressed stone with one groove across it, ruled as straight as any mason could. The groove goes on past the edge, where the rest of the stone was.",
+    "description": "A chip of dressed stone with one groove, ruled mason-straight. The groove runs on past the broken edge, where the rest of the stone was.",
     "target": "self",
     "effects": [],
     "tier": "unique",
@@ -913,7 +913,7 @@
   {
     "id": "warped-vambrace",
     "name": "Warped Vambrace",
-    "description": "A forearm guard bent inward along one side, as though what wore it swelled. The buckles are fastened and the leather is whole. It was never taken off.",
+    "description": "A forearm guard bent inward along one side, as though what wore it swelled. The buckles are still fastened. It was never taken off.",
     "target": "self",
     "effects": [],
     "tier": "epic",
@@ -924,7 +924,7 @@
   {
     "id": "broken-oath-sigil",
     "name": "Broken Oath Sigil",
-    "description": "A badge cut in half through a device that can no longer be read. The cut is clean, and its edges are worn as smooth as the face.",
+    "description": "A badge cut in half through a device that can no longer be read. The cut is clean, and worn as smooth as the face.",
     "target": "self",
     "effects": [],
     "tier": "epic",
@@ -935,7 +935,7 @@
   {
     "id": "warlords-trophy-chain",
     "name": "Warlord's Trophy Chain",
-    "description": "A length of chain hung with pieces of other people's armour: a buckle, a hinge, a spur, part of a rank badge. Each link was forged for weight.",
+    "description": "A chain hung with pieces of other people's armour: a buckle, a hinge, a spur, half a rank badge. Each link was forged for weight.",
     "target": "self",
     "effects": [],
     "tier": "epic",
@@ -968,7 +968,7 @@
   {
     "id": "unraveled-fragment",
     "name": "Unraveled Fragment",
-    "description": "A thumb of grey matter with a hinge at one end and a row of small teeth at the other. Set on a table, the hinge closes slowly on nothing.",
+    "description": "A thumb of grey matter, hinged at one end, small teeth at the other. Set on a table, the hinge closes slowly on nothing.",
     "target": "self",
     "effects": [],
     "tier": "legendary",
@@ -979,7 +979,7 @@
   {
     "id": "weathered-keystone",
     "name": "Weathered Keystone",
-    "description": "A wedge of stone that once locked an arch in place. The curve of the arch is still cut into both faces, though nothing has curved above it for a long time.",
+    "description": "A keystone from an arch. The curve is still cut into both faces, and nothing has rested on it for a long time.",
     "target": "self",
     "effects": [],
     "tier": "legendary",
@@ -990,7 +990,7 @@
   {
     "id": "phylactery-shard",
     "name": "Phylactery Shard",
-    "description": "A curved sliver of black glass, thin as a fingernail. Held to the light, it shows the room with the door still shut.",
+    "description": "A curved sliver of black glass, thin as a fingernail. One face is smooth; the other is scratched with fine, even lines.",
     "target": "self",
     "effects": [],
     "tier": "legendary",
@@ -1001,7 +1001,7 @@
   {
     "id": "grave-dust",
     "name": "Grave Dust",
-    "description": "Bone ground to a fine grey dust and folded into a scrap of cloth. It clings to the fingers and takes more than one washing to leave.",
+    "description": "Bone ground to grey dust and folded into a scrap of cloth. It clings to the fingers and takes more than one washing to leave.",
     "target": "self",
     "effects": [],
     "tier": "common",

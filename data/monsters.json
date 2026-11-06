@@ -6,7 +6,7 @@
       "abbr": "RAT",
       "color": "#7a5230"
     },
-    "description": "Claws tick on the stone just past the torchlight, and the air smells of wet fur and old grain. It is fat, on a floor where nothing it eats fights back, and the sound of one moving is never the sound of only one.",
+    "description": "Claws tick on the stone just past the torchlight, and the air smells of wet fur and old grain. It is fat, on a floor where nothing it eats fights back, and the sound of one moving always has a second under it.",
     "baseHp": 50,
     "baseAttack": 20,
     "baseDefense": 5,
@@ -42,7 +42,7 @@
       "abbr": "BAT",
       "color": "#5a4778"
     },
-    "description": "A leathery snap overhead, then a draft across the back of the neck. Half a second against you is all it needs; nothing about it suggests it intends a second pass.",
+    "description": "A leathery snap overhead, then a draft across the back of the neck. It is against you for half a second, then the draft is on the far side of the room.",
     "baseHp": 50,
     "baseAttack": 23,
     "baseDefense": 3,
@@ -111,7 +111,7 @@
       "abbr": "GOB",
       "color": "#6b8442"
     },
-    "description": "Bare feet slap on stone, too many and too fast to count, under a lot of high, cracked shouting. Look for it once the shouting starts, somewhere behind you; it has no intention of meeting you at the front.",
+    "description": "Bare feet slap on stone, too many and too fast to count, under a lot of high, cracked shouting. Once the shouting starts it is somewhere behind you, and gone again before you have turned round.",
     "baseHp": 50,
     "baseAttack": 23,
     "baseDefense": 3,
@@ -144,7 +144,7 @@
       "abbr": "CLT",
       "color": "#6a5a68"
     },
-    "description": "Its candle shakes enough to spill wax down its wrist. Cut for someone taller, the robe pools at the initiate's feet. Nobody has offered to take it in. The initiate has stopped bringing it up.",
+    "description": "Its candle shakes enough to spill wax down its wrist. The robe was cut for someone taller and pools at its feet, the hem trodden black and worn through at the back.",
     "baseHp": 50,
     "baseAttack": 25,
     "baseDefense": 3,
@@ -246,7 +246,7 @@
       "abbr": "TOD",
       "color": "#5c7a3d"
     },
-    "description": "Its skin shines wet and yellow in the torchlight, and the stone around it is stained the same colour. Squat, slow, entirely unconcerned. Everything that ever bit one is in the rooms behind you, where it lay down.",
+    "description": "Its skin shines wet and yellow in the torchlight, and the stone around it is stained the same colour. Squat and slow, it does not shift when you come in. Everything that ever bit one is in the rooms behind you, where it lay down.",
     "baseHp": 55,
     "baseAttack": 18,
     "baseDefense": 7,
@@ -486,7 +486,7 @@
       "abbr": "ZLT",
       "color": "#8a3a40"
     },
-    "description": "It chants as it runs, one phrase, hoarse from repetition, and goes for the loudest of you first, in the open, with no arrangements made for afterwards. Nothing it wears is armour. Nothing it carries is meant to be brought home.",
+    "description": "It chants as it runs, one phrase, hoarse from repetition, and goes for the loudest of you first, in the open, with no arrangements made for afterwards. It wears cloth, and everything it carries is for this room.",
     "baseHp": 70,
     "baseAttack": 27,
     "baseDefense": 4,
@@ -657,7 +657,7 @@
       "abbr": "LSL",
       "color": "#a8421c"
     },
-    "description": "Heat shimmers above it, and the air tastes of hot metal. It hasn't moved since the room went quiet, and the stone within its reach has gone the same dull red as its own skin. Nothing holding it together was ever asked to hold for long.",
+    "description": "Heat shimmers above it, and the air tastes of hot metal. It hasn't moved since the room went quiet, and the stone within its reach has gone the same dull red as its own skin. Its edges sag and draw back in, over and over, each time by a little less.",
     "baseHp": 100,
     "baseAttack": 23,
     "baseDefense": 4,
@@ -792,7 +792,7 @@
       "abbr": "LVP",
       "color": "#8a3548"
     },
-    "description": "Its skin is grey-white in the torchlight, and its breath smells of old copper. It keeps to the air in short, uneven bursts, like something still learning the shape it's in. The hunger arrived first and finished forming; everything else is still catching up.",
+    "description": "Its skin is grey-white in the torchlight, and its breath smells of old copper. It keeps to the air in short, uneven bursts, like something still learning the shape it's in. Its mouth is fully formed; the hands on either side of it are not, yet.",
     "baseHp": 85,
     "baseAttack": 26,
     "baseDefense": 3,
@@ -1525,7 +1525,7 @@
       "abbr": "VOI",
       "color": "#b060d8"
     },
-    "description": "It makes a sound like many people breathing out of step. Too many parts, none of them agreeing on which way is forward. You will recognise some of the parts. They are not arranged as they were on whoever carried them last, and two are still trying to do their old work.",
+    "description": "It makes a sound like many people breathing out of step. Too many parts, none agreeing on which way is forward. Some of them you will recognise, though not arranged as they were on whoever carried them last, and two are still trying to do their old work.",
     "baseHp": 100,
     "baseAttack": 35,
     "baseDefense": 9,

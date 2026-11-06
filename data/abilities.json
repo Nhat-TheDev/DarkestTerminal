@@ -174,7 +174,7 @@
   {
     "id": "featherstep-training",
     "name": "Featherstep Training",
-    "description": "Footwork most fighters never bother to learn, until it's the only reason they're still standing.",
+    "description": "Footwork most fighters never bother to learn: weight on the balls of the feet, never both heels down at once.",
     "rarity": "rare",
     "effects": [
       {
@@ -264,7 +264,7 @@
   {
     "id": "thunderous-aura",
     "name": "Thunderous Aura",
-    "description": "Lightning gathers on its own and strikes something every round, no weapon raised.",
+    "description": "The hair on their arms never lies flat, and something near them is always taking the spark, no weapon raised.",
     "rarity": "unique",
     "effects": [
       {
@@ -420,7 +420,7 @@
   {
     "id": "unerring-will",
     "name": "Unerring Will",
-    "description": "Fear stays outside the hands. Some strikes, and some curses, land because they were never going to miss.",
+    "description": "Fear stays outside the hands. The arm finishes every swing it starts, and some strikes and curses land before a guard can close.",
     "rarity": "epic",
     "effects": [
       {
@@ -436,7 +436,7 @@
   {
     "id": "arcane-font",
     "name": "Arcane Font",
-    "description": "Somewhere past the hundredth cast the caster stopped drawing on the magic and became where it comes from. The spells land harder, and the supply barely thins.",
+    "description": "Somewhere past the hundredth cast the caster stopped counting what was left. The spells land harder, and the reserve is slow to thin.",
     "rarity": "epic",
     "effects": [
       {

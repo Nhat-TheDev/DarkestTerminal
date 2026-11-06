@@ -123,7 +123,7 @@ describe("items", () => {
     expect(queueItemAction(combat, self, "rat-tail", [self], ctx)).toBeNull();
     expect(ctx.inventory["rat-tail"]).toBe(0);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text === "It has no effect at all. Strange.")).toBe(true);
+    expect(combat.log.some((l) => l.text === "It has no effect.")).toBe(true);
   });
 
   test("checkItemUsable rejects when inventory has 0 of the item", () => {

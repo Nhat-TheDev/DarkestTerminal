@@ -958,7 +958,7 @@ describe("a hit shown after the target fell (ResolveContext.unapplied)", () => {
     const entry = log[0]!;
     expect(entry.hidden).toBeUndefined();
     const amount = Math.floor(base * 1.5 + 0.5);
-    expect(entry.text).toBe(`Critical hit: Overkill on ${target.name}: ${amount} from ${attacker.name}.`);
+    expect(entry.text).toBe(`Critical hit, overkill on ${target.name}: ${amount} from ${attacker.name}.`);
     expect(entry.hit).toEqual({ targetId: target.id, amount, overkill: amount, crit: true });
   });
 
@@ -977,9 +977,9 @@ describe("a hit shown after the target fell (ResolveContext.unapplied)", () => {
     const withSkill = line("Frenzied Slash", 0.5);
     expect(withSkill.text).toBe(`Overkill on ${target.name}: ${withSkill.amount} from ${attacker.name}'s Frenzied Slash.`);
     const crit = line(undefined, 0);
-    expect(crit.text).toBe(`Critical hit: Overkill on ${target.name}: ${crit.amount} from ${attacker.name}.`);
+    expect(crit.text).toBe(`Critical hit, overkill on ${target.name}: ${crit.amount} from ${attacker.name}.`);
     const critSkill = line("Frenzied Slash", 0);
-    expect(critSkill.text).toBe(`Critical hit: Overkill on ${target.name}: ${critSkill.amount} from ${attacker.name}'s Frenzied Slash.`);
+    expect(critSkill.text).toBe(`Critical hit, overkill on ${target.name}: ${critSkill.amount} from ${attacker.name}'s Frenzied Slash.`);
     for (const { text } of [plain, withSkill, crit, critSkill]) expect(text).not.toContain("takes");
   });
 

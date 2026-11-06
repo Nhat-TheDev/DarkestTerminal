@@ -134,11 +134,11 @@ From the 2nd time the player resolves one of these 3 events in a run, the room s
 
 | Event id | Return text (2nd+ meeting) |
 |---|---|
-| `merchant` | "The same hooded figure — or one just like it. The wares are new, but the bow is exactly as before." |
+| `merchant` | "A hooded figure bows over a cloth of new wares, its hands folded at the same height, the bow dipping to the same depth." |
 | `wandering-hermit` | "The old man has cleared a space on the stone in front of him. 'Back again. Set it down where I can see it.'" |
-| `gambling-den` (won) | "The stranger deals a fresh hand without looking up. 'Didn't expect a winner to come back for more.'" |
-| `gambling-den` (lost) | "The stranger deals a fresh hand without looking up. 'Back for more? I like watching the same face lose twice.'" |
-| `gambling-den` (declined) | "The stranger deals a fresh hand without looking up. 'Changed your mind, or just scared?'" |
+| `gambling-den` (won) | "The stranger sets the three cups mouth-down without looking up. 'Didn't expect a winner to come back for more.'" |
+| `gambling-den` (lost) | "The stranger sets the three cups mouth-down without looking up. 'Back for more? I like watching the same face lose twice.'" |
+| `gambling-den` (declined) | "The stranger sets the three cups mouth-down without looking up. 'Changed your mind? Show me the face that walked away.'" |
 
 No change to any event's mechanics — Merchant/Gambling Den/Hermit work exactly as in §8.10, §8.19, §8.20.
 
@@ -275,7 +275,7 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 
 **`merchant`**
 - Prompt: "The hooded figure never once lifted the hood, not even to count your coin."
-- curious: "The hood holds your eye a moment too long." · wary: "Your eyes stay off the hood the whole time." · dismissive: "You pack the wares away before the lamp is out of sight."
+- curious: "You look into the dark under the hood for a face until the bow is over." · wary: "Your eyes stay off the hood the whole time." · dismissive: "You pack the wares away before the lamp is out of sight."
 
 **`desecrated-altar`**
 - Prompt: "The glow is still there, faint, where your hand was."
@@ -302,17 +302,17 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 
 **`wandering-hermit`**
 - Prompt: "His eyes stayed shut for the whole trade. His hands never missed the coins."
-- curious: "You look at the mark on his forearm until he turns the arm over." · wary: "You keep the talk to the price and nothing else." · dismissive: "Strange old man, but he held up his end of it."
+- curious: "You look at the mark on his forearm until he turns the arm over." · wary: "You keep the talk to the price and nothing else." · dismissive: "You tuck the coins away and pick up the pace."
 
 **`gambling-den`**
 - Prompt: "Behind you, the cups start clicking again."
-- curious: "You'd bet he's run this game on every floor you've passed." · wary: "You keep a hand on your purse until the clicking fades." · dismissive: "Quick hands and a loud mouth. You've met his kind above."
+- curious: "You watch his hands through two more rounds, trying to follow the right cup." · wary: "You keep a hand on your purse until the clicking fades." · dismissive: "You count what's left in your purse and walk on."
 
 ---
 
 ## 8.7 The Gatekeeper (`the-gatekeeper`) — *Scripted*
 
-> "Wind comes down off the hills and into the cave mouth, and none of it comes back out. An old man leans on a staff beside the opening, a lantern hung from its tip. The rock at the threshold is worn smooth at shoulder height, where hand after hand has steadied itself before going in. 'Most who pass leave something with me. {{toll}} coins, by custom. Keep them if you like. The way in doesn't close.'"
+> "Wind comes down off the hills and into the cave mouth, and none of it comes back out. An old man leans on a staff beside the opening, a lantern hung from its tip. The rock at the threshold is worn smooth at shoulder height, where hand after hand has steadied itself before going in. 'Most who pass leave something with me. Coin, by custom. Keep it if you like. The way in doesn't close.'"
 
 Not a room. Every new run opens on this scene after party and ability selection, before floor 1's entry room, with its own sprite (`data/sprites.json` → `events["the-gatekeeper"]`) in the battlefield's event slot. `kind: "scripted"` keeps it out of `rollEvent()` and out of `loreExposureCount`, and it has no reflection prompt: it happens outside the dungeon.
 
@@ -430,7 +430,7 @@ The bundle also holds supplies: `guaranteedItems` adds **3 Exploration Kits** to
 
 ---
 
-## 8.15 Trade HP for an Artifact (`blood-altar`) — *Rare*
+## 8.15 Blood Altar (`blood-altar`) — *Rare*
 
 > "A copper smell fills the room before the torchlight finds the pedestal. Worn carvings run down its sides and ooze a dark, still-warm liquid, a spiral unwound and open at its center. The liquid creeps along every channel toward one cup and stops a finger's width short of it."
 
@@ -478,7 +478,7 @@ No combat. On entering the room, the player may:
 
 ## 8.18 Ritual Circle (`sacrificial-circle`) — *Rare*
 
-> "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. The broom marks stop a full stride short of it on every side."
+> "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end, its line as even as a drawn string. The broom marks stop a full stride short of it on every side."
 
 **No combat** (`kind: "artifactSacrifice"`). Sacrifice 1 **currently-equipped** artifact (every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) — deliberately not scaled by floor depth — excluding tiers below the threshold.
 
@@ -490,7 +490,7 @@ Choose the artifact to sacrifice from anywhere across the party, confirm → it'
 
 ## 8.19 Wandering Gambling Den (`gambling-den`) — *Rare*
 
-> "Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. 'Give me what you have. I'll double it, or keep it for good.'"
+> "Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. 'Put it on the crate. I want to see your face when the cup comes up.'"
 
 **No combat** (`kind: "coinGamble"`). A pure Cursed-Coin escalating gamble, up to 4 rounds, the stake carrying forward as long as the player keeps winning and choosing to continue — it **never wagers an Artifact**.
 
@@ -551,7 +551,7 @@ see them."` (wary) · `"He shrugs and names his price before you've finished tal
 
 ## 8.21 Collapsed Floor (`collapsed-floor`) — *Rare*
 
-> "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan echoes up from below."
+> "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it."
 
 A rescue mechanic: pay a fixed HP cost up front to attempt the rescue, and the outcome determines whether you get a reward. Still HP-only, same reasoning as Blood Altar.
 
@@ -584,7 +584,7 @@ No combat. Same **[1] Move on** confirm as §8.11-8.14, but gated: `minFloorDept
 
 ## 8.23 Broken Seal (`broken-seal`) — *Rare*
 
-> "A stone hatch sits flush in the floor, chained shut and mortared at the edges, and the chain is cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open."
+> "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open."
 
 Same shape as §8.22 — **[1] Move on**, `minFloorDepth` (see the event table at the top), `onceLifetime: true`, 1 Artifact: `guaranteedArtifactId: "torn-lock-plate"` rather than a standard-table roll.
 

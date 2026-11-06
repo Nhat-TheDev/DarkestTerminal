@@ -112,7 +112,7 @@
                   "bad": "The end of the groove looks clean in this light. Torchlight lies, though. Hold it closer."
                 },
                 "bold": {
-                  "good": "Clean lift at the end. They put the blade down and went on, under their own power.",
+                  "good": "Clean lift at the end. They put the blade down and went on. So can we.",
                   "bad": "Clean lift, so they walked off alone with one blade. If they could manage that, we can do it faster."
                 },
                 "inquisitive": {
@@ -216,11 +216,11 @@
                 },
                 "cautious": {
                   "good": "Could be anyone's. I'd rather not find out whose by following them.",
-                  "bad": "Prints in, none out. Whoever made them could still be standing somewhere we haven't looked. Backs to the wall."
+                  "bad": "Whoever made those could still be standing somewhere we haven't looked. Backs to the wall."
                 },
                 "practical": {
                   "good": "Prints going in and none out turn up on every floor. I'd not spend a candle tying these to that wall.",
-                  "bad": "Prints in, none out, so whatever they carried is still in here. Check the corners before we go."
+                  "bad": "Nobody walked back out with what they carried, so it's still in here. Check the corners before we go."
                 }
               }
             }
@@ -318,7 +318,7 @@
                   "bad": "The rows end where they end, and no one has added a mark since. They're bones somewhere below us."
                 },
                 "humble": {
-                  "good": "I don't think they did. I don't think I would have.",
+                  "good": "The rows stop and nothing's been added since. I don't think they did. I wouldn't have.",
                   "bad": "Hundreds of sleeps, and they still went down alone. I'd have done worse. They're not coming back up."
                 }
               }
@@ -453,7 +453,7 @@
               "personalities": {
                 "practical": {
                   "good": "The merchant's goods carry it whichever way the cloth lies. Turn one over and it opens.",
-                  "bad": "The merchant sells it both ways round. So it means whatever pays."
+                  "bad": "The merchant sells it both ways round. Folds it whichever way packs tighter."
                 },
                 "patient": {
                   "good": "Three of the merchant's pieces closed, two open, every one the same burn. Depends how the cloth was folded.",
@@ -501,7 +501,7 @@
                   "bad": "Cups set in the open ones, like places at a table. Someone was expecting company, and they'd have been glad of us."
                 },
                 "bold": {
-                  "good": "The open ones had cups and altars. Somebody wanted visitors, and kept a place for them.",
+                  "good": "The open ones had cups and altars. Somebody wanted visitors. Next open one, we go through.",
                   "bad": "Cups in the open ones, so somebody wanted visitors. We'll take the invitation all the way to the bottom."
                 }
               }
@@ -529,7 +529,7 @@
     },
     {
       "id": "tally-row",
-      "text": "Every mark in a row is the same length. No longer mark anywhere to close off a week.",
+      "text": "Every mark in every row is the same length. None is cut longer than the rest.",
       "lineIds": [
         "what-the-marks-count"
       ],

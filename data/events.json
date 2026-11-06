@@ -23,7 +23,7 @@
       "The air is warm here, warmer than it should be, and thick with an animal smell. Something breathes in the dark ahead, deep and slow, a sound that comes up through the floor as much as through the air. It keeps the same pace whether you move or not.",
       "Grit crunches under your boots, loud in a room this quiet, and the walls are scored at knee height with long pale gouges. Back where the light doesn't reach, loose stone shifts under something heavy, and dust sifts down into the torchlight. The shifting stops when you stop."
     ],
-    "chainBuildupDescription": "Claws scrape on stone in the dark corner. The sound is closer to the door than it was in the last room like this.",
+    "chainBuildupDescription": "Claws scrape on stone in the dark corner, then once more, a stride nearer the door.",
     "chainForcedDescription": "It is standing in the doorway you came in through.",
     "chainForced2Description": "The scraping starts while you're still on the stairs.",
     "chainForced3Description": "Claw marks run from the corner to the foot of the stairs, worn deep, back and forth.",
@@ -55,7 +55,7 @@
     "description": "A lamp gutters on the stone, smelling of oil, over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows.",
     "descriptionVariants": [
       "Firelight catches on a buckle, a cup, a ring, a knife with no edge, each marked the same way. A hooded shape reaches for the first.",
-      "A cloth lies on the stone, a pebble on each corner against a draft that isn't there. The hooded figure looks up once you can see every mark."
+      "A cloth lies on the stone, a pebble on each corner against a draft that isn't there. The hooded figure keeps its head bowed over the goods."
     ],
     "crossEventVariants": [
       {
@@ -64,10 +64,10 @@
         "description": "A lamp gutters over a cloth of goods, each with a spiral mark. A hooded figure bows. The cloth is the weave of the strip grown into that wall."
       }
     ],
-    "returnDescription": "The same hooded figure — or one just like it. The wares are new, but the bow is exactly as before.",
+    "returnDescription": "A hooded figure bows over a cloth of new wares, its hands folded at the same height, the bow dipping to the same depth.",
     "reflection": {
       "prompt": "The hooded figure never once lifted the hood, not even to count your coin.",
-      "options": { "curious": "The hood holds your eye a moment too long.", "wary": "Your eyes stay off the hood the whole time.", "dismissive": "You pack the wares away before the lamp is out of sight." }
+      "options": { "curious": "You look into the dark under the hood for a face until the bow is over.", "wary": "Your eyes stay off the hood the whole time.", "dismissive": "You pack the wares away before the lamp is out of sight." }
     },
     "kind": "artifactShop",
     "tier": "common"
@@ -79,10 +79,10 @@
     "name": "Desecrate the Altar",
     "description": "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot.",
     "descriptionVariants": [
-      "No torch is needed in here. A pulse of red light runs along the altar's edge, and the stone ticks faintly as it warms and cools, patient as a held breath. Water stands in every crack in the floor except the ones nearest the altar.",
-      "Dust hangs in the red light around the altar and does not settle. The glow pools in a carved spiral at its base, sealed shut, the cuts older than the stone around them. Your torch flame leans away from it."
+      "No torch is needed in here. A pulse of red light runs along the altar's edge, and the stone ticks faintly as it warms and cools, like a pot left by a fire. Water stands in every crack in the floor except the ones nearest the altar.",
+      "Dust hangs thick in the red light around the altar. The glow pools in a carved spiral at its base, sealed shut, the cuts older than the stone around them. Your torch hisses in the heat."
     ],
-    "chainBuildupDescription": "The stone altar glows with a pale red light. The pulse is faster than at the last one.",
+    "chainBuildupDescription": "The stone altar glows with a pale red light, pulsing quicker than a resting heart.",
     "chainForcedDescription": "The red light has spread across the floor to the doorway. There is no stepping around it.",
     "chainForced2Description": "The glow had reached the doorframe by the time you came in.",
     "chainForced3Description": "The spiral at the altar's base has been scored through with a blade, more than once. The cuts look like yours.",
@@ -100,7 +100,7 @@
       "prompt": "The glow is still there, faint, where your hand was.",
       "escalatedPrompt": "You stepped into the red light without testing it first.",
       "escalated2Prompt": "Your hands smell of scorched stone. You wipe them on your trousers and keep going.",
-      "escalated3Prompt": "The altar goes dark behind you. Your blade has stone dust in its edge again.",
+      "escalated3Prompt": "The altar goes dark behind you. The stone dust in your blade's edge has packed into the old nicks.",
       "options": { "curious": "You trace the closed spiral with a finger before you leave.", "wary": "You keep your hands well away from the base on the way past.", "dismissive": "You turn your back on the glow and check the way down." }
     },
     "kind": "combatReward",
@@ -111,7 +111,7 @@
     "escalation": { "counter": "altarPaymentsCount", "thresholds": ["bloodDebtThreshold", "bloodDebtThreshold2", "bloodDebtThreshold3"] },
     "reflectionRequiresOutcome": "paid",
     "removedOnFounderVictory": true,
-    "name": "Trade HP for an Artifact",
+    "name": "Blood Altar",
     "description": "A copper smell fills the room before the torchlight finds the pedestal. Worn carvings run down its sides and ooze a dark, still-warm liquid, a spiral unwound and open at its center. The liquid creeps along every channel toward one cup and stops a finger's width short of it.",
     "chainEscalatedDescription": "Carvings on the pedestal ooze toward the cup. Someone has the knife out and the bandage ready.",
     "chainEscalated2Description": "The liquid stops a finger's width short of the cup. The palm held out over it is more scar than skin.",
@@ -194,7 +194,7 @@
     "removedOnFounderVictory": true,
     "name": "Ritual Circle",
     "minFloorDepth": 2,
-    "description": "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. The broom marks stop a full stride short of it on every side.",
+    "description": "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end, its line as even as a drawn string. The broom marks stop a full stride short of it on every side.",
     "chainEscalatedDescription": "Old dried blood traces a spiral across the stone. Your packs come off at its open end, the way they do at camp.",
     "chainEscalated2Description": "Old dried blood traces a spiral across the stone. At its open end the floor is worn smooth in two places, a pair of knees apart.",
     "chainEscalated3Description": "Old dried blood traces a spiral across the stone. The worn places at its open end fit your knees exactly.",
@@ -202,13 +202,13 @@
       {
         "when": [{ "eventId": "blood-altar", "outcome": "paid" }],
         "match": "any",
-        "description": "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident. The broom marks stop a full stride short of it on every side. The blood is the same dark brown as the stain on your sleeve cuff."
+        "description": "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end, its line as even as a drawn string. The broom marks stop a full stride short of it on every side. The blood is the same dark brown as the stain on your sleeve cuff."
       }
     ],
     "reflection": {
       "prompt": "The circle goes quiet. The gap at its open end is the width of a hand.",
       "escalatedPrompt": "Your knee finds the worn spot in front of the circle.",
-      "escalated2Prompt": "You set the offering down in the same spot as last time, to the finger's width.",
+      "escalated2Prompt": "You set the offering down on the pale square the last one left in the dust, edge to edge.",
       "escalated3Prompt": "On the way out, someone asks how many that makes. Two of you give different numbers.",
       "options": { "curious": "You set your hand in the gap. It fits.", "wary": "You mark the room on your map as one to avoid.", "dismissive": "You weigh the new artifact in your hand and stow it." }
     },
@@ -219,7 +219,7 @@
     "id": "gambling-den",
     "name": "Wandering Gambling Den",
     "minFloorDepth": 2,
-    "description": "Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. 'Give me what you have. I'll double it, or keep it for good.'",
+    "description": "Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. 'Put it on the crate. I want to see your face when the cup comes up.'",
     "crossEventVariants": [
       {
         "when": [
@@ -231,13 +231,13 @@
       }
     ],
     "returnDescription": {
-      "won": "The stranger deals a fresh hand without looking up. 'Didn't expect a winner to come back for more.'",
-      "lost": "The stranger deals a fresh hand without looking up. 'Back for more? I like watching the same face lose twice.'",
-      "declined": "The stranger deals a fresh hand without looking up. 'Changed your mind, or just scared?'"
+      "won": "The stranger sets the three cups mouth-down without looking up. 'Didn't expect a winner to come back for more.'",
+      "lost": "The stranger sets the three cups mouth-down without looking up. 'Back for more? I like watching the same face lose twice.'",
+      "declined": "The stranger sets the three cups mouth-down without looking up. 'Changed your mind? Show me the face that walked away.'"
     },
     "reflection": {
       "prompt": "Behind you, the cups start clicking again.",
-      "options": { "curious": "You'd bet he's run this game on every floor you've passed.", "wary": "You keep a hand on your purse until the clicking fades.", "dismissive": "Quick hands and a loud mouth. You've met his kind above." }
+      "options": { "curious": "You watch his hands through two more rounds, trying to follow the right cup.", "wary": "You keep a hand on your purse until the clicking fades.", "dismissive": "You count what's left in your purse and walk on." }
     },
     "kind": "coinGamble",
     "tier": "rare"
@@ -281,7 +281,7 @@
     },
     "reflection": {
       "prompt": "His eyes stayed shut for the whole trade. His hands never missed the coins.",
-      "options": { "curious": "You look at the mark on his forearm until he turns the arm over.", "wary": "You keep the talk to the price and nothing else.", "dismissive": "Strange old man, but he held up his end of it." }
+      "options": { "curious": "You look at the mark on his forearm until he turns the arm over.", "wary": "You keep the talk to the price and nothing else.", "dismissive": "You tuck the coins away and pick up the pace." }
     },
     "kind": "fortuneExchange",
     "tier": "rare"
@@ -289,27 +289,27 @@
   {
     "id": "collapsed-floor",
     "name": "Collapsed Floor",
-    "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan echoes up from below.",
+    "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it.",
     "crossEventVariants": [
       {
         "when": [{ "eventId": "collapsed-floor", "outcome": "rescued" }],
         "match": "any",
-        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan echoes up from below. The rope from the last one is still in your pack, frayed where it ran over the edge."
+        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it. The rope from the last one is still in your pack, frayed where it ran over the edge."
       },
       {
         "when": [{ "eventId": "collapsed-floor", "outcome": "failed" }],
         "match": "any",
-        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan echoes up from below. The last one like this stopped halfway through a breath."
+        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it. The last one like this stopped halfway through a breath."
       },
       {
         "when": [{ "eventId": "blood-altar", "outcome": "paid" }],
         "match": "any",
-        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan echoes up from below. Whoever paid at the altar is the first to kneel at the edge."
+        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it. Whoever paid at the altar is the first to kneel at the edge."
       },
       {
         "when": [{ "eventId": "blood-altar", "outcome": "declined" }],
         "match": "any",
-        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan echoes up from below. Whoever kept their hand closed at the altar stands at the edge with both hands in their sleeves."
+        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it. Whoever kept their hand closed at the altar stands at the edge with both hands in their sleeves."
       }
     ],
     "kind": "rescueGamble",
@@ -332,11 +332,11 @@
         "description": "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. Water has run down through the oldest. The last row stops mid-stroke. Under it, a pack strap rotted through at the buckle."
       }
     ],
-    "chainEscalatedDescription": "Tally marks again, hundreds, in neat rows. Your eyes go to the floor under them first, for whatever was left behind.",
+    "chainEscalatedDescription": "Tally marks, hundreds, in neat rows. Your eyes go to the floor under them first, for whatever was left behind.",
     "instantRewardActionLabel": "  [1] Move on",
     "reflection": {
       "prompt": "On the way out, you glance back once at the half-finished mark.",
-      "options": { "curious": "You count the last full row before you go.", "wary": "You keep to the far side of the corridor, away from the wall.", "dismissive": "Somebody's nervous habit. Not yours to worry about." }
+      "options": { "curious": "You count the last full row before you go.", "wary": "You keep to the far side of the corridor, away from the wall.", "dismissive": "You shoulder your pack and take the next corridor down." }
     },
     "kind": "instantReward",
     "tier": "common"
@@ -362,7 +362,7 @@
     "instantRewardActionLabel": "  [1] Move on",
     "reflection": {
       "prompt": "You check the walls for a door. The stone is solid all the way round.",
-      "options": { "curious": "Your boot hovers over the last print, then steps around it.", "wary": "You leave the way you came, stepping in your own prints.", "dismissive": "Feet backtrack all the time. You just missed the tracks." }
+      "options": { "curious": "Your boot hovers over the last print, then steps around it.", "wary": "You leave the way you came, stepping in your own prints.", "dismissive": "You scuff the last prints flat with your boot and move on." }
     },
     "kind": "instantReward",
     "tier": "common"
@@ -375,7 +375,7 @@
     "noArtifactReward": true,
     "reflection": {
       "prompt": "Somewhere behind you, water drips a beat after each step.",
-      "options": { "curious": "You pass a hand over the water once more and count the delay.", "wary": "You keep your eyes forward the rest of the way down.", "dismissive": "Tired eyes. When you look back, the water is just water." }
+      "options": { "curious": "You pass a hand over the water once more and count the delay.", "wary": "You keep your eyes forward the rest of the way down.", "dismissive": "You rub your eyes and keep walking." }
     },
     "kind": "instantReward",
     "tier": "common"
@@ -425,7 +425,7 @@
     "freeTake": true,
     "removedOnFounderVictory": true,
     "name": "Broken Seal",
-    "description": "A stone hatch sits flush in the floor, chained shut and mortared at the edges, and the chain is cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open.",
+    "description": "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open.",
     "guaranteedArtifactId": "torn-lock-plate",
     "crossEventVariants": [
       {
@@ -434,7 +434,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "A stone hatch sits flush in the floor, chained shut and mortared at the edges, and the chain is cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. Chips of mortar lie on the stone beneath it, fallen inward."
+        "description": "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. Chips of mortar lie on the stone beneath it, fallen inward."
       },
       {
         "when": [
@@ -442,7 +442,7 @@
           { "eventId": "desecrated-altar", "outcome": "resolved" }
         ],
         "match": "any",
-        "description": "A stone hatch sits flush in the floor, chained shut and mortared at the edges, and the chain is cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. Chips of mortar are scattered across the floor, thrown outward."
+        "description": "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. Chips of mortar are scattered across the floor, thrown outward."
       }
     ],
     "chainEscalatedDescription": "A stone hatch with a torn chain. Your pack is open on the floor before the torch is set down.",
@@ -451,7 +451,7 @@
     "onceLifetime": true,
     "reflection": {
       "prompt": "You keep your torch on the open hatch until you're out of the room.",
-      "options": { "curious": "You look for scratch marks on the inside of the hatch.", "wary": "You give the torn chain a wide berth.", "dismissive": "Old damage. Whatever happened here is long over." }
+      "options": { "curious": "You look for scratch marks on the inside of the hatch.", "wary": "You give the torn chain a wide berth.", "dismissive": "Old damage. You step past the hatch and check your map for the stairs." }
     },
     "kind": "instantReward",
     "tier": "rare"
@@ -485,7 +485,7 @@
     "noArtifactReward": true,
     "reflection": {
       "prompt": "Outside the room, you check the seams of your own pack.",
-      "options": { "curious": "You press a thumb against the wall. It gives, a little.", "wary": "You turn your marked goods face-in, at the bottom of the pack.", "dismissive": "Cloth rots into strange shapes. You say it aloud until it sounds true." }
+      "options": { "curious": "You press a thumb against the wall. It gives, a little.", "wary": "You turn your marked goods face-in, at the bottom of the pack.", "dismissive": "You tug the pack straps tight and keep to the middle of the corridor." }
     },
     "kind": "instantReward",
     "tier": "rare"
@@ -496,7 +496,7 @@
     "description": "A figure sits with their back against the wall, beyond the reach of any light but yours, turning something small over in their hands, too dark to see what. Their boots are worn through at the toes. 'How long's it been?' they ask, not really to you. 'Feels shorter every time I ask.'",
     "descriptionVariants": [
       "A figure leans against the far wall in a room that smells of cold ash, restringing a bow that has no string. Their fingers go through every turn of the knot, tight and patient. 'The quiet floors,' they say. 'Watch those.'",
-      "A figure on the bottom step looks up as you approach, lantern light sliding over a face streaked with dust, then straightens like they expected someone else. 'Not you, then,' they mutter, and sit back down facing the stairs."
+      "A figure on the bottom step looks up as you approach, lantern light sliding over a face streaked with dust. 'Not you, then,' they mutter, and sit back down facing the stairs."
     ],
     "crossEventVariants": [
       {
@@ -510,7 +510,7 @@
     "noArtifactReward": true,
     "reflection": {
       "prompt": "Whoever that was, they didn't ask your names, and you didn't offer them.",
-      "options": { "curious": "The whole way down, you listen for an answering voice.", "wary": "You don't look back to check if they're still where you left them.", "dismissive": "One more voice talking to itself. Not your problem." }
+      "options": { "curious": "The whole way down, you listen for an answering voice.", "wary": "You don't look back to check if they're still where you left them.", "dismissive": "You step around their boots and take the stairs." }
     },
     "kind": "instantReward",
     "tier": "rare"
@@ -529,7 +529,7 @@
   {
     "id": "the-gatekeeper",
     "name": "The Gatekeeper",
-    "description": "Wind comes down off the hills and into the cave mouth, and none of it comes back out. An old man leans on a staff beside the opening, a lantern hung from its tip. The rock at the threshold is worn smooth at shoulder height, where hand after hand has steadied itself before going in. 'Most who pass leave something with me. {{toll}} coins, by custom. Keep them if you like. The way in doesn't close.'",
+    "description": "Wind comes down off the hills and into the cave mouth, and none of it comes back out. An old man leans on a staff beside the opening, a lantern hung from its tip. The rock at the threshold is worn smooth at shoulder height, where hand after hand has steadied itself before going in. 'Most who pass leave something with me. Coin, by custom. Keep it if you like. The way in doesn't close.'",
     "kind": "scripted",
     "tier": "common",
     "backdrop": "cave-mouth"
