@@ -361,7 +361,6 @@ export class App implements ScreenContext {
   }
 
   syncUiToGameState(): void {
-    if (this.game.takeJournalNotice()) this.logInfo(t("ui.journalNoted"));
     if (this.game.state.pendingGatekeeper) {
       this.ui = { kind: "gatekeeper" };
       return;
@@ -413,7 +412,7 @@ export class App implements ScreenContext {
         this.ui = { kind: "floorMilestone" };
         return;
       }
-      if (this.game.state.pendingJournalFind || this.game.state.pendingJournal) {
+      if (this.game.state.pendingJournalFind || this.game.state.pendingJournal || this.game.journalNoticeView()) {
         this.ui = { kind: "journalDeduction" };
         return;
       }
@@ -610,7 +609,7 @@ export class App implements ScreenContext {
       case "journal":
         break;
       case "journalDeduction":
-        journalScreen.handleDeductionKey(this, digit);
+        journalScreen.handleDeductionKey(this, key, digit);
         break;
       case "journalPickup":
         journalScreen.handlePickupKey(this, key, digit);
