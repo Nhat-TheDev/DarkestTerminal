@@ -93,15 +93,22 @@ describe("monster viewer", () => {
     expect(app.debugUiState.kind).toBe(before);
   });
 
-  test("a fight adds its monsters to the slot's bestiary, kept in the profile", async () => {
+  test("a fight adds its monsters to the slot's bestiary, kept in the profile, without any screen", () => {
     const archetype = MONSTER_ARCHETYPES.find((a) => a.roles.includes("normal"))!;
     const game = gameInFight(5, [archetype.id]);
     game.currentSaveSlot = "slot5";
     saveProfile("slot5", { ...loadProfile("slot5"), seenMonsterIds: [] });
     game.seenMonsterIds = [];
-    await boot(game);
+    game.resolve();
     expect(game.seenMonsterIds).toEqual([archetype.id]);
     expect(loadProfile("slot5").seenMonsterIds).toEqual([archetype.id]);
+  });
+
+  test("a run loaded mid-fight notes the monsters it is fighting", () => {
+    const archetype = MONSTER_ARCHETYPES.find((a) => a.roles.includes("normal"))!;
+    const fighting = gameInFight(9, [archetype.id]);
+    const loaded = new Game(9, undefined, { state: fighting.state, monsters: fighting.ctx.monsters, summons: fighting.ctx.summons, rngState: 1, playTimeSec: 0 });
+    expect(loaded.seenMonsterIds).toContain(archetype.id);
   });
 
   test("the bestiary lists what was fought, opens an entry, and backs out one step at a time", async () => {

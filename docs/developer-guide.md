@@ -263,7 +263,7 @@ and the spread of rooms, rests and events left on the routes to the guard, a hid
 nothing away), and `[v]` opens the fight's monsters (`src/ui/screens/monsterInfo.ts`: race, traits, reach, weaknesses and
 resistances, live stats, shell, bar and telegraph, the skills its tier can cast with their cooldowns, its statuses) or,
 outside a fight, the bestiary of every archetype the slot has fought. That list is the profile's `seenMonsterIds`, written by
-`Game.noteSeenMonsters()` each time the UI syncs to a fight. A viewer opened from another replaces it, so `[Esc]` always
+`Game.noteSeenMonsters()` whenever a fight starts, a round resolves (it may summon) or a run loads mid-fight. A viewer opened from another replaces it, so `[Esc]` always
 returns to the screen the first one was opened from.
 
 ### The "Battlefield" panel — pixel art
