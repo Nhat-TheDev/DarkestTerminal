@@ -126,6 +126,8 @@ export class App implements ScreenContext {
   private narratedCombat: CombatState | null = null;
   private backdropCache: { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } | null = null;
   private composedBattlefield: { backdropKey: string; content: TextChunk[][] } | null = null;
+  /** The map only changes when the party moves or reaches a new floor. */
+  private floorMapCache: { floor: Floor; pathLength: number; currentRoomId: Id; map: ReturnType<typeof renderFloorMap> } | null = null;
   /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
   private deferredToasts: LogEntry[] = [];
   private mainUi: UiState | null = null;
@@ -1115,11 +1117,16 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  /** While the party picks its next room, the floor map replaces the sprites; it sits on the plain panel so the lines stay readable. */
+  /** While the party picks its next room, the floor map replaces the sprites, on the plain panel with no backdrop. */
   private battlefieldScene(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null, width: number) {
     const s = this.game.state;
     if (this.ui.kind === "room" && !combat && !s.pendingGatekeeper) {
-      const map = renderFloorMap(s.floor, s.roomPath, s.currentRoomId);
+      const cached = this.floorMapCache;
+      const map =
+        cached?.floor === s.floor && cached.pathLength === s.roomPath.length && cached.currentRoomId === s.currentRoomId
+          ? cached.map
+          : renderFloorMap(s.floor, s.roomPath, s.currentRoomId);
+      this.floorMapCache = { floor: s.floor, pathLength: s.roomPath.length, currentRoomId: s.currentRoomId, map };
       const topPad = Math.max(0, Math.floor((UNIT_BLOCK_HEIGHT - map.rows.length) / 2));
       return {
         battlefieldRows: [...Array.from({ length: topPad }, (): TextChunk[] => []), ...map.rows],

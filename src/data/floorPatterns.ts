@@ -73,7 +73,7 @@ function pickCrossBranch(lanes: Shape[][], rng: Rng): CrossBranch | undefined {
   return {
     lane,
     from: rng.int(0, lanes[lane]!.length - min - 1),
-    rooms: rng.int(min, min + 1),
+    rooms: rng.int(min, Math.max(min, CONFIG.maxCrossBranchRooms)),
     to: rng.int(min, lanes[lane + 1]!.length - 1),
   };
 }
@@ -147,7 +147,7 @@ function walkingOrder(rooms: LayoutRoom[]): LayoutRoom[] {
   return order;
 }
 
-/** `order` is the shape's walking order; the shape doesn't change between draws, so it and `preds` are built once. */
+/** Draws each room's type in `order`, the shape's walking order. */
 function assignTypes(order: LayoutRoom[], preds: Map<string, LayoutRoom[]>, rng: Rng): void {
   order.forEach((room, i) => {
     if (room.next.length === 0) room.type = "boss";
@@ -161,8 +161,6 @@ function assignTypes(order: LayoutRoom[], preds: Map<string, LayoutRoom[]>, rng:
     }
   });
 }
-
-const TYPE_ATTEMPTS_PER_SHAPE = 20;
 
 /** The graph holds the rooms themselves, so it reads their current types without being rebuilt. */
 function routeRuleError(graph: FloorGraph, maxEvents: number): string | null {
@@ -229,7 +227,7 @@ export function generateFloorLayout(rng: Rng, depth = 1): LayoutRoom[] {
     if (bounds.rooms.min < CONFIG.minRouteRooms || bounds.rooms.max > CONFIG.maxRouteRooms) continue;
     const order = walkingOrder(rooms);
     const preds = predecessors(rooms);
-    for (let t = 0; t < TYPE_ATTEMPTS_PER_SHAPE; t++) {
+    for (let t = 0; t < CONFIG.typeAttemptsPerShape; t++) {
       assignTypes(order, preds, rng);
       if (routeRuleError(graph, maxEvents) === null) {
         layout = rooms;

@@ -56,7 +56,7 @@ function chunkLength(chunks: TextChunk[]): number {
 
 /** A chain of rooms drawn on one row, each the first next room of the one before. */
 interface Track {
-  rooms: Id[];
+  last: Id;
   start: number;
   /** Where the track's line begins and ends on its row. */
   fromX: number;
@@ -154,13 +154,13 @@ class MapCanvas {
       const leading = preds.filter((p) => this.graph.room(p).next[0] === id);
       if (leading.length > 0) {
         const track = this.trackOf.get(leftmost(leading))!;
-        track.rooms.push(id);
+        track.last = id;
         this.trackOf.set(id, track);
         continue;
       }
       const parentRoom = preds.length > 0 ? leftmost(preds) : null;
       const track: Track = {
-        rooms: [id],
+        last: id,
         start: col,
         fromX: parentRoom === null ? 0 : col * COLUMN_STEP - 2,
         toX: 0,
@@ -173,7 +173,7 @@ class MapCanvas {
       this.trackOf.set(id, track);
     }
     for (const track of new Set(this.trackOf.values())) {
-      const last = this.graph.room(track.rooms.at(-1)!);
+      const last = this.graph.room(track.last);
       track.toX =
         last.next.length === 0 ? this.x(last.id) + CELL_WIDTH - 1 : Math.min(...last.next.map((n) => this.x(n) - 2));
     }

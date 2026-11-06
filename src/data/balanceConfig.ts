@@ -242,12 +242,16 @@ interface BalanceConfig {
     maxLanesPerSplit: number;
     /** Chance a split with spare width gets a branch that leaves one lane and merges into the lane below it. */
     crossMergeChance: number;
+    /** A cross branch holds `minLaneRooms` to this many rooms. */
+    maxCrossBranchRooms: number;
     minLaneRooms: number;
     splitChance: number;
     nestedSplitChance: number;
     eventRoomWeight: number;
     restRoomWeight: number;
     generationAttempts: number;
+    /** Room-type draws tried on one shape before a new shape is drawn. */
+    typeAttemptsPerShape: number;
     unknownRoomsMeanAtFirstFloor: number;
     unknownRoomsMeanGrowthPerFloor: number;
     /** Depth past which the unknown-room mean stops growing. */

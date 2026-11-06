@@ -29,7 +29,7 @@ function eligibleAtDepth(pool: MonsterArchetype[], depth: number): MonsterArchet
   return pool.filter((a) => (a.minFloor ?? 0) <= depth);
 }
 
-/** What may spawn at one depth, worked out once per floor rather than once per room. */
+/** What may spawn at one depth. */
 interface DepthPools {
   templates: PowerTier[][];
   byTier: Record<PowerTier, MonsterArchetype[]>;

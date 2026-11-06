@@ -34,10 +34,11 @@ A floor is a sequence of rooms and *splits*. A split sends the route into 2 to
   rooms, so its sub-lanes join before the lane itself does, and its own split
   and join never merge with the outer ones.
 - A *cross branch* leaves a lane and merges into the lane below it instead of
-  rejoining its own. A split with spare width rolls `crossMergeChance` for
-  one; the lanes it links hold only rooms, and the branch leaves each of them
+  rejoining its own. A split whose lanes leave a lane of width unused rolls
+  `crossMergeChance` for one; the lanes it links hold only rooms, and the branch leaves each of them
   at least `minLaneRooms` rooms of their own. Where it leaves, how long it is
-  and where it merges are random.
+  (`minLaneRooms` to `maxCrossBranchRooms` rooms) and where it merges are
+  random.
 - At any point along the floor, at most `floorGeneration.maxParallelLanes`
   lanes run side by side, nested lanes and cross branches included.
 - A join may also be a split: lanes meet and part again at the same point,
@@ -67,8 +68,9 @@ Generate and check, not build by construction:
 2. Draw each room's type in walking order (`eventRoomWeight`,
    `restRoomWeight`, the rest combat); a room can't be an event or a rest when
    a room leading into it already is one, which keeps the "in a row" rules.
-3. Check the route rules over the graph, and redraw the types a bounded number
-   of times per shape, then the shape itself up to `generationAttempts` times.
+3. Check the route rules over the graph, and redraw the types up to
+   `typeAttemptsPerShape` times per shape, then the shape itself up to
+   `generationAttempts` times.
 4. If nothing passes, `fallbackLayout()` is used: a single lane of
    `minRouteRooms` rooms with the fewest events and rests, spaced out. It is
    valid for any config the property test accepts; with the current config it
