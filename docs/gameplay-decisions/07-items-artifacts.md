@@ -85,7 +85,7 @@ Each buff or debuff item has its own status in `data/status-effects.json` (id = 
 
 ### 7.1.4 Trophies
 
-A trophy is a monster remnant with `effects: []`: it can be used in combat, which only consumes it and logs "It has no effect at all. Strange.", and its purpose is to be traded to the Merchant's Runner: sold for coins or bartered for a combat buff (`03-survival-stats.md`). The inventory and reward screens give its effect as the hint `item.trophyHint` ("Worth more to someone else.") instead of naming the Runner; an item with no effects that isn't a trophy still reads "No effect." Each has an `archetypeIds` list of the monsters that drop it, and a `tier` that follows the monster's `powerTier` and `minFloor`. Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`.
+A trophy is a monster remnant with `effects: []`: it can be used in combat, which only consumes it and logs "It has no effect.", and its purpose is to be traded to the Merchant's Runner: sold for coins or bartered for a combat buff (`03-survival-stats.md`). The inventory and reward screens give its effect as the hint `item.trophyHint` ("Worth more to someone else.") instead of naming the Runner; an item with no effects that isn't a trophy still reads "No effect." Each has an `archetypeIds` list of the monsters that drop it, and a `tier` that follows the monster's `powerTier` and `minFloor`. Full list: `data/items.json`, filtered to entries with a non-empty `archetypeIds`.
 
 - **Individual trophy** — one monster's own item. Tier from `powerTier` (weak = common, medium = uncommon, strong = rare, elite/boss = epic), raised one step when `minFloor` clears 20 / 30 / 40 / 70 for weak / medium / strong / elite-boss. <!-- docs:intent -->
 - **Group trophy** (`groupItem: true`) — shared by the monsters of one race group. Tier is the most common tier among its members plus one step (ties go to the higher tier; a three-way tie takes the middle). A monster may carry both an individual and a group trophy, and then each drop is one or the other.
@@ -306,14 +306,14 @@ Flat stat bonuses and the Group 2-4 effects, stronger at each rarity.
 |---|---|---|---|
 | `iron-gauntlet` | Common | +3 attack. | "The warrior who wore this fought until the gauntlet's straps outlasted the arm inside them. Someone cut it free rather than carry the rest." |
 | `worn-wooden-shield` | Common | +3 defense. | "Every scar on it came from a blow meant for someone standing behind the one holding it." |
-| `charm-of-life` | Common | +20 max HP. | "Carved by someone who wasn't very good at carving, for someone they loved more than they were skilled." |
+| `charm-of-life` | Common | +20 max HP. | "Carved by someone who was not good at carving, for someone who would wear it anyway. The knife slipped twice on the same curve." |
 | `small-mana-gem` | Common | +10 max MP. | "'Guard it with your life,' a spellcaster told their apprentice. It was found afterward in a closed fist, and the fist was not easy to open." |
 | `sharp-claw` | Common | +4 attack. | "The grip on this handle is sized for a hand much smaller than the claw's original owner ever had. One person pulled it, another mounted it, and a third swung it." |
-| `stone-of-endurance` | Common | +30 max HP. | "The runes came later — carved onto a stone that was already being carried around as a lucky weight, long before anyone thought it needed an explanation." |
+| `stone-of-endurance` | Common | +30 max HP. | "The runes came later, cut into a stone already carried for years as a lucky weight. They run around a thumb-worn hollow instead of across it." |
 | `ring-of-focus` | Common | +15 max MP. | "A mage traded away 3 better rings before settling on this plain one, saying the others made them feel too clever to stay careful." |
-| `warriors-necklace` | Common | +5 defense. | "Every fang on this came from the same fight. The one who strung them together was the only one left standing by the end of it — and didn't much feel like it, wearing this." |
+| `warriors-necklace` | Common | +5 defense. | "Every fang on this came from the same fight. The one who strung them together was the only one left standing by the end of it, and tied the cord short enough that the fangs sit against the throat." |
 | `pendant-of-calm` | Common | -10% fear accumulated. | "'I won't need calm where I'm headed,' they said, handing it back before they left. The cord was still knotted to fit their neck." |
-| `travelers-ration` | Common | +15 max HP. | "There's always 1 more portion in here than the party actually needs — nobody's ever asked who packed it that way, or who the extra was for." |
+| `travelers-ration` | Common | +15 max HP. | "There is always 1 more portion in here than the party needs. The extra one is wrapped in a different cloth, tied with a different knot." |
 <!-- docs:end -->
 
 **Rare**
@@ -323,15 +323,15 @@ Flat stat bonuses and the Group 2-4 effects, stronger at each rarity.
 
 | id | Rarity | Effect | Story |
 |---|---|---|---|
-| `ancient-sword` | Rare | +8 attack. | "Someone spent their last good days trying to translate the engraving, convinced it named whoever had betrayed them. They never finished. The blade outlived the theory." |
-| `heart-of-stone` | Rare | +8 defense. | "'I carved it after my own heart,' they said, the day they decided to stop letting things hurt them. The carving is deep and even everywhere except at the center, where the hand lifted." |
+| `ancient-sword` | Rare | +8 attack. | "Someone spent their last good days trying to translate the engraving, convinced it named whoever had betrayed them. Their notes stop partway through a letter." |
+| `heart-of-stone` | Rare | +8 defense. | "'I carved it after my own heart,' they said, and did not say which day. The carving is deep and even everywhere except at the center, where the hand lifted." |
 | `eternal-vial` | Rare | +50 max HP. | "Its last owner drank from it exactly once a day, no more, certain that any more would use up whatever kept it full. They were still counting when it changed hands." |
-| `arcane-core` | Rare | +25 max MP. | "3 books of notes exist trying to transcribe what the humming is saying. All 3 end on the same word — one that nobody since has been able to read as anything but a guess." |
-| `thorned-armor` | Rare | Reflects 5% of damage taken back to the attacker. | "Built for someone who didn't trust anyone standing close enough to strike them, let alone embrace them. By all accounts, it worked — though nobody got close enough afterward to say for certain." |
-| `venomous-dagger-relic` | Rare | 6% chance to inflict Poisoned on hit. | "This changed hands exactly once — from whoever poisoned the blade to whoever it was used on. Neither name survived the telling." |
+| `arcane-core` | Rare | +25 max MP. | "3 books of notes try to transcribe what the humming says. All 3 end on the same word, spelled 3 different ways." |
+| `thorned-armor` | Rare | Reflects 5% of damage taken back to the attacker. | "Built for someone who wanted no one close enough to strike them, or to hold them. The only blood on the thorns is on the inside of the left arm." |
+| `venomous-dagger-relic` | Rare | 6% chance to inflict Poisoned on hit. | "This changed hands exactly once, from the one who poisoned the blade to the one it was used on. The wrap on the hilt was never replaced." |
 | `vampiric-fang` | Rare | Heals 5% of damage dealt. | "'It only took what the thing didn't need anymore,' insisted whoever pulled this free. It leaves a faint warmth in the hand that does not come from the hand." |
-| `featherweight-boots` | Rare | 6% chance to fully dodge an attack. | "These were made for leaving a room without anyone realizing you'd been in it. Wearing them now, it's hard to say if that was ever a skill, or just a habit nobody could put down." |
-| `quickcharge-rune` | Rare | -1 turn skill cooldown. | "Carved in the dark, in a hurry, before there was time to be sure it would work. It worked. There wasn't time afterward to be grateful for it either." |
+| `featherweight-boots` | Rare | 6% chance to fully dodge an attack. | "These were made for leaving a room without anyone noticing. The heels are worn on the outer edge, from turning in doorways." |
+| `quickcharge-rune` | Rare | -1 turn skill cooldown. | "Carved in the dark, in a hurry, before there was time to be sure it would work. The last stroke runs off the edge of the stone." |
 <!-- docs:end -->
 
 **Unique**
@@ -342,12 +342,12 @@ Flat stat bonuses and the Group 2-4 effects, stronger at each rarity.
 | id | Rarity | Effect | Story |
 |---|---|---|---|
 | `spiked-cloak` | Unique | Reflects 10% of damage taken back to the attacker. | "A new spike was added for every close call its first owner walked away from. It's short exactly 1 spike of what would have been a matching set on both shoulders." |
-| `serpent-ring` | Unique | 12% chance to inflict Poisoned on hit. | "Carved as a warning to any thief who might try to lift it, not as a weapon for its wearer. As far as anyone can tell, it's only ever bitten the people it was made to protect." |
+| `serpent-ring` | Unique | 12% chance to inflict Poisoned on hit. | "Carved as a warning to any thief who might try to lift it. The fangs are worn bright on the inside of the band, where the wearer's finger sat." |
 | `thunder-totem` | Unique | Deals 6 + 25% base magic power damage to 1 random enemy at the start of each round. | "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut." |
 | `armor-of-wholeness` | Unique | +6 attack. +6 defense. +40 max HP. | "Made for someone who never got the chance to wear it into anything worth calling a battle. The lining has no sweat in it, and the buckles have never been moved off the first hole." |
-| `bloodthirsty-blade` | Unique | Heals 10% of damage dealt. | "'I only meant to make it sharp,' the smith swore. Everyone who's used it since has their own opinion about how that turned out, usually right after using it." |
+| `bloodthirsty-blade` | Unique | Heals 10% of damage dealt. | "'I only meant to make it sharp,' the smith swore. The grip has been rewrapped 4 times, each wrap over the last." |
 | `phantom-step` | Unique | 12% chance to fully dodge an attack. | "These were enchanted by someone who wanted to be somewhere else the instant before they actually were. The soles are worn through at the toe and nowhere else." |
-| `scholars-insight` | Unique | +15% EXP gained for the party. | "The last third of this notebook is written in a hand trying too hard to match the first two-thirds — somebody wanted badly for nobody to notice." |
+| `scholars-insight` | Unique | +15% EXP gained for the party. | "The last third of this notebook is written in a hand trying to match the first two-thirds. The loops are slower, and some letters were gone over twice." |
 <!-- docs:end -->
 
 **Epic**
@@ -357,10 +357,10 @@ Flat stat bonuses and the Group 2-4 effects, stronger at each rarity.
 
 | id | Rarity | Effect | Story |
 |---|---|---|---|
-| `crown-of-destruction` | Epic | Deals 12 + 30% base attack damage to 1 random enemy at the start of each round. 8% chance to inflict Poisoned on hit. | "The tyrant who wore this spent considerable effort making sure people would remember the name. Ask anyone down here what that name was, though — nobody left down here would know it, or care enough to ask." |
-| `immortal-heart` | Epic | Reflects 15% of damage taken back to the attacker. +10 defense. +60 max HP. | "More than once, apparently, someone asked for this to finish the job properly — a mercy, maybe. Nobody ever obliged. It's still here, still waiting on that favor." |
-| `reapers-covenant` | Epic | Heals 25 HP on defeating a target. Heals 8% of damage dealt. | "The first person to strike this bargain didn't read every term in it. Everyone who's carried it since has just accepted whatever was already agreed to." |
-| `eternal-scholars-tome` | Epic | +25% EXP gained for the party. -1 turn skill cooldown. | "The margins used to hold questions. Now they only hold corrections — whoever's still adding to this has gotten better at fighting and worse at explaining why." |
+| `crown-of-destruction` | Epic | Deals 12 + 30% base attack damage to 1 random enemy at the start of each round. 8% chance to inflict Poisoned on hit. | "The tyrant who wore this made sure people would learn the name. It was engraved inside the band, and the band has been filed smooth." |
+| `immortal-heart` | Epic | Reflects 15% of damage taken back to the attacker. +10 defense. +60 max HP. | "More than once, someone asked for this to be finished properly. The knife marks on it are shallow, and every one of them stops short." |
+| `reapers-covenant` | Epic | Heals 25 HP on defeating a target. Heals 8% of damage dealt. | "The first one to take this up did not read everything scratched along its edge. Everyone who carried it since left the same lines unread." |
+| `eternal-scholars-tome` | Epic | +25% EXP gained for the party. -1 turn skill cooldown. | "The early margins hold questions. The later ones hold only corrections, in a smaller hand, and the last few correct the corrections." |
 <!-- docs:end -->
 
 #### 7.2.10.2 Cursed artifacts
@@ -372,10 +372,10 @@ All Rare, `isCursed: true` (§8.4): a real bonus paired with a penalty, never of
 
 | id | Rarity | Effect | Story |
 |---|---|---|---|
-| `blackened-locket` | Rare | -20 max HP. +10 attack. | "It used to hold a portrait. The portrait was burned rather than let whoever was in it fall to something worse — and the locket got worn anyway afterward, as if that made the trade fair." |
-| `shackle-of-hunger` | Rare | -6 defense. +8 attack. | "Forged to hold something back, never meant to be worn. Someone put it on anyway, first — desperate enough, it seems, to trade the difference for anger they could actually use." |
-| `unstable-core` | Rare | +25 aggro. +30 max MP. | "This gets carried carefully, the way you'd carry something that might go off if you stopped paying attention to it. It hasn't gone off yet. That doesn't mean it can't." |
-| `heavy-guilt` | Rare | -6 defense. Heals 8% of damage dealt. | "Wear this long enough and the shoulders start curving in on their own. Its last owner called that easier than explaining why they deserved worse." |
+| `blackened-locket` | Rare | -20 max HP. +10 attack. | "It used to hold a portrait. The portrait was burned before whoever was in it could become something worse, and the locket was worn for years afterward, still closed." |
+| `shackle-of-hunger` | Rare | -6 defense. +8 attack. | "Forged to hold something back, never meant to be worn. Someone closed it on their own wrist first, and the inside is worn bright where they pulled against it." |
+| `unstable-core` | Rare | +25 aggro. +30 max MP. | "Carried in both hands, wrapped in wool, held away from the body. The wool on one side is scorched brown where it rested against the glass." |
+| `heavy-guilt` | Rare | -6 defense. Heals 8% of damage dealt. | "Wear this long enough and the shoulders start curving in. Its last owner slept in it, and the straps left two grooves in the skin." |
 <!-- docs:end -->
 
 #### 7.2.10.3 Caster, speed and debuff-resist artifacts
@@ -387,16 +387,16 @@ Artifacts can raise `attack`, `defense`, `maxHp`, `maxMp`, `magicPower` and `spe
 
 | id | Rarity | Effect | Story |
 |---|---|---|---|
-| `cracked-scrying-glass` | Common | +3 magic power. | "Dropped once by an apprentice, and the crack runs edge to edge. Spells came easier afterward, they said, and nobody offered to fix the glass." |
+| `cracked-scrying-glass` | Common | +3 magic power. | "Dropped once by an apprentice, and the crack runs edge to edge. Spells came easier afterward, they said, and the glass stayed in its frame, cracked." |
 | `knotted-red-thread` | Common | Harmful statuses enemies apply are 6% less likely to land. | "9 knots, and only the last one has never frayed. Whoever tied it was tying against something particular, and never said what." |
 | `resonant-tuning-fork` | Rare | +8 magic power. | "Struck once, mid-incantation, it rang for the length of a full watch. The spell being cast at the time went off a good deal harder than intended." |
-| `runners-ankle-cord` | Rare | +2 speed. | "Frayed white at both ends from being tied fast and untied faster. Nobody who's owned it can say when they last stood still." |
+| `runners-ankle-cord` | Rare | +2 speed. | "Frayed white at both ends from being tied fast and untied faster. The knot in it is a runner's knot, made to come loose with one pull." |
 | `bitter-root-charm` | Rare | Harmful statuses enemies apply are 10% less likely to land. | "Chewed flat at one end by someone who kept it in their mouth until the bitterness stopped registering, and the sickness with it." |
 | `hunters-tally-stick` | Rare | 8% chance to bypass a hit or debuff-chance roll entirely. | "39 notches, each cut only once the thing was confirmed dead. The 40th is half-started and has never been finished." |
 | `censer-of-ash` | Unique | +12 magic power. | "Nobody has ever emptied the ash inside, and it's still warm. Casters who've held it say the words come out heavier, as though they'd been written somewhere first." |
 | `signal-whistle` | Unique | +4 speed. | "Blown from a standstill it gives nothing but breath. Blown mid-run it carries three floors down, and everything below turns to look." |
 | `threshold-salt-pouch` | Unique | Harmful statuses enemies apply are 15% less likely to land. | "Enough salt to line every doorway on a floor, and the pouch is still full. Whoever poured the first line stopped at the last door and did not pour that one." |
-| `stormglass-orb` | Epic | +15 magic power. -1 turn skill cooldown. | "The weather inside the glass never matches the weather outside. It clears a moment before every spell, and by the time the caster looks up, it's clouding again." |
+| `stormglass-orb` | Epic | +15 magic power. -1 turn skill cooldown. | "The weather inside the glass never matches the weather outside. The caster who kept it learned to glance at it before speaking; the thumb smudge is from that." |
 | `unbroken-seal` | Epic | Harmful statuses enemies apply are 20% less likely to land. -15% fear accumulated. | "Pressed 3 times over the same letter, by 3 different hands, the wax has never been broken. Everyone who carried it said it got easier once they stopped wondering what was inside." |
 <!-- docs:end -->
 
@@ -410,33 +410,26 @@ set, no special drop source (except Waystone Shard, below).
 
 **A — Belongings of Those Before** (Thread 4) — deliberately mundane and personal:
 
-- **Worn Wedding Band** (Rare, `statBoost maxHp +25`): "'A promise I intend to keep,' they used to
-  say about it. By the end, they'd stopped explaining it to anyone — including themselves."
-- **Child's Whittled Horse** (Rare, `statBoost defense +5`): "Whittled by hands too unsteady for
-  the job, for someone who wouldn't have cared about the wobble. It was never delivered. It stands
-  anyway, the same as it was meant to."
+- **Worn Wedding Band** (Rare, `statBoost maxHp +25`): "'A promise I intend to keep,' they used to say about it. The inside is worn thin on one side, from being turned with the thumb."
+- **Child's Whittled Horse** (Rare, `statBoost defense +5`): "Whittled by hands too unsteady for the job, for someone who would not have minded the wobble. It was never delivered. One leg is short, and it stands."
 - **Bundle of Undelivered Letters** (Unique, `fearResist 15%`): "Addressed to someone who was never
   told to expect them, tied with string by someone who kept meaning to send just 1 more before
-  finally handing over the whole stack. The ink on top has blurred from handling, not weather —
-  reread more than it was ever written."
+  finally handing over the whole stack. The ink on the top letter has blurred where a thumb rested
+  on it, reading it over."
 
 **B — Ritual Fragment** (Thread 1/2, Covenant-adjacent):
 
 - **Half a Chalice** (Rare, `lifesteal 8%`): "Two people broke this in half on purpose, each taking
   the piece they thought proved they were right. Neither of them made it back down here to settle
   it."
-- **Torn Ritual Page** (Unique, `expBoost 10%`): "Torn free by the hand writing it, not by whoever
-  found it after. The handwriting stays careful right up until it doesn't — like something
-  interrupted the hand before it interrupted the thought."
+- **Torn Ritual Page** (Unique, `expBoost 10%`): "Torn free by the hand that wrote it. The writing stays careful to the last line, then runs off the edge in one long stroke."
 - **Snapped Ritual Blade** (Epic, `statBoost attack +15` + `cooldownReduction 1 turn`): "Forged for
-  a single, specific cut nobody ever explained to whoever was meant to swing it. It snapped on the
-  first and only attempt. Nobody's sure if that means it failed, or worked exactly as intended."
+  a single, specific cut that was never explained to the one meant to swing it. It snapped on the
+  first and only attempt, cleanly, where the blade was thinnest."
 
 **C — Guardian Remnant** (Thread 2):
 
-- **Guardian's Unburnt Ember** (Rare, `statBoost defense +8`): "Pulled from something that had
-  stopped moving but hadn't quite finished burning — still warm on the way up, by whoever pulled it
-  free. It's been cold in every hand since."
+- **Guardian's Unburnt Ember** (Rare, `statBoost defense +8`): "Pulled from something that had stopped moving but had not finished burning. It was still warm on the climb up, and has been cold in every hand since."
 - **Guardian's Scale** (Unique, `reflectDamage 12%`): "Pried loose from something nobody who was
   there could agree on the shape of, afterward. It's warm on 1 side no matter how it's turned, and
   hasn't matched a single thing anyone's fought since."
@@ -449,13 +442,11 @@ set, no special drop source (except Waystone Shard, below).
   know it."
 - **Fused Twin Coins** (Epic, `statBoost attack +13` + `statBoost defense +10`): "2 coins from 2
   different people, melted together by something neither of them chose. One face stays closed in
-  on itself; the other's worn open. Nobody's ever managed to pry them apart, and it's not clear
-  either owner would have wanted them to."
+  on itself; the other's worn open. The seam between them has been scratched at with a knife
+  point, never deep."
 - **Waystone Shard** (Unique, only a small token `statBoost maxHp` — its purpose is entirely the check in
   `10-event-narrative.md` §F.4):
-  "A shard of something that was never carved, only grown that way — smooth on every broken edge
-  except where it snapped. This was already broken long before anyone started marking these walls
-  with a spiral." *(the floor-100 "Leave" ending's escape condition — §F.4)* **Restricted drop
+  "A shard of something never carved, only grown that way, smooth on every edge but the break. Someone wrapped the break in cloth before carrying it up." *(the floor-100 "Leave" ending's escape condition — §F.4)* **Restricted drop
   source, an exception to the "Drop source" table above**: excluded from the standard
   `treasureOrEvent` roll (so never from Chain 4's 7 zero-cost events, Elite kills, `merchant`,
   `cursed-shrine`, `twin-altars`, or `sacrificial-circle`) — appears only from a Boss kill, or from
@@ -489,12 +480,9 @@ if (!event.noArtifactReward) {
 plus the 3 once-lifetime events below, each pointing
 `guaranteedArtifactId` at its own dedicated Unique artifact in `data/artifacts.json`:
 
-- **Vigil Cloth** (`vigil-candle`'s guaranteed drop, Unique, `fearResist 15%`): "Folded before it
-  was ever set down, the way you'd fold something you meant to come back for. It got folded the
-  same exact way every night — until the night nobody came back to unfold it again."
+- **Vigil Cloth** (`vigil-candle`'s guaranteed drop, Unique, `fearResist 15%`): "Folded the way you fold something you mean to come back for. It was folded the same way every night, and the last fold was never opened."
 - **Torn Lock-Plate** (`broken-seal`'s guaranteed drop, Unique, `dodgeChance 10%`): "The other half
-  of what was stamped into the seal — the half torn away, not the half still in the lock. Read
-  together, the two halves would complete the spiral. Nobody's ever held both."
+  of what was stamped into the seal, torn away with whatever was behind it. Read together, the two
+  halves would complete the spiral. The torn edge is still bright."
 - **Worn Chalk Stub** (`half-a-warning`'s guaranteed drop, Unique, `cooldownReduction 1 turn`):
-  "Worn down to a nub, carving something into stone that should have taken half as long. Whatever
-  hand held it needed to stay steady right up until it didn't."
+  "Worn down to a nub on a line that should have taken half as much chalk. The last stroke wavers, then starts again lower down."

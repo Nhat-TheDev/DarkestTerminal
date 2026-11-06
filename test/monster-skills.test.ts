@@ -115,7 +115,7 @@ describe("elite/boss skill kit", () => {
     const breath = lines.find((l) => l.includes("uses Fire Breath"));
     expect(bite).toMatch(/^Dungeon Rat uses Bite on .+\.$/);
     expect(rake).toMatch(/^Dragon \(Boss\) uses Claw Rake on .+\.$/);
-    expect(breath).toBe("Dragon (Boss) uses Fire Breath, sweeping the whole party!");
+    expect(breath).toBe("Dragon (Boss) uses Fire Breath, sweeping the whole party.");
   });
 
   test("the-founder carries its own kit and three HP bars, weighted for boss tier only", () => {

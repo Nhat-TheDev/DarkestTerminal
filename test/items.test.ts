@@ -123,7 +123,7 @@ describe("items", () => {
     expect(queueItemAction(combat, self, "rat-tail", [self], ctx)).toBeNull();
     expect(ctx.inventory["rat-tail"]).toBe(0);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text === "It has no effect at all. Strange.")).toBe(true);
+    expect(combat.log.some((l) => l.text === "It has no effect.")).toBe(true);
   });
 
   test("checkItemUsable rejects when inventory has 0 of the item", () => {
@@ -402,7 +402,7 @@ describe("items never crit", () => {
       expect(bombLines).toHaveLength(1);
       expect(bombLines[0]!.text.startsWith("Critical")).toBe(false);
       // The rat's own attack is a direct hit and does crit at 100%: only the items are exempt.
-      expect(combat.log.some((l) => l.text.startsWith("Critical Hit!"))).toBe(true);
+      expect(combat.log.some((l) => l.text.startsWith("Critical hit:"))).toBe(true);
     } finally {
       ITEMS.splice(ITEMS.indexOf(bomb), 1);
     }

@@ -577,7 +577,7 @@ specific abilities are actually worth to the character holding them.
 | `bulwark-stance` | Bulwark Stance | Feet set, weight behind the shield. Blows arrive at something already braced for them. | +8 defense, or 10% of base defense if higher. |
 | `second-wind` | Second Wind | Past the point where the body should have quit, there turns out to be a little more. | +50 max HP, or 10% of base max HP if higher. |
 | `bloodletting` | Bloodletting | Every wound it opens gives a little back. | Heals 8% of damage dealt. |
-| `featherstep-training` | Featherstep Training | Footwork most fighters never bother to learn, until it's the only reason they're still standing. | 6% chance to fully dodge an attack. |
+| `featherstep-training` | Featherstep Training | Footwork most fighters never bother to learn: weight on the balls of the feet, never both heels down at once. | 6% chance to fully dodge an attack. |
 | `restless-vigor` | Restless Vigor | Never quite at rest, even in camp, and first to move whenever anything starts. | +5 speed. |
 | `deepened-channel` | Deepened Channel | The spell leaves with more behind it than the caster meant to give. | +10 magic power, or 10% of base magic power if higher. |
 | `wellspring` | Wellspring | A deeper reserve than the caster remembers building. | +20 max MP, or 10% of base max MP if higher. |
@@ -630,7 +630,7 @@ own. The Unique-tier `quickened-pulse` continues the same ladder at `+8`.
 | id | Name | Description | Effect |
 |---|---|---|---|
 | `executioners-instinct` | Executioner's Instinct | Knows exactly where the killing blow lands, and how to recover from delivering it. | Heals 20 HP on defeating a target, or 3% of base max HP if higher. |
-| `thunderous-aura` | Thunderous Aura | Lightning gathers on its own and strikes something every round, no weapon raised. | Deals 20 + 40% base magic power damage to 1 random enemy at the start of each round. |
+| `thunderous-aura` | Thunderous Aura | The hair on their arms never lies flat, and something near them is always taking the spark, no weapon raised. | Deals 20 + 40% base magic power damage to 1 random enemy at the start of each round. |
 | `vampiric-discipline` | Vampiric Discipline | Drinks deep from every wound it deals. | Heals 12% of damage dealt. |
 | `phantom-reflexes` | Phantom Reflexes | The body moves before the mind's finished deciding to. | 12% chance to fully dodge an attack. |
 | `battle-scholar` | Battle Scholar | Writes down what nearly killed it after every fight, and reads it back before the next. | +15% EXP gained for the party. |
@@ -663,8 +663,8 @@ the same ladders. `quickened-pulse` (`speed +8`) continues Rare's
 | `reapers-instinct` | Reaper's Instinct | Every kill closes a little of what the fight opened, and every wound it deals feeds it a little more. | Heals 25 HP on defeating a target, or 5% of base max HP if higher. Heals 8% of damage dealt. |
 | `lodestone` | Lodestone | Every enemy in the room keeps looking at it, and every round something near it takes a hit no one saw thrown. | Deals 22 + 50% base attack damage to 1 random enemy at the start of each round. +15 aggro. |
 | `grandmasters-focus` | Grandmaster's Focus | Waits less between strikes and takes more from every fight. | -1 turn skill cooldown. +20% EXP gained for the party. |
-| `unerring-will` | Unerring Will | Fear stays outside the hands. Some strikes, and some curses, land because they were never going to miss. | 20% chance to bypass a hit or debuff-chance roll entirely. -12% fear accumulated. |
-| `arcane-font` | Arcane Font | Somewhere past the hundredth cast the caster stopped drawing on the magic and became where it comes from. The spells land harder, and the supply barely thins. | +14 magic power, or 10% of base magic power if higher. +28 max MP, or 10% of base max MP if higher. |
+| `unerring-will` | Unerring Will | Fear stays outside the hands. The arm finishes every swing it starts, and some strikes and curses land before a guard can close. | 20% chance to bypass a hit or debuff-chance roll entirely. -12% fear accumulated. |
+| `arcane-font` | Arcane Font | Somewhere past the hundredth cast the caster stopped counting what was left. The spells land harder, and the reserve is slow to thin. | +14 magic power, or 10% of base magic power if higher. +28 max MP, or 10% of base max MP if higher. |
 | `sealed-bulwark` | Sealed Bulwark | Plate and ward set into the same frame — blows slow to land, and curses slower to stay. | Harmful statuses enemies apply are 32% less likely to land. +12 defense, or 10% of base defense if higher. |
 <!-- docs:end -->
 

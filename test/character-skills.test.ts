@@ -1592,7 +1592,7 @@ describe("damageType tagging", () => {
     const cls = getClass("mage");
     const skill = cls.skills.find((s) => s.id === "arcane-bolt")!;
     expect(skill.name).toBe("Arcane Bolt");
-    expect(skill.description).toBe("A weak bolt of raw arcane force — basic damage.");
+    expect(skill.description).toBe("A thin crack of force off the fingertips, enough to sting and little more.");
     expect(skill.isMagic).toBe(true);
     expect((skill.effects ?? [])[0]?.damageType).toBe("magic");
   });
