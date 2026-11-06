@@ -738,10 +738,10 @@ describe("base crit (combat.baseCritChancePercent)", () => {
     const { base, hit } = setup();
     const crit = hit({ rollDamage: () => 0.0099 });
     expect(crit.dealt).toBe(Math.round(base * (BALANCE.combat.defaultCritMultiplierPercent / 100)));
-    expect(crit.text.startsWith("Critical Hit!")).toBe(true);
+    expect(crit.text.startsWith("Critical hit:")).toBe(true);
     const plain = hit({ rollDamage: () => 0.0101 });
     expect(plain.dealt).toBe(Math.round(base));
-    expect(plain.text.startsWith("Critical Hit!")).toBe(false);
+    expect(plain.text.startsWith("Critical hit:")).toBe(false);
   });
 
   test("an effect's own critMultiplierPercent replaces the default on a base crit", () => {
@@ -797,7 +797,7 @@ describe("base crit (combat.baseCritChancePercent)", () => {
     };
     const crit = heal(0);
     expect(crit.healed).toBe(Math.round(20 * (BALANCE.combat.defaultCritMultiplierPercent / 100)));
-    expect(crit.text).toBe(`Critical Heal! ${patient.name} recovers ${crit.healed} HP.`);
+    expect(crit.text).toBe(`Critical heal: ${patient.name} recovers ${crit.healed} HP.`);
     expect(heal(0.5)).toEqual({ healed: 20, text: `${patient.name} recovers 20 HP.` });
   });
 
@@ -839,7 +839,7 @@ describe("crit and variance inside a cast", () => {
     applySkillEffects(skill, source, [rat], combat, ctx, log);
     return log.filter((l) => l.kind === "attack").map((l) => l.text);
   }
-  const crits = (lines: string[]) => lines.filter((l) => l.startsWith("Critical Hit!")).length;
+  const crits = (lines: string[]) => lines.filter((l) => l.startsWith("Critical hit:")).length;
 
   describe("with the base chance in play", () => {
     pinCombatBalance({ damageVariancePercent: 0, baseCritChancePercent: 1 });
@@ -892,14 +892,14 @@ describe("crit and variance inside a cast", () => {
       applySkillEffects(skill, source, rats, combat, ctx, log);
       const lines = log.filter((l) => l.kind === "attack");
       expect(lines).toHaveLength(9);
-      const crit = lines.filter((l) => l.text.startsWith("Critical Hit!"));
+      const crit = lines.filter((l) => l.text.startsWith("Critical hit:"));
       expect(crit.length).toBeGreaterThan(0);
       expect(crit.length).toBeLessThan(lines.length);
       for (const rat of rats) {
         const hits = log.filter((l) => l.hit?.targetId === rat.id);
         expect(hits).toHaveLength(3);
       }
-      const plain = lines.filter((l) => !l.text.startsWith("Critical Hit!")).map((l) => l.hit!.amount);
+      const plain = lines.filter((l) => !l.text.startsWith("Critical hit:")).map((l) => l.hit!.amount);
       expect(new Set(plain).size).toBeGreaterThan(1);
       for (const amount of plain) expect(amount).toBeGreaterThanOrEqual(97 - 1);
       for (const amount of plain) expect(amount).toBeLessThanOrEqual(103 + 1);
@@ -958,7 +958,7 @@ describe("a hit shown after the target fell (ResolveContext.unapplied)", () => {
     const entry = log[0]!;
     expect(entry.hidden).toBeUndefined();
     const amount = Math.floor(base * 1.5 + 0.5);
-    expect(entry.text).toBe(`Critical Hit! Overkill on ${target.name}: ${amount} from ${attacker.name}.`);
+    expect(entry.text).toBe(`Critical hit: Overkill on ${target.name}: ${amount} from ${attacker.name}.`);
     expect(entry.hit).toEqual({ targetId: target.id, amount, overkill: amount, crit: true });
   });
 
@@ -977,9 +977,9 @@ describe("a hit shown after the target fell (ResolveContext.unapplied)", () => {
     const withSkill = line("Frenzied Slash", 0.5);
     expect(withSkill.text).toBe(`Overkill on ${target.name}: ${withSkill.amount} from ${attacker.name}'s Frenzied Slash.`);
     const crit = line(undefined, 0);
-    expect(crit.text).toBe(`Critical Hit! Overkill on ${target.name}: ${crit.amount} from ${attacker.name}.`);
+    expect(crit.text).toBe(`Critical hit: Overkill on ${target.name}: ${crit.amount} from ${attacker.name}.`);
     const critSkill = line("Frenzied Slash", 0);
-    expect(critSkill.text).toBe(`Critical Hit! Overkill on ${target.name}: ${critSkill.amount} from ${attacker.name}'s Frenzied Slash.`);
+    expect(critSkill.text).toBe(`Critical hit: Overkill on ${target.name}: ${critSkill.amount} from ${attacker.name}'s Frenzied Slash.`);
     for (const { text } of [plain, withSkill, crit, critSkill]) expect(text).not.toContain("takes");
   });
 

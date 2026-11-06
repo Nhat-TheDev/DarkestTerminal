@@ -452,7 +452,7 @@
   {
     "id": "cocoon",
     "name": "Cocoon",
-    "description": "It turns the caught one over and over until there is nothing left to struggle with.",
+    "description": "Over and over it turns the caught one, until there is nothing left to struggle with.",
     "mpCost": 0,
     "target": "singleEnemy",
     "effects": [
@@ -522,7 +522,7 @@
   {
     "id": "into-the-rafters",
     "name": "Into the Rafters",
-    "description": "It is overhead now, in the part of the dark the torch never reaches.",
+    "description": "Overhead now, in the part of the dark the torch never reaches.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -619,7 +619,7 @@
   {
     "id": "inferno",
     "name": "Inferno",
-    "description": "It climbs out of reach, and the air at the top of the room starts to glow.",
+    "description": "Out of reach near the ceiling, and the air up there starts to glow.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -702,7 +702,7 @@
   {
     "id": "undying",
     "name": "Undying",
-    "description": "It goes down, and then it is getting up again, as if the first time did not count.",
+    "description": "Down, and then getting up again, as if the first time did not count.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -824,7 +824,7 @@
   {
     "id": "dread-presence",
     "name": "Dread Presence",
-    "description": "It stands without moving, and every one of you feels where it is looking.",
+    "description": "Without moving, it turns its head to each of you in turn and holds on each a breath too long.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [
@@ -931,7 +931,7 @@
   {
     "id": "call-the-warband",
     "name": "Call the Warband",
-    "description": "It does not get up. It shouts, and something smaller comes running.",
+    "description": "Without getting up, it shouts, and something smaller comes running.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -1080,7 +1080,7 @@
   {
     "id": "bat-swarm",
     "name": "Bat Swarm",
-    "description": "It opens its coat, and the dark inside it comes apart into wings.",
+    "description": "The coat opens, and the dark inside it comes apart into wings.",
     "mpCost": 0,
     "target": "self",
     "effects": [
@@ -1579,7 +1579,7 @@
   {
     "id": "self-destruct",
     "name": "Self-Destruct",
-    "description": "It stops trying to survive the fight and starts trying to end it — whatever's standing close doesn't get a say in the matter.",
+    "description": "No longer guarding itself, it swells toward whoever is standing closest.",
     "mpCost": 0,
     "target": "allEnemies",
     "effects": [

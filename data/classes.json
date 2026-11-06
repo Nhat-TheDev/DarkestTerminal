@@ -3907,7 +3907,7 @@
       {
         "id": "hollow-pulse",
         "name": "Hollow Pulse",
-        "description": "A dull pulse drawn from the totem's hollow — basic damage. The Summoner leans on its minions, not its own combat.",
+        "description": "A dull pulse knocked out of the totem's hollow with the heel of the hand. It lands like a shove.",
         "shortDescription": "A dull pulse from the totem — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -4826,7 +4826,7 @@
     "passiveSkill": {
       "id": "two-faced",
       "name": "Two-Faced",
-      "description": "Nobody, the Jester included, knows which face will show up to the next fight.",
+      "description": "The Jester turns the mask over before each fight and does not look at which face comes up.",
       "growthSwapStats": [
         "attack",
         "magicPower"

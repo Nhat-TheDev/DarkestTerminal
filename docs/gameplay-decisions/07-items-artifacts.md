@@ -311,7 +311,7 @@ Flat stat bonuses and the Group 2-4 effects, stronger at each rarity.
 | `sharp-claw` | Common | +4 attack. | "The grip on this handle is sized for a hand much smaller than the claw's original owner ever had. One person pulled it, another mounted it, and a third swung it." |
 | `stone-of-endurance` | Common | +30 max HP. | "The runes came later — carved onto a stone that was already being carried around as a lucky weight, long before anyone thought it needed an explanation." |
 | `ring-of-focus` | Common | +15 max MP. | "A mage traded away 3 better rings before settling on this plain one, saying the others made them feel too clever to stay careful." |
-| `warriors-necklace` | Common | +5 defense. | "Every fang on this came from the same fight. The one who strung them together was the only one left standing by the end of it — and didn't much feel like it, wearing this." |
+| `warriors-necklace` | Common | +5 defense. | "Every fang on this came from the same fight. The one who strung them together was the only one left standing by the end of it, and tied the cord short enough that the fangs sit against the throat." |
 | `pendant-of-calm` | Common | -10% fear accumulated. | "'I won't need calm where I'm headed,' they said, handing it back before they left. The cord was still knotted to fit their neck." |
 | `travelers-ration` | Common | +15 max HP. | "There's always 1 more portion in here than the party actually needs — nobody's ever asked who packed it that way, or who the extra was for." |
 <!-- docs:end -->
@@ -390,7 +390,7 @@ Artifacts can raise `attack`, `defense`, `maxHp`, `maxMp`, `magicPower` and `spe
 | `cracked-scrying-glass` | Common | +3 magic power. | "Dropped once by an apprentice, and the crack runs edge to edge. Spells came easier afterward, they said, and nobody offered to fix the glass." |
 | `knotted-red-thread` | Common | Harmful statuses enemies apply are 6% less likely to land. | "9 knots, and only the last one has never frayed. Whoever tied it was tying against something particular, and never said what." |
 | `resonant-tuning-fork` | Rare | +8 magic power. | "Struck once, mid-incantation, it rang for the length of a full watch. The spell being cast at the time went off a good deal harder than intended." |
-| `runners-ankle-cord` | Rare | +2 speed. | "Frayed white at both ends from being tied fast and untied faster. Nobody who's owned it can say when they last stood still." |
+| `runners-ankle-cord` | Rare | +2 speed. | "Frayed white at both ends from being tied fast and untied faster. The knot in it is a runner's knot, made to come loose with one pull." |
 | `bitter-root-charm` | Rare | Harmful statuses enemies apply are 10% less likely to land. | "Chewed flat at one end by someone who kept it in their mouth until the bitterness stopped registering, and the sickness with it." |
 | `hunters-tally-stick` | Rare | 8% chance to bypass a hit or debuff-chance roll entirely. | "39 notches, each cut only once the thing was confirmed dead. The 40th is half-started and has never been finished." |
 | `censer-of-ash` | Unique | +12 magic power. | "Nobody has ever emptied the ash inside, and it's still warm. Casters who've held it say the words come out heavier, as though they'd been written somewhere first." |
@@ -417,8 +417,8 @@ set, no special drop source (except Waystone Shard, below).
   anyway, the same as it was meant to."
 - **Bundle of Undelivered Letters** (Unique, `fearResist 15%`): "Addressed to someone who was never
   told to expect them, tied with string by someone who kept meaning to send just 1 more before
-  finally handing over the whole stack. The ink on top has blurred from handling, not weather —
-  reread more than it was ever written."
+  finally handing over the whole stack. The ink on the top letter has blurred where a thumb rested
+  on it, reading it over."
 
 **B — Ritual Fragment** (Thread 1/2, Covenant-adjacent):
 
@@ -429,8 +429,8 @@ set, no special drop source (except Waystone Shard, below).
   found it after. The handwriting stays careful right up until it doesn't — like something
   interrupted the hand before it interrupted the thought."
 - **Snapped Ritual Blade** (Epic, `statBoost attack +15` + `cooldownReduction 1 turn`): "Forged for
-  a single, specific cut nobody ever explained to whoever was meant to swing it. It snapped on the
-  first and only attempt. Nobody's sure if that means it failed, or worked exactly as intended."
+  a single, specific cut that was never explained to the one meant to swing it. It snapped on the
+  first and only attempt, cleanly, where the blade was thinnest."
 
 **C — Guardian Remnant** (Thread 2):
 
@@ -449,8 +449,8 @@ set, no special drop source (except Waystone Shard, below).
   know it."
 - **Fused Twin Coins** (Epic, `statBoost attack +13` + `statBoost defense +10`): "2 coins from 2
   different people, melted together by something neither of them chose. One face stays closed in
-  on itself; the other's worn open. Nobody's ever managed to pry them apart, and it's not clear
-  either owner would have wanted them to."
+  on itself; the other's worn open. The seam between them has been scratched at with a knife
+  point, never deep."
 - **Waystone Shard** (Unique, only a small token `statBoost maxHp` — its purpose is entirely the check in
   `10-event-narrative.md` §F.4):
   "A shard of something that was never carved, only grown that way — smooth on every broken edge
@@ -493,8 +493,8 @@ plus the 3 once-lifetime events below, each pointing
   was ever set down, the way you'd fold something you meant to come back for. It got folded the
   same exact way every night — until the night nobody came back to unfold it again."
 - **Torn Lock-Plate** (`broken-seal`'s guaranteed drop, Unique, `dodgeChance 10%`): "The other half
-  of what was stamped into the seal — the half torn away, not the half still in the lock. Read
-  together, the two halves would complete the spiral. Nobody's ever held both."
+  of what was stamped into the seal, torn away with whatever was behind it. Read together, the two
+  halves would complete the spiral. The torn edge is still bright."
 - **Worn Chalk Stub** (`half-a-warning`'s guaranteed drop, Unique, `cooldownReduction 1 turn`):
   "Worn down to a nub, carving something into stone that should have taken half as long. Whatever
   hand held it needed to stay steady right up until it didn't."

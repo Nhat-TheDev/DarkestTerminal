@@ -402,7 +402,7 @@ describe("items never crit", () => {
       expect(bombLines).toHaveLength(1);
       expect(bombLines[0]!.text.startsWith("Critical")).toBe(false);
       // The rat's own attack is a direct hit and does crit at 100%: only the items are exempt.
-      expect(combat.log.some((l) => l.text.startsWith("Critical Hit!"))).toBe(true);
+      expect(combat.log.some((l) => l.text.startsWith("Critical hit:"))).toBe(true);
     } finally {
       ITEMS.splice(ITEMS.indexOf(bomb), 1);
     }
