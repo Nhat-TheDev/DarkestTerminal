@@ -8,7 +8,6 @@ import { renderFloorMap } from "../src/ui/floorMap";
 import { createFloor } from "../src/data/floor";
 import { FloorGraph } from "../src/engine/floorGraph";
 import { Rng } from "../src/engine/rng";
-import { t } from "../src/data/strings";
 import { BATTLEFIELD_CONTENT_WIDTH, UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
 
 const PARTY = CLASSES.slice(0, BALANCE.party.size).map((c) => c.id);
@@ -70,7 +69,7 @@ describe("the floor map", () => {
   test("draws the spec's example floor exactly", () => {
     const { rows } = renderFloorMap(exampleFloor(), ["e", "cur"], "cur");
     expect(text(rows)).toEqual([
-      "Floor 3  ·  the guard is 9–12 rooms ahead",
+      "Floor 3",
       "",
       "[ · ]━━[ ■ ]┳━[1 ·]┳━[ △ ]━━[ · ]┳━[ · ]┳━[ ○ ]━━[ · ]━━━━━━━┳━[ · ]━━[ △ ]━━[ · ]━━[ ○ ]━━[ ☠ ]",
       "            ┃      ┃             ┃      ┃                    ┃",
@@ -79,8 +78,6 @@ describe("the floor map", () => {
       "            ┣━[2 ○]━━[ · ]━━━━━━━━━━━━━━┫",
       "            ┃                           ┃",
       "            ┗━[3 ·]━━[ ? ]━━[ · ]━━━━━━━┛",
-      "",
-      "[1] 4 rooms    [2] 2 rooms    [3] 3 rooms    then 7–8 rooms to the guard",
       "",
       "■ you    · fight    ○ event    △ rest    ? unknown    ☠ guard",
     ]);
@@ -114,7 +111,7 @@ describe("the floor map", () => {
       rooms: [...stage(["r1"], ["r2"]), ...stage(["r2"], ["r3", "r4"]), ...stage(["r3"], ["r5"]), ...stage(["r4"], ["r5"], "event"), ...stage(["r5"], ["r6"], "rest"), ...stage(["r6"], [], "boss")],
     };
     expect(text(renderFloorMap(floor, ["r1", "r2"], "r2").rows).slice(0, 5)).toEqual([
-      "Floor 2  ·  the guard is 3 rooms ahead",
+      "Floor 2",
       "",
       "[ · ]━━[ ■ ]┳━[1 ·]┳━[ △ ]━━[ ☠ ]",
       "            ┃      ┃",
@@ -127,13 +124,7 @@ describe("the floor map", () => {
     const f2 = floor.rooms.find((r) => r.id === "f2")!;
     delete f2.hidden;
     const lines = text(renderFloorMap(floor, ["e", "cur", "f1", "f2"], "f2").rows);
-    expect(lines.at(-5)).toBe("            ┗━[ · ]━━[ ■ ]━━[1 ·]━━━━━━━┛");
-    expect(lines[0]).toBe("Floor 3  ·  the guard is 8–9 rooms ahead");
-    expect(lines.at(-3)).toBe("8–9 rooms to the guard");
-  });
-
-  test("t() picks the singular for 1", () => {
-    expect(t("ui.floorMapLane", { range: "1", n: 1 })).toBe("1 room");
-    expect(t("ui.floorMapLane", { range: "2", n: 2 })).toBe("2 rooms");
+    expect(lines.at(-3)).toBe("            ┗━[ · ]━━[ ■ ]━━[1 ·]━━━━━━━┛");
+    expect(lines.some((line) => /rooms?\b/.test(line))).toBe(false);
   });
 });

@@ -116,9 +116,8 @@ the plain panel background. Every other screen keeps the normal Battlefield.
   stack below it, one blank connector row apart. Junction glyphs are built
   from the directions that meet in a cell, which is how a join that is also a
   split merges into `┣`, `┫` or `╋`.
-- Above the map: how many rooms the guard is ahead. Below it, at a split: the
-  rooms on each lane up to its join, then the range from that join to the
-  guard; with one way on, just the rooms to the guard.
+- Above the map, only the floor number; below it, a legend. The map counts
+  nothing for the player: route lengths are read off the map itself.
 - Passed rooms and the lines into them are dimmed; the rooms the party can
   move to carry their key, matching the Paths list.
 

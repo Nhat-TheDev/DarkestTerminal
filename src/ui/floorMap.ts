@@ -1,6 +1,6 @@
 import type { TextChunk } from "@opentui/core";
 import type { Floor, Id, Room, RoomType } from "../types";
-import { FloorGraph, type LaneItem, type Span } from "../engine/floorGraph";
+import { FloorGraph, type LaneItem } from "../engine/floorGraph";
 import { t } from "../data/strings";
 import { PALETTE, boldColorChunk, colorChunk, plainChunk } from "./theme";
 
@@ -52,14 +52,6 @@ interface LineMark {
 
 function chunkLength(chunks: TextChunk[]): number {
   return chunks.reduce((sum, c) => sum + Array.from(c.text).length, 0);
-}
-
-function rangeText(span: Span): string {
-  return span.min === span.max ? String(span.min) : t("ui.floorMapRange", { min: span.min, max: span.max });
-}
-
-function roomsText(key: string, span: Span): string {
-  return t(key, { range: rangeText(span), n: span.max });
 }
 
 function firstRoomIds(item: LaneItem): Id[] {
@@ -217,26 +209,6 @@ class MapCanvas {
   }
 }
 
-function countsLine(graph: FloorGraph, current: Room, keys: Map<Id, number>): TextChunk[] {
-  const choices = current.connectedRoomIds;
-  if (choices.length === 0) return [];
-  if (choices.length === 1) {
-    const { rooms } = graph.routeBounds(current.id);
-    return [colorChunk(roomsText("ui.floorMapToGuard", { min: rooms.min - 1, max: rooms.max - 1 }), PALETTE.text)];
-  }
-  const join = graph.joinAfter(current.id);
-  if (!join) return [];
-  const stops = new Set(join.ins);
-  const chunks: TextChunk[] = [];
-  for (const id of choices) {
-    chunks.push(boldColorChunk(`[${keys.get(id)}]`, PALETTE.title), colorChunk(` ${roomsText("ui.floorMapLane", graph.routeBounds(id, stops).rooms)}${LIST_GAP}`, PALETTE.text));
-  }
-  const after = join.outs.map((id) => graph.routeBounds(id).rooms);
-  const span = { min: Math.min(...after.map((s) => s.min)), max: Math.max(...after.map((s) => s.max)) };
-  chunks.push(colorChunk(roomsText("ui.floorMapThen", span), PALETTE.text));
-  return chunks;
-}
-
 function legendLine(): TextChunk[] {
   const entries: [string, string, string][] = [
     [CURRENT_ICON, PALETTE.title, "ui.floorMapLegendYou"],
@@ -253,7 +225,7 @@ function legendLine(): TextChunk[] {
   ]);
 }
 
-/** The whole floor as a block of rows sharing one left edge: title, map, the counts for each choice, legend. */
+/** The whole floor as a block of rows sharing one left edge: title, map, legend. */
 export function renderFloorMap(floor: Floor, roomPath: Id[], currentRoomId: Id): { rows: TextChunk[][]; width: number } {
   const graph = new FloorGraph(
     floor.rooms.map((r) => ({ id: r.id, type: r.type, next: r.connectedRoomIds })),
@@ -264,18 +236,11 @@ export function renderFloorMap(floor: Floor, roomPath: Id[], currentRoomId: Id):
   const keys = new Map(current.connectedRoomIds.map((id, i) => [id, i + 1]));
   const canvas = new MapCanvas(graph, new Set(roomPath));
 
-  const ahead = graph.routeBounds(currentRoomId).rooms;
-  const title =
-    current.connectedRoomIds.length === 0
-      ? t("ui.floorMapTitleAtGuard", { depth: floor.depth })
-      : t("ui.floorMapTitle", { depth: floor.depth, range: rangeText({ min: ahead.min - 1, max: ahead.max - 1 }), n: ahead.max - 1 });
-  const counts = countsLine(graph, current, keys);
   const rows: TextChunk[][] = [
-    [colorChunk(title, PALETTE.title)],
+    [colorChunk(t("ui.floorMapTitle", { depth: floor.depth }), PALETTE.title)],
     [],
     ...canvas.render(currentRoomId, keys, byId),
     [],
-    ...(counts.length > 0 ? [counts, []] : []),
     legendLine(),
   ];
   return { rows, width: Math.max(...rows.map(chunkLength)) };
