@@ -25,30 +25,40 @@ const ARCHETYPES_BY_TIER: Record<PowerTier, MonsterArchetype[]> = {
 
 const ROOM_COMPOSITION_TEMPLATES: PowerTier[][] = BALANCE.floorGeneration.roomCompositionTemplates;
 
-type RoomSpawnFn = (rng: Rng, depth: number) => Monster[];
-
 function eligibleAtDepth(pool: MonsterArchetype[], depth: number): MonsterArchetype[] {
   return pool.filter((a) => (a.minFloor ?? 0) <= depth);
 }
 
-function eligibleTemplatesAtDepth(depth: number): PowerTier[][] {
-  return ROOM_COMPOSITION_TEMPLATES.filter((template) =>
-    template.every((tier) => eligibleAtDepth(ARCHETYPES_BY_TIER[tier], depth).length > 0)
-  );
+/** What may spawn at one depth, worked out once per floor rather than once per room. */
+interface DepthPools {
+  templates: PowerTier[][];
+  byTier: Record<PowerTier, MonsterArchetype[]>;
+  guards: MonsterArchetype[];
 }
 
-function spawnCombatRoomMonsters(rng: Rng, depth: number): Monster[] {
-  const template = rng.pick(eligibleTemplatesAtDepth(depth));
-  return template.map((tier) => {
-    const archetype = rng.pick(eligibleAtDepth(ARCHETYPES_BY_TIER[tier], depth)).id;
-    return spawnMonster(archetype, depth);
-  });
+function poolsAtDepth(depth: number): DepthPools {
+  const byTier: Record<PowerTier, MonsterArchetype[]> = {
+    weak: eligibleAtDepth(ARCHETYPES_BY_TIER.weak, depth),
+    medium: eligibleAtDepth(ARCHETYPES_BY_TIER.medium, depth),
+    strong: eligibleAtDepth(ARCHETYPES_BY_TIER.strong, depth),
+  };
+  return {
+    templates: ROOM_COMPOSITION_TEMPLATES.filter((template) => template.every((tier) => byTier[tier].length > 0)),
+    byTier,
+    guards: eligibleAtDepth(GUARD_ROOM_ARCHETYPES, depth),
+  };
 }
 
-function spawnBossRoomMonsters(rng: Rng, depth: number): Monster[] {
+type RoomSpawnFn = (rng: Rng, depth: number, pools: DepthPools) => Monster[];
+
+function spawnCombatRoomMonsters(rng: Rng, depth: number, pools: DepthPools): Monster[] {
+  const template = rng.pick(pools.templates);
+  return template.map((tier) => spawnMonster(rng.pick(pools.byTier[tier]).id, depth));
+}
+
+function spawnBossRoomMonsters(rng: Rng, depth: number, pools: DepthPools): Monster[] {
   const tier = depth % BOSS_FLOOR_INTERVAL === 0 ? "boss" : "elite";
-  const archetype = rng.pick(eligibleAtDepth(GUARD_ROOM_ARCHETYPES, depth)).id;
-  return [spawnMonster(archetype, depth, { tier })];
+  return [spawnMonster(rng.pick(pools.guards).id, depth, { tier })];
 }
 
 const EVENT_GUARDIAN_STAT_MULTIPLIER = BALANCE.events.eventGuardianStatMultiplier;
@@ -77,9 +87,10 @@ const ROOM_SPAWN_STRATEGIES: Partial<Record<RoomType, RoomSpawnFn>> = {
 export function buildFloorFromLayout(layout: LayoutRoom[], rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
   const monsters: Monster[] = [];
   const usedNames = new Set<string>();
+  const pools = poolsAtDepth(depth);
 
   const rooms: Room[] = layout.map((token) => {
-    const roomMonsters = ROOM_SPAWN_STRATEGIES[token.type]?.(rng, depth) ?? [];
+    const roomMonsters = ROOM_SPAWN_STRATEGIES[token.type]?.(rng, depth, pools) ?? [];
     monsters.push(...roomMonsters);
     return {
       id: token.id,

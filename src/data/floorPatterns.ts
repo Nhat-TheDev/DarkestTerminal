@@ -73,14 +73,15 @@ function pickCrossBranch(lanes: Shape[][], rng: Rng): CrossBranch | undefined {
   };
 }
 
-function newRoom(rooms: LayoutRoom[]): LayoutRoom {
+function newRoom(rooms: LayoutRoom[], byId: Map<string, LayoutRoom>): LayoutRoom {
   const room: LayoutRoom = { id: `r${rooms.length + 1}`, type: "combat", next: [], hidden: false };
   rooms.push(room);
+  byId.set(room.id, room);
   return room;
 }
 
 /** `ids[i]` is the room made for `seq[i]`, or null for a split. */
-function flatten(seq: Shape[], rooms: LayoutRoom[]): { first: string[]; last: string[]; ids: (string | null)[] } {
+function flatten(seq: Shape[], rooms: LayoutRoom[], byId: Map<string, LayoutRoom>): { first: string[]; last: string[]; ids: (string | null)[] } {
   let first: string[] | null = null;
   let prevLast: string[] = [];
   const ids: (string | null)[] = [];
@@ -88,22 +89,22 @@ function flatten(seq: Shape[], rooms: LayoutRoom[]): { first: string[]; last: st
     let itemFirst: string[];
     let itemLast: string[];
     if (item.kind === "room") {
-      const id = newRoom(rooms).id;
+      const id = newRoom(rooms, byId).id;
       itemFirst = itemLast = [id];
       ids.push(id);
     } else {
-      const parts = item.lanes.map((lane) => flatten(lane, rooms));
+      const parts = item.lanes.map((lane) => flatten(lane, rooms, byId));
       itemFirst = parts.flatMap((p) => p.first);
       itemLast = parts.flatMap((p) => p.last);
       ids.push(null);
       if (item.cross) {
         const { lane, from, to } = item.cross;
-        const branch = Array.from({ length: item.cross.rooms }, () => newRoom(rooms));
+        const branch = Array.from({ length: item.cross.rooms }, () => newRoom(rooms, byId));
         branch.forEach((room, i) => room.next.push(branch[i + 1]?.id ?? parts[lane + 1]!.ids[to]!));
-        rooms.find((r) => r.id === parts[lane]!.ids[from])!.next.push(branch[0]!.id);
+        byId.get(parts[lane]!.ids[from]!)!.next.push(branch[0]!.id);
       }
     }
-    for (const id of prevLast) rooms.find((r) => r.id === id)!.next.push(...itemFirst);
+    for (const id of prevLast) byId.get(id)!.next.push(...itemFirst);
     first ??= itemFirst;
     prevLast = itemLast;
   }
@@ -113,7 +114,7 @@ function flatten(seq: Shape[], rooms: LayoutRoom[]): { first: string[]; last: st
 function buildShape(rng: Rng): LayoutRoom[] {
   const routeRooms = rng.int(CONFIG.minRouteRooms, CONFIG.maxRouteRooms);
   const rooms: LayoutRoom[] = [];
-  flatten([{ kind: "room" }, ...shapeSeq(routeRooms - 2, CONFIG.maxParallelLanes, false, rng), { kind: "room" }], rooms);
+  flatten([{ kind: "room" }, ...shapeSeq(routeRooms - 2, CONFIG.maxParallelLanes, false, rng), { kind: "room" }], rooms, new Map());
   return rooms;
 }
 
@@ -141,11 +142,11 @@ function walkingOrder(rooms: LayoutRoom[]): LayoutRoom[] {
   return order;
 }
 
-function assignTypes(rooms: LayoutRoom[], rng: Rng): void {
-  const preds = predecessors(rooms);
-  walkingOrder(rooms).forEach((room) => {
+/** `order` is the shape's walking order; the shape doesn't change between draws, so it and `preds` are built once. */
+function assignTypes(order: LayoutRoom[], preds: Map<string, LayoutRoom[]>, rng: Rng): void {
+  order.forEach((room, i) => {
     if (room.next.length === 0) room.type = "boss";
-    else if (room === rooms[0]) room.type = "combat";
+    else if (i === 0) room.type = "combat";
     else {
       const before = preds.get(room.id)!;
       const options: [RoomType, number][] = [["combat", 1 - CONFIG.eventRoomWeight - CONFIG.restRoomWeight]];
@@ -158,8 +159,9 @@ function assignTypes(rooms: LayoutRoom[], rng: Rng): void {
 
 const TYPE_ATTEMPTS_PER_SHAPE = 20;
 
-function routeRuleError(rooms: LayoutRoom[], maxEvents: number): string | null {
-  const bounds = new FloorGraph(rooms, rooms[0]!.id).routeBounds(rooms[0]!.id);
+/** The graph holds the rooms themselves, so it reads their current types without being rebuilt. */
+function routeRuleError(graph: FloorGraph, maxEvents: number): string | null {
+  const bounds = graph.routeBounds(graph.entryId);
   if (bounds.rooms.min < CONFIG.minRouteRooms || bounds.rooms.max > CONFIG.maxRouteRooms) {
     return `routes hold ${bounds.rooms.min}-${bounds.rooms.max} rooms, expected ${CONFIG.minRouteRooms}-${CONFIG.maxRouteRooms}`;
   }
@@ -217,11 +219,14 @@ export function generateFloorLayout(rng: Rng, depth = 1): LayoutRoom[] {
   let layout: LayoutRoom[] | null = null;
   for (let attempt = 0; attempt < CONFIG.generationAttempts && !layout; attempt++) {
     const rooms = buildShape(rng);
-    const bounds = new FloorGraph(rooms, rooms[0]!.id).routeBounds(rooms[0]!.id);
+    const graph = new FloorGraph(rooms, rooms[0]!.id);
+    const bounds = graph.routeBounds(graph.entryId);
     if (bounds.rooms.min < CONFIG.minRouteRooms || bounds.rooms.max > CONFIG.maxRouteRooms) continue;
+    const order = walkingOrder(rooms);
+    const preds = predecessors(rooms);
     for (let t = 0; t < TYPE_ATTEMPTS_PER_SHAPE; t++) {
-      assignTypes(rooms, rng);
-      if (routeRuleError(rooms, maxEvents) === null) {
+      assignTypes(order, preds, rng);
+      if (routeRuleError(graph, maxEvents) === null) {
         layout = rooms;
         break;
       }
@@ -295,7 +300,7 @@ export function validateFloorLayout(rooms: LayoutRoom[]): void {
     }
   }
 
-  const ruleError = routeRuleError(rooms, CONFIG.maxEventRoomsPerRoute);
+  const ruleError = routeRuleError(new FloorGraph(rooms, entry.id), CONFIG.maxEventRoomsPerRoute);
   if (ruleError) throw new Error(ruleError);
 
   const width = lanesSideBySide(rooms);
