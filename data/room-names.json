@@ -48,7 +48,7 @@
     },
     {
       "name": "Dry Corner",
-      "backdrop": "safe-resting-corner"
+      "backdrop": "dry-corner"
     },
     {
       "name": "Abandoned Shrine",
@@ -62,7 +62,7 @@
     },
     {
       "name": "Bare Throne Room",
-      "backdrop": "throne-of-darkness"
+      "backdrop": "bare-throne-room"
     },
     {
       "name": "General's Tomb",
