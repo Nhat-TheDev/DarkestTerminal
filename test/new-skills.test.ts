@@ -1176,7 +1176,7 @@ describe("Warlock", () => {
 
   test("Blood Pact can be cast on an ally: the ally gets Pact and MP, the Warlock pays the HP", () => {
     const { ctx, warlock, rats, combat } = warlockFight(1);
-    rats[0]!.attack = 0;
+    rats[0]!.activeStatusEffects.push({ statusEffectId: "stunned", turnsRemaining: 10 }); // its bites would blur the HP being measured
     const mage = ctx.party.find((c) => c.classId === "mage")!;
     mage.mp = 0;
     const full = warlock.hp;

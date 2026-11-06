@@ -13,7 +13,7 @@ import type { ScreenContext } from "./context";
 
 export type GatekeeperUiState = Extract<UiState, { kind: "gatekeeper" }>;
 
-export function handleKey(ctx: ScreenContext, _ui: GatekeeperUiState, _key: KeyEvent, digit: number | null): void {
+export function handleKey(ctx: ScreenContext, ui: GatekeeperUiState, _key: KeyEvent, digit: number | null): void {
   if (ctx.game.state.gatekeeperAnswer === null) {
     if (digit === 1) {
       const err = ctx.game.answerGatekeeper("paid");
@@ -21,6 +21,10 @@ export function handleKey(ctx: ScreenContext, _ui: GatekeeperUiState, _key: KeyE
       if (err) ctx.reportUnusable(err.reason);
       else ctx.logInfo(t("ui.gatekeeperBlessing", { stats: blessingStats(), rooms: BALANCE.gatekeeper.blessingRooms }));
     } else if (digit === 2) ctx.game.answerGatekeeper("refused");
+    return;
+  }
+  if (!ui.mapTaken) {
+    if (digit === 1) ctx.setUi({ kind: "gatekeeper", mapTaken: true });
     return;
   }
   if (digit === 1) {
@@ -35,7 +39,7 @@ function blessingStats(): string {
     .join(", ");
 }
 
-export function renderMain(game: Game, _ui: GatekeeperUiState): string {
+export function renderMain(game: Game, ui: GatekeeperUiState): string {
   const answer = game.state.gatekeeperAnswer;
   if (answer === null) {
     const toll = BALANCE.gatekeeper.tollCoins;
@@ -46,10 +50,14 @@ export function renderMain(game: Game, _ui: GatekeeperUiState): string {
       t("ui.gatekeeperKeepCoins"),
     ].join("\n");
   }
+  if (!ui.mapTaken) {
+    return [answer === "paid" ? t("ui.gatekeeperPaid") : t("ui.gatekeeperRefused"), "", t("ui.gatekeeperMap"), "", t("ui.gatekeeperTakeMap")].join("\n");
+  }
   const entry = getRoom(game.state.floor, game.state.floor.entryRoomId);
-  return [answer === "paid" ? t("ui.gatekeeperPaid") : t("ui.gatekeeperRefused"), "", t("ui.pathsLabel"), pathChoiceLine(1, entry)].join("\n");
+  return [t("ui.gatekeeperMapTaken"), "", t("ui.pathsLabel"), pathChoiceLine(1, entry)].join("\n");
 }
 
-export function renderFooter(_ui: GatekeeperUiState, game: Game): string {
-  return game.state.gatekeeperAnswer === null ? digitHint("ui.footerChoose", 2) : digitHint("ui.footerGatekeeperMove", 1);
+export function renderFooter(ui: GatekeeperUiState, game: Game): string {
+  if (game.state.gatekeeperAnswer === null) return digitHint("ui.footerChoose", 2);
+  return digitHint(ui.mapTaken ? "ui.footerGatekeeperMove" : "ui.footerGatekeeperTake", 1);
 }

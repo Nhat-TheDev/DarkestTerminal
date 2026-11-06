@@ -49,7 +49,7 @@ export function handleKey(ctx: ScreenContext, ui: RoomUiState, key: KeyEvent, di
 }
 
 export function pathChoiceLine(index: number, room: Room): string {
-  return `  [${index}] ${room.name} (${room.type})`;
+  return room.hidden ? `  [${index}] ${t("ui.unknownRoomChoice")}` : `  [${index}] ${room.name} (${room.type})`;
 }
 
 export function renderMain(game: Game, ui: RoomUiState): string | StyledText {

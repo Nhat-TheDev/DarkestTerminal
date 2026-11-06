@@ -12,68 +12,150 @@ every time balance is retuned is exactly what this convention avoids.
 
 ---
 
-## 1. Room/floor generation: a rule-fixed runtime generator
+## 1. Room/floor generation: a rule-checked runtime generator
 
-Floor structure is generated directly by a runtime algorithm
-(`generateFloorLayout(rng)`, `src/data/floorPatterns.ts`) — it does not read
-from a hand-written pattern file. Core invariant: **no dead ends, every
-branch converges on the boss**, guaranteed by exactly one connection rule
-(below), with no need for a separate validation algorithm.
+Floor structure is generated at runtime (`generateFloorLayout(rng, depth)`,
+`src/data/floorPatterns.ts`), never read from a hand-written pattern file. A
+floor is a directed graph from one entrance room to one guard room (elite or
+boss), with no dead ends and no way back. Routes through it differ: in
+length, and in how many fights, events and rests they hold. The player reads
+the whole floor on the map (`src/ui/floorMap.ts`) and plans across it; the
+game never suggests a route.
 
-### Internal representation
-The structure uses the concept of a **stage** (column) — `RoomToken[][]` —
-each room has `{ stage, roomId, tag }`, where `tag` is one of:
-- `""` — a normal combat room
-- `"free"` — a rest room
-- `"event"` — an event room (`gameplay-decisions/08-events.md` §8)
-- `"boss"` — the boss room, required to be the sole room of the final stage
+A *route* is any walk from the entrance to the guard room. Every rule below
+holds for every route of every floor.
 
-### Connection rule
-**Every room in stage N connects to ALL rooms in stage N+1**, with no other
-edges allowed — no connecting backward, no shortcutting across stages. This
-automatically implies: dead ends are impossible, and every branch naturally
-converges once the next stage has only 1 room; going back to a previous room
-is never allowed.
+### Shape: lanes, splits and joins
+A floor is a sequence of rooms and *splits*. A split sends the route into 2 to
+`floorGeneration.maxLanesPerSplit` *lanes* that join again further on:
+- A lane holds at least `floorGeneration.minLaneRooms` rooms before it joins
+  or merges.
+- A lane may split again inside itself. Its first and last items are always
+  rooms, so its sub-lanes join before the lane itself does, and its own split
+  and join never merge with the outer ones.
+- A *cross branch* leaves a lane and merges into the lane below it instead of
+  rejoining its own. A split whose lanes leave a lane of width unused rolls
+  `crossMergeChance` for one; the lanes it links hold only rooms, and the branch leaves each of them
+  at least `minLaneRooms` rooms of their own. Where it leaves, how long it is
+  (`minLaneRooms` to `maxCrossBranchRooms` rooms) and where it merges are
+  random.
+- At any point along the floor, at most `floorGeneration.maxParallelLanes`
+  lanes run side by side, nested lanes and cross branches included.
+- A join may also be a split: lanes meet and part again at the same point,
+  with no shared room between. In the graph, every last room of the joining
+  lanes links to every first room of the next split.
+- The entrance and the guard room are single rooms on every floor.
 
-### Generation rules (`generateFloorLayout`)
-Every bound below is measured **along a single path** from start to boss —
-since every stage connects fully to the next, path length = number of stages,
-fixed regardless of which branch is chosen. All bounds are read from
-`data/balance-config.json` field `floorGeneration`, re-exported as named
-constants in `src/data/floorPatterns.ts`:
-- Stage 0 (start) is exactly 1 room, tag `""` (normal room).
-- The final stage is exactly 1 room, tag `boss`.
-- Path length (total rooms, including start + boss): bounded by `MIN_PATH_ROOMS`/`MAX_PATH_ROOMS` (`floorGeneration.minPathRooms`/`maxPathRooms`), randomized on each generation.
-- **Branch points** (branch = a stage with >1 room) can only be placed starting from `MIN_BRANCH_START_STAGE` (`floorGeneration.minBranchStartStage`, 0-indexed).
-- At most `MAX_BRANCHES` branch points (`floorGeneration.maxBranches`); 2 consecutive branch points must be at least `MIN_BRANCH_SPACING` rooms apart (`floorGeneration.minBranchSpacing`) — so a short path can only fit a couple of branch points at most.
-- Each branch point = exactly 2 rooms: 1 normal room + 1 event room (the player picks one of the two when passing through that stage).
-- **Standalone event rooms** (a stage holding only 1 event room, so every path passes through it): `MIN_STANDALONE_EVENT_ROOMS`–`MAX_STANDALONE_EVENT_ROOMS` per floor (`floorGeneration.minStandaloneEventRooms`/`maxStandaloneEventRooms`), rolled after the branch points on every floor, whether or not the floor has any branch points. They are placed from `MIN_STANDALONE_EVENT_STAGE` onward (`floorGeneration.minStandaloneEventStage`, 0-indexed, separate from `minBranchStartStage`), never on the boss stage, never next to a branch point or to another standalone event. The pick count can fall short of the roll when that filter empties the candidate pool, and is capped so branch points + standalone events stay within `MAX_EVENT_ROOMS_PER_PATH`.
-- Every floor has at least `MIN_EVENT_ROOMS_PER_FLOOR` event rooms (`floorGeneration.minEventRoomsPerFloor`): when the branch points alone fall short, the standalone count is raised to make up the difference. With the current config only a floor with no branch point ever needs this, and its candidate pool is never empty. The generator doesn't call `validateGeneratedStages` at runtime, so a config that can't reach this minimum on a short path under-delivers instead of throwing; the property test in `test/floorPatterns.test.ts` reads the live config and fails on such a change.
-- No 2 event rooms are ever adjacent on the same path: branch points are spaced at least `MIN_BRANCH_SPACING` apart, and standalone events keep a stage between themselves and every other event stage.
-- At most `MAX_EVENT_ROOMS_PER_PATH` event rooms per path (`floorGeneration.maxEventRoomsPerPath`).
-- `MIN_REST_ROOMS_PER_PATH`–`MAX_REST_ROOMS_PER_PATH` rest rooms per path (`floorGeneration.minRestRoomsPerPath`/`maxRestRoomsPerPath`) — chosen randomly among stages that aren't start/boss/branch points/standalone events; `pickRestStages` removes a picked stage's immediate neighbors from the candidate pool before the next pick, so no 2 rest rooms are ever adjacent either. The pick count can fall short of the random target when neighbor-filtering exhausts the candidate pool, rather than force an adjacent pair in — with the current `minRestRoomsPerPath: 1` this never drops below the configured minimum, but raising that minimum isn't guaranteed to be satisfiable by this function and would need re-checking.
-- `roomId` is unique across the whole layout.
+How many splits a floor has, how many lanes each holds and how long each lane
+is are random (`splitChance`, `nestedSplitChance`); the generator builds no
+"combat lane" or "event lane" on purpose.
 
-`validateGeneratedStages(stages)` re-checks all of the rules above — used as
-a safety net for tests and for future changes to the generator (the generator
-is correct by construction and doesn't rely on validation to be correct).
+### Route rules
+All bounds come from `floorGeneration` in `data/balance-config.json`:
+- Rooms on a route, entrance and guard included: `minRouteRooms`–`maxRouteRooms`.
+- Rest rooms on a route: `minRestRoomsPerRoute`–`maxRestRoomsPerRoute`. Every
+  route has at least one rest.
+- Event rooms on a route: from `minEventRoomsPerRoute` up to a cap rolled per
+  floor: `commonMaxEventRoomsPerRoute` on most floors, `maxEventRoomsPerRoute`
+  on a floor that rolls `manyEventsFloorChance`. Routes with more events than
+  the common cap are therefore rare.
+- Never two event rooms in a row, never two rest rooms in a row.
+
+### How the generator meets the rules
+Generate and check, not build by construction:
+1. Draw the longest route length, then a random shape of rooms and splits
+   that fills it (`shapeSeq`), within the lane rules above.
+2. Draw each room's type in walking order (`eventRoomWeight`,
+   `restRoomWeight`, the rest combat); a room can't be an event or a rest when
+   a room leading into it already is one, which keeps the "in a row" rules.
+3. Check the route rules over the graph, and redraw the types up to
+   `typeAttemptsPerShape` times per shape, then the shape itself up to
+   `generationAttempts` times.
+4. If nothing passes, `fallbackLayout()` is used: a single lane of
+   `minRouteRooms` rooms with the fewest events and rests, spaced out. It is
+   valid for any config the property test accepts; with the current config it
+   is never reached.
+
+Route checks never list routes, since nested splits multiply them.
+`FloorGraph.routeBounds` (`src/engine/floorGraph.ts`) walks the graph once and
+keeps, per room, the minimum and maximum number of rooms, events and rests on
+the routes from there to the guard. The "in a row" rules are checked per edge.
+
+`validateFloorLayout(rooms)` re-checks every rule on the graph alone, so it
+holds for cross branches too: route bounds, edges, at most `maxLanesPerSplit`
+next rooms per room, lanes side by side per column (its rooms, plus the rooms
+whose lines run across it), at least `minLaneRooms` rooms on every lane a
+split opens before it reaches a room more than one route leads into,
+reachability, no dead ends, unique ids, a visible entrance and guard. The property test runs it over many seeds and depths.
+
+### Unknown rooms
+Some rooms show as `[?]` until the party enters them. A room's real type is
+fixed at generation and counts toward every route rule by that type; only
+the display hides it (`Room.hidden`).
+- The count is drawn around a mean that rises with depth:
+  `unknownRoomsMeanAtFirstFloor` plus `unknownRoomsMeanGrowthPerFloor` per
+  floor, held at its `unknownRoomsMeanCapDepth` level past that depth, then
+  moved up or down by up to `unknownRoomsSpread` and rounded, never below 0.
+  Two floors at the same depth differ.
+- Each unknown room goes to the column holding the fewest unknown rooms so
+  far, never beside another unknown room on any route, never on the entrance
+  or the guard. When no room is left that keeps those rules, the generator
+  places fewer. On narrow floors this caps the deep-floor count below the
+  drawn mean.
+- The Paths list names an unknown room `??? (unknown)`, since room names are
+  drawn per room type. Entering the room drops the flag (`moveToRoom`), so its
+  type and name show for the rest of the floor.
+- A player can sometimes deduce an unknown room's type from the rules (an
+  unknown room right after an event is not an event). This is accepted.
+
+### The floor map
+While the party chooses its next room (the `room` screen, with no Gatekeeper
+pending), the Battlefield shows the whole floor instead of the sprites, on
+the plain panel background. Every other screen keeps the normal Battlefield.
+- The map is drawn from the room graph alone (`connectedRoomIds`), never from
+  stored coordinates, so a floor from an older save still draws. Rooms are
+  laid out in *tracks*, one per row segment: a room joins the track of the
+  room it is the first choice of; when several lead into it, the track that
+  started furthest left wins, which is what ends a cross branch at the lane it
+  merges into.
+- A room's column is its longest walk from the entrance, so a lane shorter
+  than its neighbours keeps its rooms in the first columns of the split and
+  runs its line on to the join. Cells are 5 characters wide and 7 apart; a
+  route of `maxRouteRooms` rooms fits the Battlefield at the smallest
+  supported terminal.
+- The first lane of a split continues on the row it came from; every other
+  track takes the first free row below its parent, one blank connector row
+  apart. Tracks that end sooner are placed first and each track's own
+  branches go right under it, so nested lanes and cross branches sit between
+  their lane and the next, pushing later lanes down.
+- Every connection is drawn the same way: along the source's row to the gap
+  before the target, up or down there, then into the target. Junction glyphs
+  are built from the directions that meet in a cell, so a join that is also a
+  split merges into `┣` or `┫`, and a cross branch turns down with `┓` into
+  `┻`. Generated maps never cross two lines.
+- Above the map, only the floor number; below it, a legend. The map counts
+  nothing for the player: route lengths are read off the map itself.
+- Passed rooms and the lines into them are dimmed; the rooms the party can
+  move to carry their key, matching the Paths list.
 
 ### Storage & runtime
-`createFloor(rng, depth)` (`src/data/floor.ts`) calls `generateFloorLayout(rng)`
-then `buildFloorFromStages(stages, rng, depth)`: it builds `Room[]` with
-`connectedRoomIds` = every room in the next stage; assigns random room names
-(a pool per room type, avoiding duplicate names within the same floor) and
-randomly places a small number of monsters per combat room (the regular
-combat archetypes from `data/monsters.json`, `gameplay-decisions/02-monster.md`
-§2), 1 elite or boss monster (a guard-room archetype, randomly picked —
-`gameplay-decisions/02-monster.md` §2, `gameplay-decisions/06-level-system.md` §6.11)
-for the `boss` room. `Game.advanceToNextFloor()` (`src/engine/game.ts`) calls
-`createFloor` again with `depth + 1` every time the guard-room is cleared
+`createFloor(rng, depth)` (`src/data/floor.ts`) calls `generateFloorLayout(rng,
+depth)` then `buildFloorFromLayout(layout, rng, depth)`: it builds `Room[]`
+with `connectedRoomIds` from the layout and `hidden` on unknown rooms; assigns
+random room names (a pool per room type, avoiding duplicate names within the
+same floor) and randomly places a small number of monsters per combat room
+(the regular combat archetypes from `data/monsters.json`,
+`gameplay-decisions/02-monster.md` §2), 1 elite or boss monster (a guard-room
+archetype, randomly picked — `gameplay-decisions/02-monster.md` §2,
+`gameplay-decisions/06-level-system.md` §6.11) for the `boss` room. A floor is
+generated whole when the party reaches it, deterministically for the run
+seed. `Game.advanceToNextFloor()` (`src/engine/game.ts`) calls `createFloor`
+again with `depth + 1` every time the guard room is cleared
 (`gameplay-decisions/06-level-system.md` §6.9).
 
-`test/floorPatterns.test.ts`: a property-based test that runs `generateFloorLayout`
-across many random seeds, verifying all the rules above plus reachability/no-dead-end (BFS),
-plus a separate test for `validateGeneratedStages` (invalid input must throw).
+`test/floorPatterns.test.ts` is the property test for the generator;
+`test/floorMap.test.ts` checks the map against the approved mockup, column
+alignment, the width bound and an old-save floor.
 
 ---
 

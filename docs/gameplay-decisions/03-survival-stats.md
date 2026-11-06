@@ -36,7 +36,7 @@ Implementation: `drainSatiety(state, amount, log)` (`src/engine/survival.ts`), c
 
 **Backtracking can drain satiety a second time for the same room.** `RoomType` is only `"combat" | "rest" | "boss" | "event"`, and `enterRoom`'s dispatch falls through to a catch-all branch (`dungeon.ts`, draining `SATIETY_DRAIN_COMBAT`) whenever the room isn't an uncleared combat/boss room with living monsters, isn't a rest room, and isn't an uncleared event room. An already-cleared combat or boss room matches none of those cases, so walking back into it hits the catch-all and drains `SATIETY_DRAIN_COMBAT` again — on top of the drain already applied at victory time by `Game.resolve()`. There's no dedicated "already visited, do nothing" case for a cleared combat/boss room.
 
-The drain/threshold numbers are sized against the existing floor-generation guarantee: every path already passes through `floorGeneration.minRestRoomsPerPath`–`maxRestRoomsPerPath` (1–2, `src/data/floorPatterns.ts`) Rest rooms, and the Rest room's Eat & Drink option restores satiety too (see below) — so a party following the critical path is expected to hit at least 1 Rest room before satiety drains far enough to reach Exhausted, as long as they don't stall on Skip repeatedly.
+The drain/threshold numbers are sized against the existing floor-generation guarantee: every route already passes through `floorGeneration.minRestRoomsPerRoute`–`maxRestRoomsPerRoute` Rest rooms (`src/data/floorPatterns.ts`), and the Rest room's Eat & Drink option restores satiety too (see below) — so a party following any route is expected to hit at least 1 Rest room before satiety drains far enough to reach Exhausted, as long as they don't stall on Skip repeatedly.
 
 ### Exhausted — satiety ≤ 30
 

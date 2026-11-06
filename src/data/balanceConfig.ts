@@ -228,18 +228,35 @@ interface BalanceConfig {
     stardustCostByRarity: Record<Exclude<ArtifactRarity, "common">, number>;
   };
   floorGeneration: {
-    minPathRooms: number;
-    maxPathRooms: number;
-    maxBranches: number;
-    minBranchStartStage: number;
-    minBranchSpacing: number;
-    maxEventRoomsPerPath: number;
-    minEventRoomsPerFloor: number;
-    minStandaloneEventRooms: number;
-    maxStandaloneEventRooms: number;
-    minStandaloneEventStage: number;
-    minRestRoomsPerPath: number;
-    maxRestRoomsPerPath: number;
+    minRouteRooms: number;
+    maxRouteRooms: number;
+    minRestRoomsPerRoute: number;
+    maxRestRoomsPerRoute: number;
+    minEventRoomsPerRoute: number;
+    /** The event cap on most floors; a floor rolls `manyEventsFloorChance` to raise it to `maxEventRoomsPerRoute`. */
+    commonMaxEventRoomsPerRoute: number;
+    maxEventRoomsPerRoute: number;
+    manyEventsFloorChance: number;
+    maxParallelLanes: number;
+    /** The most lanes a single split opens; a lane can still split again inside up to `maxParallelLanes`. */
+    maxLanesPerSplit: number;
+    /** Chance a split with spare width gets a branch that leaves one lane and merges into the lane below it. */
+    crossMergeChance: number;
+    /** A cross branch holds `minLaneRooms` to this many rooms. */
+    maxCrossBranchRooms: number;
+    minLaneRooms: number;
+    splitChance: number;
+    nestedSplitChance: number;
+    eventRoomWeight: number;
+    restRoomWeight: number;
+    generationAttempts: number;
+    /** Room-type draws tried on one shape before a new shape is drawn. */
+    typeAttemptsPerShape: number;
+    unknownRoomsMeanAtFirstFloor: number;
+    unknownRoomsMeanGrowthPerFloor: number;
+    /** Depth past which the unknown-room mean stops growing. */
+    unknownRoomsMeanCapDepth: number;
+    unknownRoomsSpread: number;
     /** Each template is one possible combat room's monster tiers. */
     roomCompositionTemplates: ("weak" | "medium" | "strong")[][];
   };

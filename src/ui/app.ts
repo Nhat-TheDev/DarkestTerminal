@@ -41,6 +41,7 @@ import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIG
 import { sceneById, type UnitShadow } from "../data/backdrops";
 import { backdropIdForRoomName } from "../data/roomNames";
 import { paintBackdrop, composeBattlefield, sameContent } from "./backdrop";
+import { renderFloorMap } from "./floorMap";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
 import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerReading, FOCUS_GLYPH, type BattlefieldUnit, type MarkerReading, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
@@ -96,6 +97,7 @@ const LOG_TEXT_WIDTH = SIDE_PANEL_WIDTH - 3;
 
 const ROOM_TYPE_ICON: Record<RoomType, string> = { combat: " ", boss: " ", event: "○", rest: "△" };
 const CURRENT_ROOM_ICON = "■";
+const FLOOR_MAP_BACKDROP_KEY = "floor-map";
 
 export type RunExit = "newRun" | "menu";
 
@@ -124,6 +126,8 @@ export class App implements ScreenContext {
   private narratedCombat: CombatState | null = null;
   private backdropCache: { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } | null = null;
   private composedBattlefield: { backdropKey: string; content: TextChunk[][] } | null = null;
+  /** The map only changes when the party moves or reaches a new floor. */
+  private floorMapCache: { floor: Floor; pathLength: number; currentRoomId: Id; map: ReturnType<typeof renderFloorMap> } | null = null;
   /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
   private deferredToasts: LogEntry[] = [];
   private mainUi: UiState | null = null;
@@ -855,11 +859,8 @@ export class App implements ScreenContext {
     });
     this.progress.content = joinLines([progressChunks]);
 
-    const { rows: battlefieldRows, dimmed } = this.renderBattlefield(shownCombat, hpOverride, focus);
     const battlefieldWidth = battlefieldInnerWidth(this.renderer.width);
-    const contentLeft = Math.max(0, Math.floor((battlefieldWidth - BATTLEFIELD_CONTENT_WIDTH) / 2));
-    const sceneId = s.pendingGatekeeper ? (getEvent(GATEKEEPER_EVENT_ID).backdrop ?? null) : backdropIdForRoomName(room.name);
-    const { key: backdropKey, backdrop, shadow } = this.backdropFor(sceneId, battlefieldWidth, contentLeft, dimmed);
+    const { battlefieldRows, contentLeft, backdropKey, backdrop, shadow } = this.battlefieldScene(shownCombat, hpOverride, focus, battlefieldWidth);
     const composed = this.composedBattlefield;
     if (composed?.backdropKey !== backdropKey || !sameContent(composed.content, battlefieldRows)) {
       this.composedBattlefield = { backdropKey, content: battlefieldRows };
@@ -1114,6 +1115,33 @@ export class App implements ScreenContext {
     lines.push([colorChunk(centerText(label, EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
     lines.push(blank());
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
+  }
+
+  /** While the party picks its next room, the floor map replaces the sprites, on the plain panel with no backdrop. */
+  private battlefieldScene(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null, width: number) {
+    const s = this.game.state;
+    if (this.ui.kind === "room" && !combat && !s.pendingGatekeeper) {
+      const cached = this.floorMapCache;
+      const map =
+        cached?.floor === s.floor && cached.pathLength === s.roomPath.length && cached.currentRoomId === s.currentRoomId
+          ? cached.map
+          : renderFloorMap(s.floor, s.roomPath, s.currentRoomId);
+      this.floorMapCache = { floor: s.floor, pathLength: s.roomPath.length, currentRoomId: s.currentRoomId, map };
+      const topPad = Math.max(0, Math.floor((UNIT_BLOCK_HEIGHT - map.rows.length) / 2));
+      return {
+        battlefieldRows: [...Array.from({ length: topPad }, (): TextChunk[] => []), ...map.rows],
+        contentLeft: Math.max(0, Math.floor((width - map.width) / 2)),
+        backdropKey: FLOOR_MAP_BACKDROP_KEY,
+        backdrop: null,
+        shadow: null,
+      };
+    }
+    const { rows, dimmed } = this.renderBattlefield(combat, hpOverride, focus);
+    const contentLeft = Math.max(0, Math.floor((width - BATTLEFIELD_CONTENT_WIDTH) / 2));
+    const room = getRoom(s.floor, s.currentRoomId);
+    const sceneId = s.pendingGatekeeper ? (getEvent(GATEKEEPER_EVENT_ID).backdrop ?? null) : backdropIdForRoomName(room.name);
+    const { key, backdrop, shadow } = this.backdropFor(sceneId, width, contentLeft, dimmed);
+    return { battlefieldRows: rows, contentLeft, backdropKey: key, backdrop, shadow };
   }
 
   private backdropFor(sceneId: string | null, width: number, contentLeft: number, dimmed: boolean): { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } {

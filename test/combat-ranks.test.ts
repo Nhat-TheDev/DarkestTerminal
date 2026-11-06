@@ -709,6 +709,7 @@ describe("Summoner minion cap and Mastery (summon combatant)", () => {
     const summoner = ctx.party.find((p) => p.classId === "summoner")!;
     const rat = spawnInto(ctx, "dungeon-rat");
     rat.attack = 0;
+    rat.maxHp = rat.hp = 100000;
     const combat = startCombat("r1", [rat.id], ctx, false);
     const self: CombatantRef = { kind: "character", id: summoner.id };
 
