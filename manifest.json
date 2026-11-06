@@ -1,0 +1,2255 @@
+{
+  "failures": 0,
+  "screens": [
+    {
+      "kind": "abilityBuyback",
+      "event": null,
+      "screenCase": null,
+      "label": "abilityBuyback",
+      "size": "180x70",
+      "file": "screens/abilityBuyback@180x70.png",
+      "hash": "7628d3ec9a8dd93e6b160c994d299b5a250c7d39"
+    },
+    {
+      "kind": "abilityBuyback",
+      "event": null,
+      "screenCase": null,
+      "label": "abilityBuyback",
+      "size": "150x45",
+      "file": "screens/abilityBuyback@150x45.png",
+      "hash": "8049bd04202073ad867782332fbb56f9cdb95e7e"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": null,
+      "screenCase": null,
+      "label": "artifactDecision",
+      "size": "180x70",
+      "file": "screens/artifactDecision@180x70.png",
+      "hash": "264b02943ba0da1a1212bf353a8d2886858d3d75"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": null,
+      "screenCase": null,
+      "label": "artifactDecision",
+      "size": "150x45",
+      "file": "screens/artifactDecision@150x45.png",
+      "hash": "75435037b58bc9c2e72deed0edc613173eca146e"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "artifactDecision · broken-seal",
+      "size": "180x70",
+      "file": "screens/artifactDecision--broken-seal@180x70.png",
+      "hash": "0bc9f80977d74cdb465692fd87a28c59f79254d7"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "artifactDecision · broken-seal",
+      "size": "150x45",
+      "file": "screens/artifactDecision--broken-seal@150x45.png",
+      "hash": "88fe588fdffabe8282be6fcb86e07e07f7519383"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "artifactDecision · desecrated-altar",
+      "size": "180x70",
+      "file": "screens/artifactDecision--desecrated-altar@180x70.png",
+      "hash": "97f3daf3dae04bad70285ed9dc92bb4d6750810c"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "artifactDecision · desecrated-altar",
+      "size": "150x45",
+      "file": "screens/artifactDecision--desecrated-altar@150x45.png",
+      "hash": "26a14329a2bf32b1064b319fd9f4cc91cf7e006f"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "artifactDecision · doubled-back",
+      "size": "180x70",
+      "file": "screens/artifactDecision--doubled-back@180x70.png",
+      "hash": "a19c607e5b50ac9d59b0aa1ac3e991f75b5e5edf"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "artifactDecision · doubled-back",
+      "size": "150x45",
+      "file": "screens/artifactDecision--doubled-back@150x45.png",
+      "hash": "6bbc576f68f1fc1344718b442ece39cbf6c2f129"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "artifactDecision · guardian-fight",
+      "size": "180x70",
+      "file": "screens/artifactDecision--guardian-fight@180x70.png",
+      "hash": "a21a61c6cbd4f3c77c897cd455ef919ed466a079"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "artifactDecision · guardian-fight",
+      "size": "150x45",
+      "file": "screens/artifactDecision--guardian-fight@150x45.png",
+      "hash": "5b2438757cb47e1a2b7ff86a46e4fd44124d8aa7"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "artifactDecision · half-a-warning",
+      "size": "180x70",
+      "file": "screens/artifactDecision--half-a-warning@180x70.png",
+      "hash": "f113dbb84cdabea16ae8119b749e2604b45aa6dc"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "artifactDecision · half-a-warning",
+      "size": "150x45",
+      "file": "screens/artifactDecision--half-a-warning@150x45.png",
+      "hash": "09c2e59a113ea7b9f4587aadb57fed2b7859200a"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "artifactDecision · old-count",
+      "size": "180x70",
+      "file": "screens/artifactDecision--old-count@180x70.png",
+      "hash": "78b685547de7791b5ad9dce351fc3f95ec4f0955"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "artifactDecision · old-count",
+      "size": "150x45",
+      "file": "screens/artifactDecision--old-count@150x45.png",
+      "hash": "da2174d48c5d915a911cfb34647c11b51cbb6ab8"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "open-chest",
+      "screenCase": null,
+      "label": "artifactDecision · open-chest",
+      "size": "180x70",
+      "file": "screens/artifactDecision--open-chest@180x70.png",
+      "hash": "6a391fee2677b28cb5c1b7f28d3f4098f44efc80"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "open-chest",
+      "screenCase": null,
+      "label": "artifactDecision · open-chest",
+      "size": "150x45",
+      "file": "screens/artifactDecision--open-chest@150x45.png",
+      "hash": "586e9d10727ab35999b77d52814c58c7f3815632"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "artifactDecision · twin-altars",
+      "size": "180x70",
+      "file": "screens/artifactDecision--twin-altars@180x70.png",
+      "hash": "f478516f2008d8e59141b4028a88e9d15a2e62b4"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "artifactDecision · twin-altars",
+      "size": "150x45",
+      "file": "screens/artifactDecision--twin-altars@150x45.png",
+      "hash": "0449c9b2e86ff0ce5462aae394aba9d29c578bd2"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "artifactDecision · vigil-candle",
+      "size": "180x70",
+      "file": "screens/artifactDecision--vigil-candle@180x70.png",
+      "hash": "1a973807d970316a31464fbe4269ea1186c5777f"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "artifactDecision · vigil-candle",
+      "size": "150x45",
+      "file": "screens/artifactDecision--vigil-candle@150x45.png",
+      "hash": "876f6b99555ec4d4ff9bf1e154a6c42bd513bdc4"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "waiting-supplies",
+      "screenCase": null,
+      "label": "artifactDecision · waiting-supplies",
+      "size": "180x70",
+      "file": "screens/artifactDecision--waiting-supplies@180x70.png",
+      "hash": "5e059e49b2f2648b90a16ac45687cfab23ade27e"
+    },
+    {
+      "kind": "artifactDecision",
+      "event": "waiting-supplies",
+      "screenCase": null,
+      "label": "artifactDecision · waiting-supplies",
+      "size": "150x45",
+      "file": "screens/artifactDecision--waiting-supplies@150x45.png",
+      "hash": "b07f5d3e464df5e014545ea28d72ebc851c02486"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": null,
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter@180x70.png",
+      "hash": "b1b9f563ffd88870b5b38d56fceccec7e6fc1b28"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": null,
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter@150x45.png",
+      "hash": "df40e86e9b0d2e76b5670d295edebca14a22e0c0"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · broken-seal",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--broken-seal@180x70.png",
+      "hash": "6de658e188b663ea09d625d114cc78d97b626822"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · broken-seal",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--broken-seal@150x45.png",
+      "hash": "5da942b3513e5c777deb9be13c57d9ab9f17407f"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · desecrated-altar",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--desecrated-altar@180x70.png",
+      "hash": "bac0aa5794015d4b5f8ede3e4e600b00c4ca9520"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · desecrated-altar",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--desecrated-altar@150x45.png",
+      "hash": "99c9998fbc2478549b995610e73a91d7df607853"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · doubled-back",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--doubled-back@180x70.png",
+      "hash": "44f61166e1e1e036499b284af8ead019962b11ed"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · doubled-back",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--doubled-back@150x45.png",
+      "hash": "ee4d76f6a11084738c0203708372766101cd5328"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · guardian-fight",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--guardian-fight@180x70.png",
+      "hash": "d3bb9739f8fe6ca891f6cbfeaf262484543b6aae"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · guardian-fight",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--guardian-fight@150x45.png",
+      "hash": "2e0c52883b37c54186874a79b5a6e9ee0ed6ec8a"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "merchant",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · merchant",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--merchant@180x70.png",
+      "hash": "b96182f94d301b073c4d9925a7b1dc569e9f6803"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "merchant",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · merchant",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--merchant@150x45.png",
+      "hash": "8f92590c87f78ff55c8ebdcb20f510b7d2aa584a"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · old-count",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--old-count@180x70.png",
+      "hash": "06119aec750c45f7995990e5ff35841ce0463153"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · old-count",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--old-count@150x45.png",
+      "hash": "8d5a1ae58061ded1d418671668df73cac87d6ed2"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "open-chest",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · open-chest",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--open-chest@180x70.png",
+      "hash": "f16e5febcc53617caae2227d242f526b2fc3dd5a"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "open-chest",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · open-chest",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--open-chest@150x45.png",
+      "hash": "021de0b65282b93db3740c227eaaf793207332a6"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · twin-altars",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--twin-altars@180x70.png",
+      "hash": "5b549ba69a53c50e3920039bf23ef395ead4c01f"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · twin-altars",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--twin-altars@150x45.png",
+      "hash": "fe0a208bf99ce2d8144cc0eaeefa5cc649f43680"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · vigil-candle",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--vigil-candle@180x70.png",
+      "hash": "6aac8edeaa6fe832054a75a1de5a74f65525abe0"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · vigil-candle",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--vigil-candle@150x45.png",
+      "hash": "eef06341e9f4c8d438419626fe86fe9b8ccf6859"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "waiting-supplies",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · waiting-supplies",
+      "size": "180x70",
+      "file": "screens/artifactDecisionPickCharacter--waiting-supplies@180x70.png",
+      "hash": "140a00601b3b47ec636bb976760432166ef1faa2"
+    },
+    {
+      "kind": "artifactDecisionPickCharacter",
+      "event": "waiting-supplies",
+      "screenCase": null,
+      "label": "artifactDecisionPickCharacter · waiting-supplies",
+      "size": "150x45",
+      "file": "screens/artifactDecisionPickCharacter--waiting-supplies@150x45.png",
+      "hash": "3c9de50401f39382a432ac4cb968ca87d3185935"
+    },
+    {
+      "kind": "artifactMenu",
+      "event": null,
+      "screenCase": null,
+      "label": "artifactMenu",
+      "size": "180x70",
+      "file": "screens/artifactMenu@180x70.png",
+      "hash": "ee94cedd7acbc2a00c6f201f837fecb54cbdef45"
+    },
+    {
+      "kind": "artifactMenu",
+      "event": null,
+      "screenCase": null,
+      "label": "artifactMenu",
+      "size": "150x45",
+      "file": "screens/artifactMenu@150x45.png",
+      "hash": "3bfa78ebbc116c7e442bf025810f5f864c75b8bf"
+    },
+    {
+      "kind": "artifactMenu",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "artifactMenu · desecrated-altar",
+      "size": "180x70",
+      "file": "screens/artifactMenu--desecrated-altar@180x70.png",
+      "hash": "1aeb394d038d9f7bdb6d85e93256f2af36f4a48d"
+    },
+    {
+      "kind": "artifactMenu",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "artifactMenu · desecrated-altar",
+      "size": "150x45",
+      "file": "screens/artifactMenu--desecrated-altar@150x45.png",
+      "hash": "4cc9175ecf8d18d0f680e3c3b12fe1138eaf1ac5"
+    },
+    {
+      "kind": "campPrompt",
+      "event": null,
+      "screenCase": null,
+      "label": "campPrompt",
+      "size": "180x70",
+      "file": "screens/campPrompt@180x70.png",
+      "hash": "c1dff6bebb3eea0ee0a8f28e81ca9e74b331dd9d"
+    },
+    {
+      "kind": "campPrompt",
+      "event": null,
+      "screenCase": null,
+      "label": "campPrompt",
+      "size": "150x45",
+      "file": "screens/campPrompt@150x45.png",
+      "hash": "d4dc2dd48ac4a2e49807a7ea009eb97bb959f0c5"
+    },
+    {
+      "kind": "characterInfo",
+      "event": null,
+      "screenCase": null,
+      "label": "characterInfo",
+      "size": "180x70",
+      "file": "screens/characterInfo@180x70.png",
+      "hash": "b5ddee27ae75f643d4906a475bfa3b98a2699e88"
+    },
+    {
+      "kind": "characterInfo",
+      "event": null,
+      "screenCase": null,
+      "label": "characterInfo",
+      "size": "150x45",
+      "file": "screens/characterInfo@150x45.png",
+      "hash": "f8d94f7523f5d3fbbbe943032b3ccbd48eb8728c"
+    },
+    {
+      "kind": "characterInfo",
+      "event": null,
+      "screenCase": "boss",
+      "label": "characterInfo · boss",
+      "size": "180x70",
+      "file": "screens/characterInfo--boss@180x70.png",
+      "hash": "442da1fcf085d86c6cb5a48c81807521387a84d1"
+    },
+    {
+      "kind": "characterInfo",
+      "event": null,
+      "screenCase": "boss",
+      "label": "characterInfo · boss",
+      "size": "150x45",
+      "file": "screens/characterInfo--boss@150x45.png",
+      "hash": "aeda647954589ae37d8d2d469167d89bdb5f4eb2"
+    },
+    {
+      "kind": "characterInfo",
+      "event": null,
+      "screenCase": "elite",
+      "label": "characterInfo · elite",
+      "size": "180x70",
+      "file": "screens/characterInfo--elite@180x70.png",
+      "hash": "e04901e9717c9f3bc614952c093533e563b0df86"
+    },
+    {
+      "kind": "characterInfo",
+      "event": null,
+      "screenCase": "elite",
+      "label": "characterInfo · elite",
+      "size": "150x45",
+      "file": "screens/characterInfo--elite@150x45.png",
+      "hash": "593827adb06ea9b679fe17c9c10cf5e354b99305"
+    },
+    {
+      "kind": "characterInfo",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "characterInfo · guardian-fight · normal",
+      "size": "180x70",
+      "file": "screens/characterInfo--guardian-fight--normal@180x70.png",
+      "hash": "a7b5c8c685e626a0ddad8a603914b113ac346571"
+    },
+    {
+      "kind": "characterInfo",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "characterInfo · guardian-fight · normal",
+      "size": "150x45",
+      "file": "screens/characterInfo--guardian-fight--normal@150x45.png",
+      "hash": "30d928fe450e7daddaba73dede40f71ad52b4ebb"
+    },
+    {
+      "kind": "characterInfo",
+      "event": null,
+      "screenCase": "normal",
+      "label": "characterInfo · normal",
+      "size": "180x70",
+      "file": "screens/characterInfo--normal@180x70.png",
+      "hash": "43f09a667b7e406dd36d553b701dcfe3ce1fc321"
+    },
+    {
+      "kind": "characterInfo",
+      "event": null,
+      "screenCase": "normal",
+      "label": "characterInfo · normal",
+      "size": "150x45",
+      "file": "screens/characterInfo--normal@150x45.png",
+      "hash": "e427066b02fc0b6dd5b8415a824a56f06fbc5698"
+    },
+    {
+      "kind": "combatOver",
+      "event": null,
+      "screenCase": "victory",
+      "label": "combatOver · victory",
+      "size": "180x70",
+      "file": "screens/combatOver--victory@180x70.png",
+      "hash": "154346be136a36e3ef8f1de684da0387a4d5f894"
+    },
+    {
+      "kind": "combatOver",
+      "event": null,
+      "screenCase": "victory",
+      "label": "combatOver · victory",
+      "size": "150x45",
+      "file": "screens/combatOver--victory@150x45.png",
+      "hash": "4bee26f0c72d3d81017693156f983242227695f5"
+    },
+    {
+      "kind": "eventArtifactSacrifice",
+      "event": "sacrificial-circle",
+      "screenCase": null,
+      "label": "eventArtifactSacrifice · sacrificial-circle",
+      "size": "180x70",
+      "file": "screens/eventArtifactSacrifice--sacrificial-circle@180x70.png",
+      "hash": "6e04fb4deda3979d4c159c75eecead8ff2ed5bff"
+    },
+    {
+      "kind": "eventArtifactSacrifice",
+      "event": "sacrificial-circle",
+      "screenCase": null,
+      "label": "eventArtifactSacrifice · sacrificial-circle",
+      "size": "150x45",
+      "file": "screens/eventArtifactSacrifice--sacrificial-circle@150x45.png",
+      "hash": "aeddb9fce7f07aac979d390d5fea34c433c5ac50"
+    },
+    {
+      "kind": "eventArtifactShop",
+      "event": "merchant",
+      "screenCase": null,
+      "label": "eventArtifactShop · merchant",
+      "size": "180x70",
+      "file": "screens/eventArtifactShop--merchant@180x70.png",
+      "hash": "3384f44d1a47b0d857ed635caab1bee39cdb3102"
+    },
+    {
+      "kind": "eventArtifactShop",
+      "event": "merchant",
+      "screenCase": null,
+      "label": "eventArtifactShop · merchant",
+      "size": "150x45",
+      "file": "screens/eventArtifactShop--merchant@150x45.png",
+      "hash": "e989ca1ace71d8ac0799128f013b05cc098e7567"
+    },
+    {
+      "kind": "eventCoinGamble",
+      "event": "gambling-den",
+      "screenCase": null,
+      "label": "eventCoinGamble · gambling-den",
+      "size": "180x70",
+      "file": "screens/eventCoinGamble--gambling-den@180x70.png",
+      "hash": "b07488595caf5bcd75608f7fb394a7014ed50274"
+    },
+    {
+      "kind": "eventCoinGamble",
+      "event": "gambling-den",
+      "screenCase": null,
+      "label": "eventCoinGamble · gambling-den",
+      "size": "150x45",
+      "file": "screens/eventCoinGamble--gambling-den@150x45.png",
+      "hash": "def89937370076f2b01ba0138bbeae5b5e6d40b5"
+    },
+    {
+      "kind": "eventCombatReward",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "eventCombatReward · desecrated-altar",
+      "size": "180x70",
+      "file": "screens/eventCombatReward--desecrated-altar@180x70.png",
+      "hash": "80f139598432a0a2c870d5e172c9b296ba19dd40"
+    },
+    {
+      "kind": "eventCombatReward",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "eventCombatReward · desecrated-altar",
+      "size": "150x45",
+      "file": "screens/eventCombatReward--desecrated-altar@150x45.png",
+      "hash": "32b5b17aad4be13032e4eada766cb19c27311960"
+    },
+    {
+      "kind": "eventCombatReward",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "eventCombatReward · guardian-fight",
+      "size": "180x70",
+      "file": "screens/eventCombatReward--guardian-fight@180x70.png",
+      "hash": "12dd9b6c0e9848bc4e1d6dedad317a5630bc3f6f"
+    },
+    {
+      "kind": "eventCombatReward",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "eventCombatReward · guardian-fight",
+      "size": "150x45",
+      "file": "screens/eventCombatReward--guardian-fight@150x45.png",
+      "hash": "842dea09a124205bd137b8bcbd972ee0eea43366"
+    },
+    {
+      "kind": "eventCursedOffer",
+      "event": "cursed-shrine",
+      "screenCase": null,
+      "label": "eventCursedOffer · cursed-shrine",
+      "size": "180x70",
+      "file": "screens/eventCursedOffer--cursed-shrine@180x70.png",
+      "hash": "36a84010c53162fc1022ec719650e3d1e2b6a3b1"
+    },
+    {
+      "kind": "eventCursedOffer",
+      "event": "cursed-shrine",
+      "screenCase": null,
+      "label": "eventCursedOffer · cursed-shrine",
+      "size": "150x45",
+      "file": "screens/eventCursedOffer--cursed-shrine@150x45.png",
+      "hash": "e0e83f5236531b2ef506e940802cb11d7dc4d022"
+    },
+    {
+      "kind": "eventFortuneExchange",
+      "event": "wandering-hermit",
+      "screenCase": null,
+      "label": "eventFortuneExchange · wandering-hermit",
+      "size": "180x70",
+      "file": "screens/eventFortuneExchange--wandering-hermit@180x70.png",
+      "hash": "c0fda5545cd6a1e727c3a0992a4ba137a06998eb"
+    },
+    {
+      "kind": "eventFortuneExchange",
+      "event": "wandering-hermit",
+      "screenCase": null,
+      "label": "eventFortuneExchange · wandering-hermit",
+      "size": "150x45",
+      "file": "screens/eventFortuneExchange--wandering-hermit@150x45.png",
+      "hash": "61d8b03e1ed129913a61a4642850aaaba106ce69"
+    },
+    {
+      "kind": "eventHpGamble",
+      "event": "blood-altar",
+      "screenCase": null,
+      "label": "eventHpGamble · blood-altar",
+      "size": "180x70",
+      "file": "screens/eventHpGamble--blood-altar@180x70.png",
+      "hash": "4dcf2f47d792459541b8509f2d0a0ed47d9f24a1"
+    },
+    {
+      "kind": "eventHpGamble",
+      "event": "blood-altar",
+      "screenCase": null,
+      "label": "eventHpGamble · blood-altar",
+      "size": "150x45",
+      "file": "screens/eventHpGamble--blood-altar@150x45.png",
+      "hash": "41bdd2305976b9098a2db076920af7a2f768faf5"
+    },
+    {
+      "kind": "eventHpGamble",
+      "event": "collapsed-floor",
+      "screenCase": null,
+      "label": "eventHpGamble · collapsed-floor",
+      "size": "180x70",
+      "file": "screens/eventHpGamble--collapsed-floor@180x70.png",
+      "hash": "da638fb54272fe90e99f001bd72f8b1d6fb6de50"
+    },
+    {
+      "kind": "eventHpGamble",
+      "event": "collapsed-floor",
+      "screenCase": null,
+      "label": "eventHpGamble · collapsed-floor",
+      "size": "150x45",
+      "file": "screens/eventHpGamble--collapsed-floor@150x45.png",
+      "hash": "59374292985075bcf74e5a797c098fdc0d2ea015"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "eventInstantReward · broken-seal",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--broken-seal@180x70.png",
+      "hash": "df0e59e4e0a35761ed67c1ada0be76e1527fc2aa"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "eventInstantReward · broken-seal",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--broken-seal@150x45.png",
+      "hash": "4091b16b9c4f3d8924d36717b0093afdfe4a3134"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "eventInstantReward · doubled-back",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--doubled-back@180x70.png",
+      "hash": "ebb684d270bb5af614b890b197cc604b2c0db664"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "eventInstantReward · doubled-back",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--doubled-back@150x45.png",
+      "hash": "e7dfe7d78304235e8fefbd10c7e839d6810ea26e"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "eventInstantReward · half-a-warning",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--half-a-warning@180x70.png",
+      "hash": "7f52a1d09c22ab209db31beef3bb6680e0493ef4"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "eventInstantReward · half-a-warning",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--half-a-warning@150x45.png",
+      "hash": "0abf54028bcb14c32ebabed05b310e5f31cd8d03"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "eventInstantReward · old-count",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--old-count@180x70.png",
+      "hash": "840a0939386b7304527331f0d219687af7cc70c0"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "eventInstantReward · old-count",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--old-count@150x45.png",
+      "hash": "fc670a376cb3d6a3ce3e3f76ae05b0a08f6b7655"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "open-chest",
+      "screenCase": null,
+      "label": "eventInstantReward · open-chest",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--open-chest@180x70.png",
+      "hash": "c2d1d7f4a86df09c00361c63e470322db1070234"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "open-chest",
+      "screenCase": null,
+      "label": "eventInstantReward · open-chest",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--open-chest@150x45.png",
+      "hash": "489e4029980c751655b217060edda5573a82ca7b"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "still-breathing",
+      "screenCase": null,
+      "label": "eventInstantReward · still-breathing",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--still-breathing@180x70.png",
+      "hash": "76b1bca514c77e50cd21b7fdbd07632b5e72cc40"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "still-breathing",
+      "screenCase": null,
+      "label": "eventInstantReward · still-breathing",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--still-breathing@150x45.png",
+      "hash": "ff382a82d0eb208c6f19ffa7de1ea18a597038e4"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "the-delay",
+      "screenCase": null,
+      "label": "eventInstantReward · the-delay",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--the-delay@180x70.png",
+      "hash": "568d34a886e368a0ad1c39bf761d74679c582b48"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "the-delay",
+      "screenCase": null,
+      "label": "eventInstantReward · the-delay",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--the-delay@150x45.png",
+      "hash": "70b88d9987787dcebe625eb8560a11838a1c06cd"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "the-one-who-stayed",
+      "screenCase": null,
+      "label": "eventInstantReward · the-one-who-stayed",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--the-one-who-stayed@180x70.png",
+      "hash": "c6401f358f4752588728a3b1e5e52a9aee4de30c"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "the-one-who-stayed",
+      "screenCase": null,
+      "label": "eventInstantReward · the-one-who-stayed",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--the-one-who-stayed@150x45.png",
+      "hash": "f315e2e6440a26844813a8cecf8c340c81c9f464"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "the-wanderer",
+      "screenCase": null,
+      "label": "eventInstantReward · the-wanderer",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--the-wanderer@180x70.png",
+      "hash": "5ed356acce676f9bffe38345d4cb2e723df866d3"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "the-wanderer",
+      "screenCase": null,
+      "label": "eventInstantReward · the-wanderer",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--the-wanderer@150x45.png",
+      "hash": "c9411faa51af1787bdf987dc544af53a5887554e"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "eventInstantReward · vigil-candle",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--vigil-candle@180x70.png",
+      "hash": "fedf7e0941ea23c054c53f4697ca8995efa0a32c"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "eventInstantReward · vigil-candle",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--vigil-candle@150x45.png",
+      "hash": "07493eeaf684eb2b21f66569bf7fe6d106630929"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "waiting-supplies",
+      "screenCase": null,
+      "label": "eventInstantReward · waiting-supplies",
+      "size": "180x70",
+      "file": "screens/eventInstantReward--waiting-supplies@180x70.png",
+      "hash": "aaba68f0adf4e74ba743a20864dde8ee4fa9e51f"
+    },
+    {
+      "kind": "eventInstantReward",
+      "event": "waiting-supplies",
+      "screenCase": null,
+      "label": "eventInstantReward · waiting-supplies",
+      "size": "150x45",
+      "file": "screens/eventInstantReward--waiting-supplies@150x45.png",
+      "hash": "a753f246de2a230e4c36407c69c9a1963e889b59"
+    },
+    {
+      "kind": "eventPairedOffer",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "eventPairedOffer · twin-altars",
+      "size": "180x70",
+      "file": "screens/eventPairedOffer--twin-altars@180x70.png",
+      "hash": "4ea8cd1776c8d3f2dfaa841378ca65d9acc69cd1"
+    },
+    {
+      "kind": "eventPairedOffer",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "eventPairedOffer · twin-altars",
+      "size": "150x45",
+      "file": "screens/eventPairedOffer--twin-altars@150x45.png",
+      "hash": "5eac7b6049c69ffa8450cb1d6ca0aaf86b909273"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "eventReflection · broken-seal",
+      "size": "180x70",
+      "file": "screens/eventReflection--broken-seal@180x70.png",
+      "hash": "cbb54cbfd894b7cfdffa3c833436f2d088bf1ab2"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "eventReflection · broken-seal",
+      "size": "150x45",
+      "file": "screens/eventReflection--broken-seal@150x45.png",
+      "hash": "409fc69c93e49cf26d273287eb2749ba55366ff9"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "cursed-shrine",
+      "screenCase": null,
+      "label": "eventReflection · cursed-shrine",
+      "size": "180x70",
+      "file": "screens/eventReflection--cursed-shrine@180x70.png",
+      "hash": "f68afad3f49e6c0aab99eb61601b8278b877213a"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "cursed-shrine",
+      "screenCase": null,
+      "label": "eventReflection · cursed-shrine",
+      "size": "150x45",
+      "file": "screens/eventReflection--cursed-shrine@150x45.png",
+      "hash": "1b174ccd7f53d416605f352304ebf4944bebdb7e"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "eventReflection · desecrated-altar",
+      "size": "180x70",
+      "file": "screens/eventReflection--desecrated-altar@180x70.png",
+      "hash": "dc80ecf924a013c8d3b03784ed2991d47a891299"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "eventReflection · desecrated-altar",
+      "size": "150x45",
+      "file": "screens/eventReflection--desecrated-altar@150x45.png",
+      "hash": "1850a7d996031f49e2031bf1c9f61d1ba0637ba4"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "eventReflection · doubled-back",
+      "size": "180x70",
+      "file": "screens/eventReflection--doubled-back@180x70.png",
+      "hash": "1faf57d756a3f78a7075d053e43f860d2e62a12b"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "eventReflection · doubled-back",
+      "size": "150x45",
+      "file": "screens/eventReflection--doubled-back@150x45.png",
+      "hash": "2ccb53d21d8ad2a9b14577558f33ef0700d50151"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "gambling-den",
+      "screenCase": null,
+      "label": "eventReflection · gambling-den",
+      "size": "180x70",
+      "file": "screens/eventReflection--gambling-den@180x70.png",
+      "hash": "2d8733a8ac866cd77367e5a672b9bbef0a4362ec"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "gambling-den",
+      "screenCase": null,
+      "label": "eventReflection · gambling-den",
+      "size": "150x45",
+      "file": "screens/eventReflection--gambling-den@150x45.png",
+      "hash": "fc3133b219b353f05ee46878e195c8bea5381014"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "eventReflection · guardian-fight",
+      "size": "180x70",
+      "file": "screens/eventReflection--guardian-fight@180x70.png",
+      "hash": "e3dc0808703f6b35d52b72034562c49bbf081910"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "eventReflection · guardian-fight",
+      "size": "150x45",
+      "file": "screens/eventReflection--guardian-fight@150x45.png",
+      "hash": "abdf0b9af8b68b118164990880163c2d9d9c62e0"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "eventReflection · half-a-warning",
+      "size": "180x70",
+      "file": "screens/eventReflection--half-a-warning@180x70.png",
+      "hash": "4213059cb0f4e7e8e63f0c4e07fa7d79f7b6d07d"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "eventReflection · half-a-warning",
+      "size": "150x45",
+      "file": "screens/eventReflection--half-a-warning@150x45.png",
+      "hash": "5f0b7986ae8a25ad7743073c94cf64f48c2de080"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "merchant",
+      "screenCase": null,
+      "label": "eventReflection · merchant",
+      "size": "180x70",
+      "file": "screens/eventReflection--merchant@180x70.png",
+      "hash": "2980a7f56575e9a853b7a25ac1db27a9f9cedf96"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "merchant",
+      "screenCase": null,
+      "label": "eventReflection · merchant",
+      "size": "150x45",
+      "file": "screens/eventReflection--merchant@150x45.png",
+      "hash": "650f4d28c93ea33642b3590641ce41d6e1f89eb5"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "still-breathing",
+      "screenCase": null,
+      "label": "eventReflection · still-breathing",
+      "size": "180x70",
+      "file": "screens/eventReflection--still-breathing@180x70.png",
+      "hash": "e5e62e459d6bd1434a7040eec9b234d2ea68349a"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "still-breathing",
+      "screenCase": null,
+      "label": "eventReflection · still-breathing",
+      "size": "150x45",
+      "file": "screens/eventReflection--still-breathing@150x45.png",
+      "hash": "0a37b26effeda2adfd8e1a4ec0b4d983da946b02"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "the-delay",
+      "screenCase": null,
+      "label": "eventReflection · the-delay",
+      "size": "180x70",
+      "file": "screens/eventReflection--the-delay@180x70.png",
+      "hash": "2b0961dc09af943df4d32a613c7f11f93806d0e5"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "the-delay",
+      "screenCase": null,
+      "label": "eventReflection · the-delay",
+      "size": "150x45",
+      "file": "screens/eventReflection--the-delay@150x45.png",
+      "hash": "7fc0956e5ee28e0cdb9788a519e4da55a022212a"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "the-wanderer",
+      "screenCase": null,
+      "label": "eventReflection · the-wanderer",
+      "size": "180x70",
+      "file": "screens/eventReflection--the-wanderer@180x70.png",
+      "hash": "d263ee571479135539f212fc205677242542d6d5"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "the-wanderer",
+      "screenCase": null,
+      "label": "eventReflection · the-wanderer",
+      "size": "150x45",
+      "file": "screens/eventReflection--the-wanderer@150x45.png",
+      "hash": "773ba1aee2e4962a295c5a64ca156a9a536a72f7"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "eventReflection · twin-altars",
+      "size": "180x70",
+      "file": "screens/eventReflection--twin-altars@180x70.png",
+      "hash": "f2c89a2a864ffc0e491c1dd9a2edcdd1de0bf096"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "eventReflection · twin-altars",
+      "size": "150x45",
+      "file": "screens/eventReflection--twin-altars@150x45.png",
+      "hash": "361fab2fdf032ed54f0d7e632f817209ed57663a"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "eventReflection · vigil-candle",
+      "size": "180x70",
+      "file": "screens/eventReflection--vigil-candle@180x70.png",
+      "hash": "b0214b4cc6befa35a7b87dd71912942674393238"
+    },
+    {
+      "kind": "eventReflection",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "eventReflection · vigil-candle",
+      "size": "150x45",
+      "file": "screens/eventReflection--vigil-candle@150x45.png",
+      "hash": "a366e4fe111643a26ced2f1ecb24a9a2ceb21483"
+    },
+    {
+      "kind": "fullLog",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "fullLog · old-count",
+      "size": "180x70",
+      "file": "screens/fullLog--old-count@180x70.png",
+      "hash": "b5fd247013fbc6f948c6fd4febd83c8250866e2f"
+    },
+    {
+      "kind": "fullLog",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "fullLog · old-count",
+      "size": "150x45",
+      "file": "screens/fullLog--old-count@150x45.png",
+      "hash": "e3a8a7fcad9bdf46688fadc41141133df79578ff"
+    },
+    {
+      "kind": "gameover",
+      "event": null,
+      "screenCase": null,
+      "label": "gameover",
+      "size": "180x70",
+      "file": "screens/gameover@180x70.png",
+      "hash": "ec77932df8558353b5866b4a55e796435f178899"
+    },
+    {
+      "kind": "gameover",
+      "event": null,
+      "screenCase": null,
+      "label": "gameover",
+      "size": "150x45",
+      "file": "screens/gameover@150x45.png",
+      "hash": "f1a0cdf869909ce825032c5b9e540740fbe3dd9a"
+    },
+    {
+      "kind": "gatekeeper",
+      "event": null,
+      "screenCase": null,
+      "label": "gatekeeper",
+      "size": "180x70",
+      "file": "screens/gatekeeper@180x70.png",
+      "hash": "08920c2bcf72e6155b8ac9a0724dbe0056180dd2"
+    },
+    {
+      "kind": "gatekeeper",
+      "event": null,
+      "screenCase": null,
+      "label": "gatekeeper",
+      "size": "150x45",
+      "file": "screens/gatekeeper@150x45.png",
+      "hash": "d6cc486d9c363b231e51a68f3c70c606d14f683b"
+    },
+    {
+      "kind": "itemDetail",
+      "event": null,
+      "screenCase": "normal",
+      "label": "itemDetail · normal",
+      "size": "180x70",
+      "file": "screens/itemDetail--normal@180x70.png",
+      "hash": "c6c219b7ed4b1770a925cb95cf7c376c3782c240"
+    },
+    {
+      "kind": "itemDetail",
+      "event": null,
+      "screenCase": "normal",
+      "label": "itemDetail · normal",
+      "size": "150x45",
+      "file": "screens/itemDetail--normal@150x45.png",
+      "hash": "83de47576a6f3dea287795134216a3b017b81920"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "blood-altar",
+      "screenCase": null,
+      "label": "journalDeduction · blood-altar",
+      "size": "180x70",
+      "file": "screens/journalDeduction--blood-altar@180x70.png",
+      "hash": "8cb0170de48180a1c1102ded463df8248863a850"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "blood-altar",
+      "screenCase": null,
+      "label": "journalDeduction · blood-altar",
+      "size": "150x45",
+      "file": "screens/journalDeduction--blood-altar@150x45.png",
+      "hash": "d6ae91d994be9131ea7a5ed060c4138b94c3159a"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "journalDeduction · desecrated-altar",
+      "size": "180x70",
+      "file": "screens/journalDeduction--desecrated-altar@180x70.png",
+      "hash": "054643907a2be5cb70403f26425f018e689a14f6"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "journalDeduction · desecrated-altar",
+      "size": "150x45",
+      "file": "screens/journalDeduction--desecrated-altar@150x45.png",
+      "hash": "4bf5809c8c0376d39623fa28c312132d62f66688"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "journalDeduction · doubled-back",
+      "size": "180x70",
+      "file": "screens/journalDeduction--doubled-back@180x70.png",
+      "hash": "6f759ba00b9ae4d8ba50d3a878d62a5306a03ad2"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "journalDeduction · doubled-back",
+      "size": "150x45",
+      "file": "screens/journalDeduction--doubled-back@150x45.png",
+      "hash": "47e277ea3372672dbec55d9b6c051112e285962b"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "journalDeduction · guardian-fight",
+      "size": "180x70",
+      "file": "screens/journalDeduction--guardian-fight@180x70.png",
+      "hash": "03399683a0d5cfed53cf5ce0b6995b4f1bd0b1c2"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "journalDeduction · guardian-fight",
+      "size": "150x45",
+      "file": "screens/journalDeduction--guardian-fight@150x45.png",
+      "hash": "cb4176479767b239142cf25bc9d83456d7c1fa4e"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "journalDeduction · half-a-warning",
+      "size": "180x70",
+      "file": "screens/journalDeduction--half-a-warning@180x70.png",
+      "hash": "29f35803675eeab89e4657a61966d98a866e0b50"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "journalDeduction · half-a-warning",
+      "size": "150x45",
+      "file": "screens/journalDeduction--half-a-warning@150x45.png",
+      "hash": "9b65ba19687a0e62f7059382360b00fa30d6da34"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "journalDeduction · old-count",
+      "size": "180x70",
+      "file": "screens/journalDeduction--old-count@180x70.png",
+      "hash": "cebdc8091522493f57dac965bc9d8fbbf94e6868"
+    },
+    {
+      "kind": "journalDeduction",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "journalDeduction · old-count",
+      "size": "150x45",
+      "file": "screens/journalDeduction--old-count@150x45.png",
+      "hash": "0e0421ed459cf05eee8ef14f8af097d6cab60bb7"
+    },
+    {
+      "kind": "memoryIntro",
+      "event": null,
+      "screenCase": null,
+      "label": "memoryIntro",
+      "size": "180x70",
+      "file": "screens/memoryIntro@180x70.png",
+      "hash": "f0a192011ace828f22e37e531bb24af3eb7d136c"
+    },
+    {
+      "kind": "memoryIntro",
+      "event": null,
+      "screenCase": null,
+      "label": "memoryIntro",
+      "size": "150x45",
+      "file": "screens/memoryIntro@150x45.png",
+      "hash": "8fc6c690aee384f58dab056db434be0c6da393e1"
+    },
+    {
+      "kind": "pickAction",
+      "event": "desecrated-altar",
+      "screenCase": "normal",
+      "label": "pickAction · desecrated-altar · normal",
+      "size": "180x70",
+      "file": "screens/pickAction--desecrated-altar--normal@180x70.png",
+      "hash": "99bbb0c3d6020e26934ca6c40f0969c12a5fb7a4"
+    },
+    {
+      "kind": "pickAction",
+      "event": "desecrated-altar",
+      "screenCase": "normal",
+      "label": "pickAction · desecrated-altar · normal",
+      "size": "150x45",
+      "file": "screens/pickAction--desecrated-altar--normal@150x45.png",
+      "hash": "ee9109347ccddc4ab986b7150ed4db03259d0103"
+    },
+    {
+      "kind": "pickAction",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "pickAction · guardian-fight · normal",
+      "size": "180x70",
+      "file": "screens/pickAction--guardian-fight--normal@180x70.png",
+      "hash": "eae2757e414789c95c7c84832beaefbbe3c2dbc1"
+    },
+    {
+      "kind": "pickAction",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "pickAction · guardian-fight · normal",
+      "size": "150x45",
+      "file": "screens/pickAction--guardian-fight--normal@150x45.png",
+      "hash": "4bfcb235a9c55b0159233736ee32e0e322d145af"
+    },
+    {
+      "kind": "pickAction",
+      "event": null,
+      "screenCase": "normal",
+      "label": "pickAction · normal",
+      "size": "180x70",
+      "file": "screens/pickAction--normal@180x70.png",
+      "hash": "70ada07f4d8bc7ed18860fe976943af1d5b3e535"
+    },
+    {
+      "kind": "pickAction",
+      "event": null,
+      "screenCase": "normal",
+      "label": "pickAction · normal",
+      "size": "150x45",
+      "file": "screens/pickAction--normal@150x45.png",
+      "hash": "301124028ce4372c4f985adbfc6de0b0fa5ee87c"
+    },
+    {
+      "kind": "pickItemInCombat",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "pickItemInCombat · guardian-fight · normal",
+      "size": "180x70",
+      "file": "screens/pickItemInCombat--guardian-fight--normal@180x70.png",
+      "hash": "7e878b37adb09eeb9043bd7766d988a5150f9efd"
+    },
+    {
+      "kind": "pickItemInCombat",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "pickItemInCombat · guardian-fight · normal",
+      "size": "150x45",
+      "file": "screens/pickItemInCombat--guardian-fight--normal@150x45.png",
+      "hash": "e1826bfa76e6afcbb817ee1910b7fa05ef972e28"
+    },
+    {
+      "kind": "pickItemInCombat",
+      "event": null,
+      "screenCase": "normal",
+      "label": "pickItemInCombat · normal",
+      "size": "180x70",
+      "file": "screens/pickItemInCombat--normal@180x70.png",
+      "hash": "8f521e54d611ce0e41467fa3ca69564ef6ba8e2b"
+    },
+    {
+      "kind": "pickItemInCombat",
+      "event": null,
+      "screenCase": "normal",
+      "label": "pickItemInCombat · normal",
+      "size": "150x45",
+      "file": "screens/pickItemInCombat--normal@150x45.png",
+      "hash": "e666e4e4c93296d2e28cc25ebe3e8a5aef7b6276"
+    },
+    {
+      "kind": "pickItemOutOfCombat",
+      "event": null,
+      "screenCase": null,
+      "label": "pickItemOutOfCombat",
+      "size": "180x70",
+      "file": "screens/pickItemOutOfCombat@180x70.png",
+      "hash": "f5236dfb951a0222dbb74543179205b6e4cc9aec"
+    },
+    {
+      "kind": "pickItemOutOfCombat",
+      "event": null,
+      "screenCase": null,
+      "label": "pickItemOutOfCombat",
+      "size": "150x45",
+      "file": "screens/pickItemOutOfCombat@150x45.png",
+      "hash": "07e58105ad62ca094777087ec4aa9c7113110298"
+    },
+    {
+      "kind": "pickItemOutOfCombat",
+      "event": "gambling-den",
+      "screenCase": null,
+      "label": "pickItemOutOfCombat · gambling-den",
+      "size": "180x70",
+      "file": "screens/pickItemOutOfCombat--gambling-den@180x70.png",
+      "hash": "f64c28c75e107ac1c0fde3dff11ab2a530c5bf03"
+    },
+    {
+      "kind": "pickItemOutOfCombat",
+      "event": "gambling-den",
+      "screenCase": null,
+      "label": "pickItemOutOfCombat · gambling-den",
+      "size": "150x45",
+      "file": "screens/pickItemOutOfCombat--gambling-den@150x45.png",
+      "hash": "1510083449bbc7960d2df00a7ace050570af8102"
+    },
+    {
+      "kind": "pickSkill",
+      "event": null,
+      "screenCase": "boss",
+      "label": "pickSkill · boss",
+      "size": "180x70",
+      "file": "screens/pickSkill--boss@180x70.png",
+      "hash": "6c371deb8870097afbc1ccae2ad8bc1cc4a42316"
+    },
+    {
+      "kind": "pickSkill",
+      "event": null,
+      "screenCase": "boss",
+      "label": "pickSkill · boss",
+      "size": "150x45",
+      "file": "screens/pickSkill--boss@150x45.png",
+      "hash": "d68946e1ca1f42d07241d130993932366e5683db"
+    },
+    {
+      "kind": "pickSkill",
+      "event": "desecrated-altar",
+      "screenCase": "normal",
+      "label": "pickSkill · desecrated-altar · normal",
+      "size": "180x70",
+      "file": "screens/pickSkill--desecrated-altar--normal@180x70.png",
+      "hash": "424e347130767ccd172d0e44fd57bfa0da4058f4"
+    },
+    {
+      "kind": "pickSkill",
+      "event": "desecrated-altar",
+      "screenCase": "normal",
+      "label": "pickSkill · desecrated-altar · normal",
+      "size": "150x45",
+      "file": "screens/pickSkill--desecrated-altar--normal@150x45.png",
+      "hash": "7110d136f33d78532c656e09cd7cf344a8256534"
+    },
+    {
+      "kind": "pickSkill",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "pickSkill · guardian-fight · normal",
+      "size": "180x70",
+      "file": "screens/pickSkill--guardian-fight--normal@180x70.png",
+      "hash": "526ffe7b621066bb4940332da2a80d6228dfe5ce"
+    },
+    {
+      "kind": "pickSkill",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "pickSkill · guardian-fight · normal",
+      "size": "150x45",
+      "file": "screens/pickSkill--guardian-fight--normal@150x45.png",
+      "hash": "0a314bb583c0bb1634fe0f3bc6b28363d62a89e3"
+    },
+    {
+      "kind": "pickSkill",
+      "event": null,
+      "screenCase": "normal",
+      "label": "pickSkill · normal",
+      "size": "180x70",
+      "file": "screens/pickSkill--normal@180x70.png",
+      "hash": "5bbe3328054758dcb6b9ff425c48d2d812262dbb"
+    },
+    {
+      "kind": "pickSkill",
+      "event": null,
+      "screenCase": "normal",
+      "label": "pickSkill · normal",
+      "size": "150x45",
+      "file": "screens/pickSkill--normal@150x45.png",
+      "hash": "9365812b0f9fac7d3209889dc7d104cdc9567d91"
+    },
+    {
+      "kind": "pickTarget",
+      "event": null,
+      "screenCase": "boss",
+      "label": "pickTarget · boss",
+      "size": "180x70",
+      "file": "screens/pickTarget--boss@180x70.png",
+      "hash": "94e9cd2add9fc83654c5dc2958f53e0c218cba05"
+    },
+    {
+      "kind": "pickTarget",
+      "event": null,
+      "screenCase": "boss",
+      "label": "pickTarget · boss",
+      "size": "150x45",
+      "file": "screens/pickTarget--boss@150x45.png",
+      "hash": "1c885b9a4b2d7d5e546029b6d9b843b9845df5b1"
+    },
+    {
+      "kind": "pickTarget",
+      "event": "desecrated-altar",
+      "screenCase": "normal",
+      "label": "pickTarget · desecrated-altar · normal",
+      "size": "180x70",
+      "file": "screens/pickTarget--desecrated-altar--normal@180x70.png",
+      "hash": "7954442d42a47b026728b6dda5041afaa2ca9550"
+    },
+    {
+      "kind": "pickTarget",
+      "event": "desecrated-altar",
+      "screenCase": "normal",
+      "label": "pickTarget · desecrated-altar · normal",
+      "size": "150x45",
+      "file": "screens/pickTarget--desecrated-altar--normal@150x45.png",
+      "hash": "1bada2e123cf3d2459ad29afdd4e68be58d85706"
+    },
+    {
+      "kind": "pickTarget",
+      "event": null,
+      "screenCase": "elite",
+      "label": "pickTarget · elite",
+      "size": "180x70",
+      "file": "screens/pickTarget--elite@180x70.png",
+      "hash": "a8c351488664f4cb192f80eadb0a76ffcd716805"
+    },
+    {
+      "kind": "pickTarget",
+      "event": null,
+      "screenCase": "elite",
+      "label": "pickTarget · elite",
+      "size": "150x45",
+      "file": "screens/pickTarget--elite@150x45.png",
+      "hash": "c26926508137f558ed1bd066ee1dd2c524ca764a"
+    },
+    {
+      "kind": "pickTarget",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "pickTarget · guardian-fight · normal",
+      "size": "180x70",
+      "file": "screens/pickTarget--guardian-fight--normal@180x70.png",
+      "hash": "5b83097ce6a20296724e2b7f46cf76a1b3dfc849"
+    },
+    {
+      "kind": "pickTarget",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "pickTarget · guardian-fight · normal",
+      "size": "150x45",
+      "file": "screens/pickTarget--guardian-fight--normal@150x45.png",
+      "hash": "2eff1f397eb411c07275d5672abad8b6ebb7aa23"
+    },
+    {
+      "kind": "pickTarget",
+      "event": null,
+      "screenCase": "normal",
+      "label": "pickTarget · normal",
+      "size": "180x70",
+      "file": "screens/pickTarget--normal@180x70.png",
+      "hash": "9822831b9293b296baf2e781e37269122c17fd1d"
+    },
+    {
+      "kind": "pickTarget",
+      "event": null,
+      "screenCase": "normal",
+      "label": "pickTarget · normal",
+      "size": "150x45",
+      "file": "screens/pickTarget--normal@150x45.png",
+      "hash": "3f2e02ba86994b4816468adb04aca5e39843bdce"
+    },
+    {
+      "kind": "rest",
+      "event": null,
+      "screenCase": null,
+      "label": "rest",
+      "size": "180x70",
+      "file": "screens/rest@180x70.png",
+      "hash": "f83c7dc331b4eca3125520fdc35885e016173733"
+    },
+    {
+      "kind": "rest",
+      "event": null,
+      "screenCase": null,
+      "label": "rest",
+      "size": "150x45",
+      "file": "screens/rest@150x45.png",
+      "hash": "ce8f96b62928bd464d27d1bfbf38cabf2756e18a"
+    },
+    {
+      "kind": "room",
+      "event": null,
+      "screenCase": null,
+      "label": "room",
+      "size": "180x70",
+      "file": "screens/room@180x70.png",
+      "hash": "ad51558ead6cc7b83b6b4bc1e17b32fe02adac61"
+    },
+    {
+      "kind": "room",
+      "event": null,
+      "screenCase": null,
+      "label": "room",
+      "size": "150x45",
+      "file": "screens/room@150x45.png",
+      "hash": "df2e93b52f0360066a75140d65238e2a0dc08fd7"
+    },
+    {
+      "kind": "room",
+      "event": "blood-altar",
+      "screenCase": null,
+      "label": "room · blood-altar",
+      "size": "180x70",
+      "file": "screens/room--blood-altar@180x70.png",
+      "hash": "728efeea2fb88a416989f30b6ff71481c8200799"
+    },
+    {
+      "kind": "room",
+      "event": "blood-altar",
+      "screenCase": null,
+      "label": "room · blood-altar",
+      "size": "150x45",
+      "file": "screens/room--blood-altar@150x45.png",
+      "hash": "0bc764f9fb1dbff9c0ccdcb7b17b9d187dfc6157"
+    },
+    {
+      "kind": "room",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "room · broken-seal",
+      "size": "180x70",
+      "file": "screens/room--broken-seal@180x70.png",
+      "hash": "91fb7cf4f2a37219c61830a7ebe4a703a03dbc51"
+    },
+    {
+      "kind": "room",
+      "event": "broken-seal",
+      "screenCase": null,
+      "label": "room · broken-seal",
+      "size": "150x45",
+      "file": "screens/room--broken-seal@150x45.png",
+      "hash": "0abfca8e38c24a5ead9eb7257340298a4fb1f80f"
+    },
+    {
+      "kind": "room",
+      "event": "collapsed-floor",
+      "screenCase": null,
+      "label": "room · collapsed-floor",
+      "size": "180x70",
+      "file": "screens/room--collapsed-floor@180x70.png",
+      "hash": "41cae96c7d5b919f814f9df39c2c9110bb39eaf3"
+    },
+    {
+      "kind": "room",
+      "event": "collapsed-floor",
+      "screenCase": null,
+      "label": "room · collapsed-floor",
+      "size": "150x45",
+      "file": "screens/room--collapsed-floor@150x45.png",
+      "hash": "97e156420f6b13570e133a88e0f8da855f87ae7c"
+    },
+    {
+      "kind": "room",
+      "event": "cursed-shrine",
+      "screenCase": null,
+      "label": "room · cursed-shrine",
+      "size": "180x70",
+      "file": "screens/room--cursed-shrine@180x70.png",
+      "hash": "e615d060985be9b91a2378b0d5a0057ecc714f7b"
+    },
+    {
+      "kind": "room",
+      "event": "cursed-shrine",
+      "screenCase": null,
+      "label": "room · cursed-shrine",
+      "size": "150x45",
+      "file": "screens/room--cursed-shrine@150x45.png",
+      "hash": "b8ddb1994e33735c25cd26bc0bd3d030abb83437"
+    },
+    {
+      "kind": "room",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "room · desecrated-altar",
+      "size": "180x70",
+      "file": "screens/room--desecrated-altar@180x70.png",
+      "hash": "987f4347f89fc3e34a68aecd035d374f141bd66b"
+    },
+    {
+      "kind": "room",
+      "event": "desecrated-altar",
+      "screenCase": null,
+      "label": "room · desecrated-altar",
+      "size": "150x45",
+      "file": "screens/room--desecrated-altar@150x45.png",
+      "hash": "a7979f1c6a05a297a008d2f94e709bc502f9e291"
+    },
+    {
+      "kind": "room",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "room · doubled-back",
+      "size": "180x70",
+      "file": "screens/room--doubled-back@180x70.png",
+      "hash": "7edd539971e3cfdeaa436514b24e3c9c27d88e79"
+    },
+    {
+      "kind": "room",
+      "event": "doubled-back",
+      "screenCase": null,
+      "label": "room · doubled-back",
+      "size": "150x45",
+      "file": "screens/room--doubled-back@150x45.png",
+      "hash": "302ec5417dfc7cb21167593bd88c61d4d9e7a5ec"
+    },
+    {
+      "kind": "room",
+      "event": "gambling-den",
+      "screenCase": null,
+      "label": "room · gambling-den",
+      "size": "180x70",
+      "file": "screens/room--gambling-den@180x70.png",
+      "hash": "097754a705aa64ddfe4bdbd0418f3d0fa6dc9a6a"
+    },
+    {
+      "kind": "room",
+      "event": "gambling-den",
+      "screenCase": null,
+      "label": "room · gambling-den",
+      "size": "150x45",
+      "file": "screens/room--gambling-den@150x45.png",
+      "hash": "4d95cf7135ad971dbb1ed6e531a0c89faa1914d1"
+    },
+    {
+      "kind": "room",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "room · guardian-fight",
+      "size": "180x70",
+      "file": "screens/room--guardian-fight@180x70.png",
+      "hash": "eb92447963b29ab8e2d56268065718c924668e1d"
+    },
+    {
+      "kind": "room",
+      "event": "guardian-fight",
+      "screenCase": null,
+      "label": "room · guardian-fight",
+      "size": "150x45",
+      "file": "screens/room--guardian-fight@150x45.png",
+      "hash": "e07eb6d1a329bd1616818253feb46663e0d500c3"
+    },
+    {
+      "kind": "room",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "room · half-a-warning",
+      "size": "180x70",
+      "file": "screens/room--half-a-warning@180x70.png",
+      "hash": "cf0172dedb69fbce3be879f78358a21383d39d20"
+    },
+    {
+      "kind": "room",
+      "event": "half-a-warning",
+      "screenCase": null,
+      "label": "room · half-a-warning",
+      "size": "150x45",
+      "file": "screens/room--half-a-warning@150x45.png",
+      "hash": "753f48101909bc21c151ef63c0a2c4786df1326a"
+    },
+    {
+      "kind": "room",
+      "event": "merchant",
+      "screenCase": null,
+      "label": "room · merchant",
+      "size": "180x70",
+      "file": "screens/room--merchant@180x70.png",
+      "hash": "80a80131eca78b24644676717963bbe4f79f3c62"
+    },
+    {
+      "kind": "room",
+      "event": "merchant",
+      "screenCase": null,
+      "label": "room · merchant",
+      "size": "150x45",
+      "file": "screens/room--merchant@150x45.png",
+      "hash": "7c5e915c596da0805ed068335c4e7386f486f734"
+    },
+    {
+      "kind": "room",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "room · old-count",
+      "size": "180x70",
+      "file": "screens/room--old-count@180x70.png",
+      "hash": "1deb16e66a8a26a616395f8ac1ba409743553b32"
+    },
+    {
+      "kind": "room",
+      "event": "old-count",
+      "screenCase": null,
+      "label": "room · old-count",
+      "size": "150x45",
+      "file": "screens/room--old-count@150x45.png",
+      "hash": "71d4e1a50a5fde30499574bc130d9bda25790e19"
+    },
+    {
+      "kind": "room",
+      "event": "open-chest",
+      "screenCase": null,
+      "label": "room · open-chest",
+      "size": "180x70",
+      "file": "screens/room--open-chest@180x70.png",
+      "hash": "fc3c225f449cce2d5a6d205bc4fc908160ea12a2"
+    },
+    {
+      "kind": "room",
+      "event": "open-chest",
+      "screenCase": null,
+      "label": "room · open-chest",
+      "size": "150x45",
+      "file": "screens/room--open-chest@150x45.png",
+      "hash": "054b931668fe70fe25ecf8107667cd517f292bde"
+    },
+    {
+      "kind": "room",
+      "event": "sacrificial-circle",
+      "screenCase": null,
+      "label": "room · sacrificial-circle",
+      "size": "180x70",
+      "file": "screens/room--sacrificial-circle@180x70.png",
+      "hash": "c663ed2386a06a031ba99e64b058ea9ae246bf5e"
+    },
+    {
+      "kind": "room",
+      "event": "sacrificial-circle",
+      "screenCase": null,
+      "label": "room · sacrificial-circle",
+      "size": "150x45",
+      "file": "screens/room--sacrificial-circle@150x45.png",
+      "hash": "cc9c7f510cc024fe60041a81fb3a6744edf7ec1a"
+    },
+    {
+      "kind": "room",
+      "event": "still-breathing",
+      "screenCase": null,
+      "label": "room · still-breathing",
+      "size": "180x70",
+      "file": "screens/room--still-breathing@180x70.png",
+      "hash": "1bd788edcf1be8ad593857e45ea0828079f29e0b"
+    },
+    {
+      "kind": "room",
+      "event": "still-breathing",
+      "screenCase": null,
+      "label": "room · still-breathing",
+      "size": "150x45",
+      "file": "screens/room--still-breathing@150x45.png",
+      "hash": "a2a4a978fc8f089041626cd9ba1d21b003cf1fb4"
+    },
+    {
+      "kind": "room",
+      "event": "the-delay",
+      "screenCase": null,
+      "label": "room · the-delay",
+      "size": "180x70",
+      "file": "screens/room--the-delay@180x70.png",
+      "hash": "3c166ae4e6a0277312834a680e9e729c1e9d6781"
+    },
+    {
+      "kind": "room",
+      "event": "the-delay",
+      "screenCase": null,
+      "label": "room · the-delay",
+      "size": "150x45",
+      "file": "screens/room--the-delay@150x45.png",
+      "hash": "a3b6e13ee89336be52c6e9f4f3e12fa24bea5c94"
+    },
+    {
+      "kind": "room",
+      "event": "the-one-who-stayed",
+      "screenCase": null,
+      "label": "room · the-one-who-stayed",
+      "size": "180x70",
+      "file": "screens/room--the-one-who-stayed@180x70.png",
+      "hash": "6e2f89248f43c67c361bb3e38d655eb1fd349306"
+    },
+    {
+      "kind": "room",
+      "event": "the-one-who-stayed",
+      "screenCase": null,
+      "label": "room · the-one-who-stayed",
+      "size": "150x45",
+      "file": "screens/room--the-one-who-stayed@150x45.png",
+      "hash": "e4496b18eb15fa8fc9059d84b15e437a55d84e5e"
+    },
+    {
+      "kind": "room",
+      "event": "the-wanderer",
+      "screenCase": null,
+      "label": "room · the-wanderer",
+      "size": "180x70",
+      "file": "screens/room--the-wanderer@180x70.png",
+      "hash": "638ccb4060af0345a8c71d6863baf03d77211166"
+    },
+    {
+      "kind": "room",
+      "event": "the-wanderer",
+      "screenCase": null,
+      "label": "room · the-wanderer",
+      "size": "150x45",
+      "file": "screens/room--the-wanderer@150x45.png",
+      "hash": "871d51192a14e5631337a6dcd4244a4d30e985eb"
+    },
+    {
+      "kind": "room",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "room · twin-altars",
+      "size": "180x70",
+      "file": "screens/room--twin-altars@180x70.png",
+      "hash": "a9dd15669ff4244c3a23465c2b15ef5231940338"
+    },
+    {
+      "kind": "room",
+      "event": "twin-altars",
+      "screenCase": null,
+      "label": "room · twin-altars",
+      "size": "150x45",
+      "file": "screens/room--twin-altars@150x45.png",
+      "hash": "4b47e0ea5cc38332b0f57f6a662c20261562b7b9"
+    },
+    {
+      "kind": "room",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "room · vigil-candle",
+      "size": "180x70",
+      "file": "screens/room--vigil-candle@180x70.png",
+      "hash": "874c456ba2c90ab4df35373706b7abf907846bb3"
+    },
+    {
+      "kind": "room",
+      "event": "vigil-candle",
+      "screenCase": null,
+      "label": "room · vigil-candle",
+      "size": "150x45",
+      "file": "screens/room--vigil-candle@150x45.png",
+      "hash": "04d27e56218b30b4b1b4ba353006226e0807d2a6"
+    },
+    {
+      "kind": "room",
+      "event": "waiting-supplies",
+      "screenCase": null,
+      "label": "room · waiting-supplies",
+      "size": "180x70",
+      "file": "screens/room--waiting-supplies@180x70.png",
+      "hash": "3a7e899a2f5cb5ccda6a58f7db2e51a20cde1b8f"
+    },
+    {
+      "kind": "room",
+      "event": "waiting-supplies",
+      "screenCase": null,
+      "label": "room · waiting-supplies",
+      "size": "150x45",
+      "file": "screens/room--waiting-supplies@150x45.png",
+      "hash": "f127bfc0fa74544980e398c0d79fa3436e3e8f57"
+    },
+    {
+      "kind": "room",
+      "event": "wandering-hermit",
+      "screenCase": null,
+      "label": "room · wandering-hermit",
+      "size": "180x70",
+      "file": "screens/room--wandering-hermit@180x70.png",
+      "hash": "e47d54cc8701d82e1f0a3f7c9c78c99603b11c91"
+    },
+    {
+      "kind": "room",
+      "event": "wandering-hermit",
+      "screenCase": null,
+      "label": "room · wandering-hermit",
+      "size": "150x45",
+      "file": "screens/room--wandering-hermit@150x45.png",
+      "hash": "bfdcfc103d1229bce4bad54c1c5a333462c647c9"
+    },
+    {
+      "kind": "roomReward",
+      "event": "desecrated-altar",
+      "screenCase": "reward",
+      "label": "roomReward · desecrated-altar · reward",
+      "size": "180x70",
+      "file": "screens/roomReward--desecrated-altar--reward@180x70.png",
+      "hash": "1d194df4a5792bca8052c9c342f4aa1d0406cc05"
+    },
+    {
+      "kind": "roomReward",
+      "event": "desecrated-altar",
+      "screenCase": "reward",
+      "label": "roomReward · desecrated-altar · reward",
+      "size": "150x45",
+      "file": "screens/roomReward--desecrated-altar--reward@150x45.png",
+      "hash": "7e720253aab81a3bad77b1f860256a397ae0190a"
+    },
+    {
+      "kind": "roomReward",
+      "event": "guardian-fight",
+      "screenCase": "reward",
+      "label": "roomReward · guardian-fight · reward",
+      "size": "180x70",
+      "file": "screens/roomReward--guardian-fight--reward@180x70.png",
+      "hash": "3a39327e3fddb86951c2b1df33af6d6e3c0b8bc1"
+    },
+    {
+      "kind": "roomReward",
+      "event": "guardian-fight",
+      "screenCase": "reward",
+      "label": "roomReward · guardian-fight · reward",
+      "size": "150x45",
+      "file": "screens/roomReward--guardian-fight--reward@150x45.png",
+      "hash": "6ea8726e6253c03de24d22c3141b2c1d40448c07"
+    },
+    {
+      "kind": "roomReward",
+      "event": null,
+      "screenCase": "reward",
+      "label": "roomReward · reward",
+      "size": "180x70",
+      "file": "screens/roomReward--reward@180x70.png",
+      "hash": "abead574623cab976224971218c321e8b5060ea6"
+    },
+    {
+      "kind": "roomReward",
+      "event": null,
+      "screenCase": "reward",
+      "label": "roomReward · reward",
+      "size": "150x45",
+      "file": "screens/roomReward--reward@150x45.png",
+      "hash": "46ef1c3a9d36536c6bac9306c4557858cea5781a"
+    },
+    {
+      "kind": "runnerNotice",
+      "event": null,
+      "screenCase": null,
+      "label": "runnerNotice",
+      "size": "180x70",
+      "file": "screens/runnerNotice@180x70.png",
+      "hash": "c615a7b9863bd6d8ae7a9d7fcb66119148401a72"
+    },
+    {
+      "kind": "runnerNotice",
+      "event": null,
+      "screenCase": null,
+      "label": "runnerNotice",
+      "size": "150x45",
+      "file": "screens/runnerNotice@150x45.png",
+      "hash": "1e2e14ed4a3e487167b57edec1374dab0fac24ad"
+    },
+    {
+      "kind": "saveMenu",
+      "event": null,
+      "screenCase": null,
+      "label": "saveMenu",
+      "size": "180x70",
+      "file": "screens/saveMenu@180x70.png",
+      "hash": "4f9768f5217747345bc27e68116649e7fedf593c"
+    },
+    {
+      "kind": "saveMenu",
+      "event": null,
+      "screenCase": null,
+      "label": "saveMenu",
+      "size": "150x45",
+      "file": "screens/saveMenu@150x45.png",
+      "hash": "bc12cd79c5595bc208480b1d81c62b62242217da"
+    },
+    {
+      "kind": "skillDetail",
+      "event": null,
+      "screenCase": "boss",
+      "label": "skillDetail · boss",
+      "size": "180x70",
+      "file": "screens/skillDetail--boss@180x70.png",
+      "hash": "3232c9fb51e80c84d7803c5acb4fa033bd715c08"
+    },
+    {
+      "kind": "skillDetail",
+      "event": null,
+      "screenCase": "boss",
+      "label": "skillDetail · boss",
+      "size": "150x45",
+      "file": "screens/skillDetail--boss@150x45.png",
+      "hash": "1d7884270b5852346a346c4b744e2ff98812c872"
+    },
+    {
+      "kind": "skillDetail",
+      "event": "desecrated-altar",
+      "screenCase": "normal",
+      "label": "skillDetail · desecrated-altar · normal",
+      "size": "180x70",
+      "file": "screens/skillDetail--desecrated-altar--normal@180x70.png",
+      "hash": "da928001e459dee37c5a1d87471efa6ebdbde09f"
+    },
+    {
+      "kind": "skillDetail",
+      "event": "desecrated-altar",
+      "screenCase": "normal",
+      "label": "skillDetail · desecrated-altar · normal",
+      "size": "150x45",
+      "file": "screens/skillDetail--desecrated-altar--normal@150x45.png",
+      "hash": "d3f57f509ba98200ca8d23846688bf15778d7398"
+    },
+    {
+      "kind": "skillDetail",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "skillDetail · guardian-fight · normal",
+      "size": "180x70",
+      "file": "screens/skillDetail--guardian-fight--normal@180x70.png",
+      "hash": "5a5f136fcf095909d578ac16314f9db7dc846706"
+    },
+    {
+      "kind": "skillDetail",
+      "event": "guardian-fight",
+      "screenCase": "normal",
+      "label": "skillDetail · guardian-fight · normal",
+      "size": "150x45",
+      "file": "screens/skillDetail--guardian-fight--normal@150x45.png",
+      "hash": "34ac3cb63c73db4cd04acbeda569f81a857125fd"
+    },
+    {
+      "kind": "skillDetail",
+      "event": null,
+      "screenCase": "normal",
+      "label": "skillDetail · normal",
+      "size": "180x70",
+      "file": "screens/skillDetail--normal@180x70.png",
+      "hash": "1bcc27b2e2a0e72871bf99846b5b5390a244d411"
+    },
+    {
+      "kind": "skillDetail",
+      "event": null,
+      "screenCase": "normal",
+      "label": "skillDetail · normal",
+      "size": "150x45",
+      "file": "screens/skillDetail--normal@150x45.png",
+      "hash": "ecc2b03cc7160c512510da4518a2382b7a60817e"
+    }
+  ]
+}
