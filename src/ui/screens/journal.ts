@@ -47,11 +47,18 @@ function optionRows(index: number, text: string): string[] {
 
 function handleFindKey(ctx: ScreenContext, digit: number): void {
   if (digit !== 1 && digit !== 2) return;
-  for (const id of ctx.game.resolveJournalFind(digit === 1)) ctx.logInfo(getJournalFragment(id)!.text);
+  ctx.game.resolveJournalFind(digit === 1);
   proceedAfterVictory(ctx);
 }
 
-export function handleDeductionKey(ctx: ScreenContext, digit: number | null): void {
+export function handleDeductionKey(ctx: ScreenContext, key: KeyEvent, digit: number | null): void {
+  if (showsNotice(ctx.game)) {
+    if (key.name !== "return") return;
+    for (const id of ctx.game.dismissJournalNotice()) ctx.logInfo(getJournalFragment(id)!.text);
+    ctx.logInfo(t("ui.journalNoted"));
+    proceedAfterVictory(ctx);
+    return;
+  }
   if (digit === null) return;
   if (ctx.game.state.pendingJournalFind) return handleFindKey(ctx, digit);
   const pending = ctx.game.state.pendingJournal;
@@ -61,15 +68,32 @@ export function handleDeductionKey(ctx: ScreenContext, digit: number | null): vo
   proceedAfterVictory(ctx);
 }
 
+function stoppedToLook(game: Game, characterId: Id | null): string {
+  const who = game.state.party.find((c) => c.id === characterId);
+  return who ? t("ui.journalFind", { speaker: getClass(who.classId).name }) : t("ui.journalFindMargin");
+}
+
 function renderFind(game: Game): string {
   const find = game.state.pendingJournalFind!;
-  const who = game.state.party.find((c) => c.id === find.characterId);
-  const notice = who ? t("ui.journalFind", { speaker: getClass(who.classId).name }) : t("ui.journalFindMargin");
-  return [notice, "", `${INDENT}[1] ${t("ui.journalLook")}`, `${INDENT}[2] ${t("ui.journalMoveOn")}`].join("\n");
+  return [stoppedToLook(game, find.characterId), "", `${INDENT}[1] ${t("ui.journalLook")}`, `${INDENT}[2] ${t("ui.journalMoveOn")}`].join("\n");
+}
+
+/** Fragments copied without a scene wait behind any find or scene still open. */
+function showsNotice(game: Game): boolean {
+  return !game.state.pendingJournalFind && !game.state.pendingJournal && game.journalNoticeView() !== null;
+}
+
+function renderNotice(game: Game): string {
+  const notice = game.journalNoticeView()!;
+  const out = [stoppedToLook(game, notice.characterId)];
+  for (const id of notice.fragmentIds) out.push("", ...wrapped(getJournalFragment(id)!.text, INDENT));
+  out.push("", ...wrapText(t("ui.journalNoMatch"), JOURNAL_WIDTH));
+  return out.join("\n");
 }
 
 export function renderDeduction(game: Game): string {
   if (game.state.pendingJournalFind) return renderFind(game);
+  if (showsNotice(game)) return renderNotice(game);
   const pending = game.state.pendingJournal;
   const line = pending && getJournalLine(pending.lineId);
   if (!pending || !line) return "";
@@ -92,6 +116,7 @@ export function renderDeduction(game: Game): string {
 export function renderDeductionFooter(game: Game): string {
   const pending = game.state.pendingJournal;
   if (game.state.pendingJournalFind) return digitHint("ui.footerChoose", 2);
+  if (showsNotice(game)) return t("ui.footerJournalNotice");
   const count = pending ? deductionOptions(pending.lineId, game.journal, game.state).length : 0;
   return digitHint("ui.footerJournalWrite", count);
 }
