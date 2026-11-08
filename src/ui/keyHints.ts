@@ -42,9 +42,6 @@ const COMBAT_KINDS: readonly UiState["kind"][] = [
 const MAP_KINDS: readonly UiState["kind"][] = ["room", "rest", "campPrompt", ...COMBAT_KINDS, "monsterInfo", "bestiary"];
 const MONSTER_KINDS: readonly UiState["kind"][] = ["rest", "campPrompt", ...COMBAT_KINDS.filter((k) => k !== "pickItemInCombat"), "floorMap"];
 
-/** The full-screen viewers: they hide every panel and open over the screen they were called from. */
-export const VIEWER_KINDS: readonly UiState["kind"][] = ["floorMap", "monsterInfo", "bestiary"];
-
 export function canOpenMap(kind: UiState["kind"]): boolean {
   return MAP_KINDS.includes(kind);
 }

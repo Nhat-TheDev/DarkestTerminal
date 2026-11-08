@@ -1,4 +1,4 @@
-import type { Character, CharacterClass, CombatStat, GameState, Id } from "../types";
+import type { ActiveStatusEffect, Character, CharacterClass, CombatStat, GameState, Id } from "../types";
 import { classGrowthBonus, levelForTotalExp } from "../data/levelGrowth";
 import { getClass, passiveRankDef } from "../data/classes";
 import { getArtifact } from "../data/artifacts";
@@ -12,9 +12,9 @@ import { GROWTH_WEIGHTS } from "../data/growthWeights";
 export const MAX_EQUIPPED_ARTIFACTS = BALANCE.party.maxEquippedArtifacts;
 
 /** Sums the stored `appliedAmounts` (what `expireStatusEffect` will undo); the JSON `amount` is only a fallback for entries saved without them. */
-export function activeStatusCombatStatSum(character: Character, stat: CombatStat): number {
+export function activeStatusCombatStatSum(actor: { activeStatusEffects: ActiveStatusEffect[] }, stat: CombatStat): number {
   let sum = 0;
-  for (const active of character.activeStatusEffects) {
+  for (const active of actor.activeStatusEffects) {
     const applied = active.appliedAmounts?.[stat];
     if (applied !== undefined) {
       sum += applied;

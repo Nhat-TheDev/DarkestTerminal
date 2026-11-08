@@ -1,11 +1,10 @@
-import type { TextChunk } from "@opentui/core";
+import type { StyledText, TextChunk } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import type { RoomType } from "../../types";
 import { FloorGraph, type Span } from "../../engine/floorGraph";
 import { getRoom } from "../../engine/dungeon";
 import { t } from "../../data/strings";
-import { renderFloorMap } from "../floorMap";
-import { PALETTE, colorChunk } from "../theme";
+import { PALETTE, colorChunk, joinLines } from "../theme";
 
 const TYPE_LABEL: Record<RoomType, string> = {
   combat: t("ui.floorMapLegendFight"),
@@ -16,18 +15,18 @@ const TYPE_LABEL: Record<RoomType, string> = {
 
 const spanText = (span: Span): string => (span.min === span.max ? String(span.min) : `${span.min}-${span.max}`);
 
-/** The map with no exit digits, then where the party stands, what lies behind and the spread of what lies ahead. */
-export function renderPage(game: Game): TextChunk[][] {
+/** Beside the map on the Battlefield: where the party stands, what lies behind and the spread of what lies ahead. */
+export function renderMain(game: Game): StyledText {
   const s = game.state;
   const here = getRoom(s.floor, s.currentRoomId);
-  const lines: TextChunk[][] = [...renderFloorMap(s.floor, s.roomPath, s.currentRoomId, false).rows, []];
+  const lines: TextChunk[][] = [];
   const type = TYPE_LABEL[here.type];
   lines.push([colorChunk(here.cleared ? t("ui.floorMapHereCleared", { room: here.name, type }) : t("ui.floorMapHere", { room: here.name, type }), PALETTE.title)]);
   lines.push([colorChunk(t("ui.floorMapBehind", { count: Math.max(0, s.roomPath.length - 1) }), PALETTE.text)]);
 
   if (here.connectedRoomIds.length === 0) {
     lines.push([colorChunk(t("ui.floorMapAtGuard"), PALETTE.dim)]);
-    return lines;
+    return joinLines(lines);
   }
   const graph = new FloorGraph(
     // A hidden room counts as a fight, so the spread never gives away what it holds.
@@ -43,7 +42,7 @@ export function renderPage(game: Game): TextChunk[][] {
     const room = getRoom(s.floor, id);
     lines.push([colorChunk(room.hidden ? t("ui.floorMapExitUnknown") : t("ui.floorMapExit", { room: room.name, type: TYPE_LABEL[room.type] }), PALETTE.dim)]);
   }
-  return lines;
+  return joinLines(lines);
 }
 
 export function renderFooter(): string {

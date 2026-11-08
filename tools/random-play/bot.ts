@@ -1,6 +1,5 @@
 import { createTestRenderer } from "@opentui/core/testing";
 import { App } from "../../src/ui/app";
-import { VIEWER_KINDS } from "../../src/ui/keyHints";
 import { Game } from "../../src/engine/game";
 import { Rng } from "../../src/engine/rng";
 import { getRoom } from "../../src/engine/dungeon";
@@ -139,10 +138,10 @@ function shuffled<T>(rng: Rng, items: readonly T[]): T[] {
 
 function layoutRequirement(uiKind: string, atMinSize: boolean): LayoutRequirement {
   const main = t("ui.panelMain");
-  if (uiKind === "fullLog" || (VIEWER_KINDS as readonly string[]).includes(uiKind)) return { panelTitles: [], mainPanelTitle: main, minMainRows: 0 };
+  if (uiKind === "fullLog") return { panelTitles: [], mainPanelTitle: main, minMainRows: 0 };
   // At the minimum size the party list may scroll, but the choices panel must keep at least one row.
   if (atMinSize) return { panelTitles: [main], mainPanelTitle: main, minMainRows: 1 };
-  const panels = ["ui.headerTitle", "ui.panelProgress", "ui.panelBattlefield", "ui.panelParty", "ui.panelMain", "ui.panelMonsters", "ui.panelLog"];
+  const panels = ["ui.headerTitle", "ui.panelBattlefield", "ui.panelParty", "ui.panelMain", "ui.panelMonsters", "ui.panelLog"];
   return { panelTitles: panels.map((key) => t(key)), mainPanelTitle: main, minMainRows: 1 };
 }
 
@@ -259,8 +258,8 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
       const box = setup.renderer.root.findDescendantById(id)!;
       return rows.slice(box.y, box.y + box.height).map((row) => Array.from(row).slice(box.x, box.x + box.width).join("").trimEnd());
     };
-    const fullScreen = ["full-log-box", "viewer-box"].find((id) => setup.renderer.root.findDescendantById(id)!.visible);
-    return [...cut(fullScreen ?? "main-box"), ...cut("footer-box")].join("\n");
+    const fullLog = setup.renderer.root.findDescendantById("full-log-box")!.visible;
+    return [...cut(fullLog ? "full-log-box" : "main-box"), ...cut("footer-box")].join("\n");
   };
 
   // OpenTUI's KeyHandler catches anything a keypress handler throws and only logs it, so the

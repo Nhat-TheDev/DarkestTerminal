@@ -1106,7 +1106,7 @@ describe("layout", () => {
     const { captureCharFrame, game } = await openFight(150, 45);
     const frame = captureCharFrame();
     const rows = frame.split("\n");
-    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
+    expect(frame).not.toContain("─Path─");
     expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
     expect(panelRows(frame, t("ui.panelLog"))).toBe(UNIT_BLOCK_HEIGHT);
     expect(rows.findIndex((r) => r.includes(`─${t("ui.panelLog")}`))).toBe(rows.findIndex((r) => r.includes(`─${t("ui.panelBattlefield")}`)));
