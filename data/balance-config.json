@@ -372,7 +372,8 @@
     }
   },
   "abilities": {
-    "dropChance": 0.35,
+    "dropChance": { "elite": 0.35, "boss": 1 },
+    "dropMinDepth": { "elite": 5, "boss": 1 },
     "depthCap": 30,
     "rarityWeightsByDepth": {
       "elite": {
