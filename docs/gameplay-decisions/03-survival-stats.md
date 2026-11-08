@@ -278,7 +278,7 @@ entry keyed on `{"eventId": "camp-reflection", "outcome": "unaware"}` — of the
 he's the 1 who learned this exact drift the hard way (`12-world-bible.md` §12.8), so he's the most
 plausible to notice it in someone else before they notice it in themselves:
 
-> "An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. He looks
+> "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. He looks
 > at your hands before your face, and keeps looking at them while you talk."
 
 `pickEventText()`'s priority order makes

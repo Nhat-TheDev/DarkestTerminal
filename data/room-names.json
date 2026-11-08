@@ -47,8 +47,8 @@
       "backdrop": "shelter"
     },
     {
-      "name": "Safe Resting Corner",
-      "backdrop": "safe-resting-corner"
+      "name": "Dry Corner",
+      "backdrop": "dry-corner"
     },
     {
       "name": "Abandoned Shrine",
@@ -61,8 +61,8 @@
       "backdrop": "dungeon-lords-hall"
     },
     {
-      "name": "Throne of Darkness",
-      "backdrop": "throne-of-darkness"
+      "name": "Bare Throne Room",
+      "backdrop": "bare-throne-room"
     },
     {
       "name": "General's Tomb",

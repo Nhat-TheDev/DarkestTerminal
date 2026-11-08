@@ -957,7 +957,7 @@
   {
     "id": "slowed",
     "name": "Slowed",
-    "description": "Lose 5 speed for the duration.",
+    "description": "Lowers speed for the duration.",
     "perTurnEffects": [
       {
         "kind": "modifyCombatStat",
@@ -1389,7 +1389,7 @@
   {
     "id": "engaged",
     "name": "Engaged",
-    "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
+    "description": "Answers the next few monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "counterAttack": {
@@ -1402,7 +1402,7 @@
   {
     "id": "engaged-ii",
     "name": "Engaged",
-    "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
+    "description": "Answers the next few monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "counterAttack": {
@@ -1417,7 +1417,7 @@
   {
     "id": "engaged-iii",
     "name": "Engaged",
-    "description": "Answers the first 2 monster blows that land, striking only the monster that dealt each one, then drops.",
+    "description": "Answers the next few monster blows that land, striking only the monster that dealt each one, then drops.",
     "perTurnEffects": [],
     "tickCategory": "statMod",
     "counterAttack": {
@@ -1588,7 +1588,7 @@
   {
     "id": "hexed",
     "name": "Hexed",
-    "description": "A curse that eats at the body each turn and saps attack; stacks up to 4 times.",
+    "description": "Drains HP each turn and lowers attack; stacks.",
     "perTurnEffects": [
       {
         "kind": "damage",

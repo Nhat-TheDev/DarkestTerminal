@@ -398,8 +398,8 @@ describe("artifacts", () => {
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     queueAction(combat, { kind: "character", id: knight.id }, attackSkill.id, [enemyRef], ctx);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("upon defeating an enemy"))).toBe(true);
-    expect(combat.log.some((l) => l.text.includes("recovers") && l.text.includes("thanks to an artifact") && !l.text.includes("upon defeating"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("from an artifact after a kill"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("recovers") && l.text.includes("thanks to an artifact") && !l.text.includes("after a kill"))).toBe(true);
   });
 
   test("lifesteal heals off the full damage of a multi-hit skill, not just its last hit", () => {

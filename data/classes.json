@@ -27,7 +27,7 @@
       {
         "id": "slash",
         "name": "Slash",
-        "description": "A sword slash — basic damage.",
+        "description": "A short cut from the shoulder, the shield never leaving the line.",
         "shortDescription": "A sword slash — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -490,7 +490,7 @@
       {
         "id": "arcane-bolt",
         "name": "Arcane Bolt",
-        "description": "A weak bolt of raw arcane force — basic damage.",
+        "description": "A thin crack of force off the fingertips, enough to sting and little more.",
         "shortDescription": "A weak arcane bolt — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -968,7 +968,7 @@
       {
         "id": "stab",
         "name": "Stab",
-        "description": "Stabs with a dagger — basic damage.",
+        "description": "A dagger driven in under the guard and pulled out before the foe looks down.",
         "shortDescription": "Stabs with a dagger — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -1394,7 +1394,7 @@
       {
         "id": "smite",
         "name": "Smite",
-        "description": "A flicker of borrowed light — basic damage.",
+        "description": "A flicker of borrowed light, pressed into the foe like a palm.",
         "shortDescription": "A flicker of borrowed light — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -1966,7 +1966,7 @@
       "abbr": "VK",
       "color": "#8a4a2a"
     },
-    "description": "Trades safety for numbers — puts everything behind every swing and hopes the fight's over before its own HP is.",
+    "description": "Puts everything behind every swing and keeps no guard back, betting the fight ends before its own blood runs out.",
     "roleTags": [
       "Bruiser",
       "Berserker",
@@ -1987,7 +1987,7 @@
       {
         "id": "axe-slash",
         "name": "Axe Slash",
-        "description": "An axe slash — basic damage.",
+        "description": "An axe swung flat and heavy, with the whole back behind it.",
         "shortDescription": "An axe slash — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -2398,7 +2398,7 @@
       "abbr": "PD",
       "color": "#3a4a3a"
     },
-    "description": "Doesn't need the first hit to win — poison, blindness, and toxic fog do the work over time, and it can patch the team up when nobody else can.",
+    "description": "Wins slowly. Poison, blinding powder and a creeping fog do the work over time, and the same satchel holds the draughts that patch the party up.",
     "roleTags": [
       "Debuffer",
       "AoE Control",
@@ -2419,7 +2419,7 @@
       {
         "id": "vial-toss",
         "name": "Vial Toss",
-        "description": "Tosses a crude vial — basic damage.",
+        "description": "A stoppered vial lobbed underhand; it breaks on whatever it hits and stinks.",
         "shortDescription": "A crude vial toss — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -2943,7 +2943,7 @@
     "passiveSkill": {
       "id": "contagion",
       "name": "Contagion",
-      "description": "Every touch carries something new — the body just hasn't noticed yet.",
+      "description": "Every touch leaves something behind that the body has not noticed yet.",
       "ranks": [
         {
           "rank": 1,
@@ -2982,7 +2982,7 @@
       "abbr": "AR",
       "color": "#4a6b3a"
     },
-    "description": "Every shot is built to land hard — high crit odds, an ambush shot that fires the instant something moves on it, and hits that leave the target weaker for whoever swings next.",
+    "description": "Lands hard and where it hurts: shots that find the weak point, a drawn bow that fires the moment something moves, and wounds that leave the target easier for the next blow.",
     "roleTags": [
       "Marksman",
       "Single-Target Burst",
@@ -3003,7 +3003,7 @@
       {
         "id": "quick-shot",
         "name": "Quick Shot",
-        "description": "A bow shot — basic damage.",
+        "description": "An arrow nocked, drawn and loosed in one motion, without stopping to aim.",
         "shortDescription": "A bow shot — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -3382,7 +3382,7 @@
       "abbr": "NJ",
       "color": "#5a5a5a"
     },
-    "description": "Isn't built to overpower anything — disappear from the fight entirely, let a decoy clone take the hits instead, and let bleeding pile up until a finishing strike closes it out.",
+    "description": "Never trades blows head on. Vanishes from the fight, leaves a shadow to take the hits in its place, and lets the bleeding build until one last cut finishes it.",
     "roleTags": [
       "Stealth",
       "Decoy",
@@ -3403,7 +3403,7 @@
       {
         "id": "kunai-strike",
         "name": "Kunai Strike",
-        "description": "A kunai stab — basic damage.",
+        "description": "A kunai pushed in at the ribs and back in the sleeve before the cut bleeds.",
         "shortDescription": "A kunai stab — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -3886,7 +3886,7 @@
       "abbr": "SM",
       "color": "#5a3a8a"
     },
-    "description": "Barely fights with its own hands — it summons something to take the hits, someone to patch the party up, and whatever's left over to hit back, each one shaped in its own image.",
+    "description": "Barely fights with its own hands. It calls up something to take the hits, something to mend the party and something to hit back, and stays behind them.",
     "roleTags": [
       "Minion Master",
       "Versatile",
@@ -3907,7 +3907,7 @@
       {
         "id": "hollow-pulse",
         "name": "Hollow Pulse",
-        "description": "A dull pulse drawn from the totem's hollow — basic damage. The Summoner leans on its minions, not its own combat.",
+        "description": "A dull pulse knocked out of the totem's hollow with the heel of the hand. It lands like a shove.",
         "shortDescription": "A dull pulse from the totem — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -4333,7 +4333,7 @@
     "passiveSkill": {
       "id": "bound-legion",
       "name": "Bound Legion",
-      "description": "The pact deepens on its own, and makes room for more minions at the Summoner's side.",
+      "description": "With practice the totem holds more at once, and more of what it calls can stand at the Summoner's side.",
       "ranks": [
         {
           "rank": 1,
@@ -4392,7 +4392,7 @@
       {
         "id": "knife-flick",
         "name": "Knife Flick",
-        "description": "A small knife flicked from the sleeve — basic damage.",
+        "description": "A small knife flicked from the sleeve, and another already waiting behind it.",
         "shortDescription": "A flicked knife — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -4826,7 +4826,7 @@
     "passiveSkill": {
       "id": "two-faced",
       "name": "Two-Faced",
-      "description": "Nobody, the Jester included, knows which face will show up to the next fight.",
+      "description": "The Jester turns the mask over before each fight and does not look at which face comes up.",
       "growthSwapStats": [
         "attack",
         "magicPower"
@@ -4897,7 +4897,7 @@
       {
         "id": "mace-strike",
         "name": "Mace Strike",
-        "description": "A mace swung from the shoulder — basic damage.",
+        "description": "A mace swung from the shoulder at whatever the armour covers worst.",
         "shortDescription": "A mace blow — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",
@@ -5434,7 +5434,7 @@
       {
         "id": "eldritch-bolt",
         "name": "Eldritch Bolt",
-        "description": "A black bolt from an open hand — basic damage.",
+        "description": "A black bolt from an open hand that leaves the fingers numb.",
         "shortDescription": "An eldritch bolt — basic damage.",
         "mpCost": 0,
         "target": "singleEnemy",

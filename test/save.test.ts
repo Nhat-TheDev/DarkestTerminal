@@ -29,6 +29,7 @@ import { spawnMonster, getArchetype } from "../src/data/monsters";
 import { compareVersions, migrateGameState, migrateMonsters, migrateSummons } from "../src/engine/migration";
 import { expCostForLevel, levelForTotalExp, MAX_LEVEL } from "../src/data/levelGrowth";
 import { getClass } from "../src/data/classes";
+import { backdropIdForRoomName } from "../src/data/roomNames";
 import { FLOOR_MILESTONE_OMENS, getFloorMilestoneOmen } from "../src/data/floorMilestones";
 import type { GameState, Monster, Summon } from "../src/types";
 import { advanceBar } from "../src/engine/monsterBars";
@@ -673,6 +674,25 @@ describe("Version migrations", () => {
       expect(knight.level).toBe(vanguard.level);
       expect(state.partyExp).toBe(save.state.partyExp);
       expect(state.retiredCharacterClassId).toBe("knight");
+    });
+  });
+
+  test("a 1.2.0 save holding a renamed room loads it under its new name, with its backdrop", () => {
+    withGame(25, (game) => {
+      game.currentSaveSlot = "slot1";
+      saveRun(game);
+      const save = loadSave("slot1");
+      save.meta.saveVersion = "1.2.0";
+      const [throne, corner] = save.state.floor.rooms;
+      throne!.name = "Throne of Darkness";
+      corner!.name = "Safe Resting Corner";
+      writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+
+      const rooms = gameFromSave(loadSave("slot1"), "slot1").state.floor.rooms;
+      expect(rooms.find((r) => r.id === throne!.id)!.name).toBe("Bare Throne Room");
+      expect(rooms.find((r) => r.id === corner!.id)!.name).toBe("Dry Corner");
+      expect(backdropIdForRoomName("Bare Throne Room")).toBe("bare-throne-room");
+      expect(backdropIdForRoomName("Dry Corner")).toBe("dry-corner");
     });
   });
 

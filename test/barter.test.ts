@@ -130,7 +130,7 @@ describe("applying pending barter buffs", () => {
       expect(c.attack).toBe(before[i]!.attack + statBonus(percentOf(["chitin-shard"], "attack"), before[i]!.attack));
     });
     expect(game.state.pendingBarterBuffs).toEqual([]);
-    expect(game.state.combat?.log.some((l) => l.text === "The runner's bargains take hold: Chitin Shard.")).toBe(true);
+    expect(game.state.combat?.log.some((l) => l.text === "The runner's goods take hold: Chitin Shard.")).toBe(true);
   });
 
   test("an ordinary combat room leaves them waiting", () => {

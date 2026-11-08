@@ -134,11 +134,11 @@ From the 2nd time the player resolves one of these 3 events in a run, the room s
 
 | Event id | Return text (2nd+ meeting) |
 |---|---|
-| `merchant` | "The same hooded figure — or one just like it. The wares are new, but the bow is exactly as before." |
-| `wandering-hermit` | "The old man has cleared a space on the stone in front of him. 'Trade again? I don't forget a fair deal.'" |
-| `gambling-den` (won) | "The stranger deals a fresh hand without looking up. 'Didn't expect a winner to come back for more.'" |
-| `gambling-den` (lost) | "The stranger deals a fresh hand without looking up. 'Back for more? I like watching the same face lose twice.'" |
-| `gambling-den` (declined) | "The stranger deals a fresh hand without looking up. 'Changed your mind, or just scared?'" |
+| `merchant` | "A hooded figure bows over a cloth of new wares, its hands folded at the same height, the bow dipping to the same depth." |
+| `wandering-hermit` | "The old man has cleared a space on the stone in front of him. 'Back again. Set it down where I can see it.'" |
+| `gambling-den` (won) | "The stranger sets the three cups mouth-down without looking up. 'Didn't expect a winner to come back for more.'" |
+| `gambling-den` (lost) | "The stranger sets the three cups mouth-down without looking up. 'Back for more? I like watching the same face lose twice.'" |
+| `gambling-den` (declined) | "The stranger sets the three cups mouth-down without looking up. 'Changed your mind? Show me the face that walked away.'" |
 
 No change to any event's mechanics — Merchant/Gambling Den/Hermit work exactly as in §8.10, §8.19, §8.20.
 
@@ -275,7 +275,7 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 
 **`merchant`**
 - Prompt: "The hooded figure never once lifted the hood, not even to count your coin."
-- curious: "The hood holds your eye a moment too long." · wary: "Your eyes stay off the hood the whole time." · dismissive: "You came for the wares, not the man."
+- curious: "You look into the dark under the hood for a face until the bow is over." · wary: "Your eyes stay off the hood the whole time." · dismissive: "You pack the wares away before the lamp is out of sight."
 
 **`desecrated-altar`**
 - Prompt: "The glow is still there, faint, where your hand was."
@@ -302,17 +302,17 @@ Triggered from 2 places, since not every event closes the same way: `closeEvent(
 
 **`wandering-hermit`**
 - Prompt: "His eyes stayed shut for the whole trade. His hands never missed the coins."
-- curious: "You look at the mark on his forearm until he turns the arm over." · wary: "You keep the talk to the price and nothing else." · dismissive: "Strange old man, but he held up his end of it."
+- curious: "You look at the mark on his forearm until he turns the arm over." · wary: "You keep the talk to the price and nothing else." · dismissive: "You tuck the coins away and pick up the pace."
 
 **`gambling-den`**
 - Prompt: "Behind you, the cups start clicking again."
-- curious: "You'd bet he's run this game on every floor you've passed." · wary: "You keep a hand on your purse until the clicking fades." · dismissive: "Quick hands and a loud mouth. You've met his kind above."
+- curious: "You watch his hands through two more rounds, trying to follow the right cup." · wary: "You keep a hand on your purse until the clicking fades." · dismissive: "You count what's left in your purse and walk on."
 
 ---
 
 ## 8.7 The Gatekeeper (`the-gatekeeper`) — *Scripted*
 
-> "An old man leans on a staff at the mouth of the cave, a lantern hung from its tip. The rock beside the opening is worn smooth at shoulder height, where hand after hand has steadied itself before going in. 'Most who pass leave something with me. {{toll}} coins, by custom. Keep them if you like. The way in doesn't close.'"
+> "Wind comes down off the hills and into the cave mouth, and none of it comes back out. An old man leans on a staff beside the opening, a lantern hung from its tip. The rock at the threshold is worn smooth at shoulder height, where hand after hand has steadied itself before going in. 'Most who pass leave something with me. Coin, by custom. Keep it if you like. The way in doesn't close.'"
 
 Not a room. Every new run opens on this scene after party and ability selection, before floor 1's entry room, with its own sprite (`data/sprites.json` → `events["the-gatekeeper"]`) in the battlefield's event slot. `kind: "scripted"` keeps it out of `rollEvent()` and out of `loreExposureCount`, and it has no reflection prompt: it happens outside the dungeon.
 
@@ -337,7 +337,7 @@ The answer is kept in `GameState.gatekeeperAnswer` (`"paid"` / `"refused"`). A d
 
 ## 8.8 Open Chest (`open-chest`) — *Common*
 
-> "A cracked oak chest sits crooked amid a pile of rubble. Whoever carried it this far didn't carry it any further."
+> "Rubble has spilled across half the floor, and a grey haze of stone dust still hangs in the torchlight. A cracked oak chest sits crooked on top of the pile, its iron bands flecked with rust. Whoever carried it this far didn't carry it any further."
 
 No combat, no price to pay. Entering the room shows the flavor text and a single **[1] Open the chest** action (`Game.openChest()`, `src/engine/events/openChest.ts`) — the artifact isn't granted until the player actively chooses to open it, so the room's description gets a beat on screen before the loot/decision flow takes over. Opening grants 1 Artifact rolled on the standard rarity table, which goes through the normal decision flow (`07-items-artifacts.md` §7.2).
 
@@ -355,8 +355,8 @@ No combat, no price to pay. Entering the room shows the flavor text and a single
 - Lose the fight → no Artifact, the game's existing combat-loss consequences apply as normal (no special rules for the Event room).
 
 **The only difference between the two ids**: flavor text.
-- `guardian-fight`: "A chest sits in the far corner. Beside it, a closed spiral is scratched into the wall, and something in the dark is scraping claws on the stone. The scraping stops."
-- `desecrated-altar`: "The stone altar glows with a pale red light, pulsing as if breathing. A spiral is cut into the base, closed like a knot."
+- `guardian-fight`: "The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. A chest sits in the far corner. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, claws scrape slowly on stone. The scraping stops."
+- `desecrated-altar`: "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot."
 
 **Chain escalation**: repeatedly choosing "Leave without fighting" builds toward a forced encounter — see §8.5 Chain 1, "The Guardian's Grudge." **Reflection**: see §8.6.
 
@@ -364,7 +364,7 @@ No combat, no price to pay. Entering the room shows the flavor text and a single
 
 ## 8.10 Merchant Encounter (`merchant`) — *Common*
 
-> "A lamp gutters over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows."
+> "A lamp gutters on the stone, smelling of oil, over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows."
 
 No combat (`kind: "artifactShop"`). On entering the room:
 
@@ -382,7 +382,7 @@ Implementation: `merchantPurchase`/`merchantRefresh`/`merchantLeave` (`src/engin
 
 ## 8.11 Old Count (`old-count`) — *Common*
 
-> "Someone scratched tally marks into the wall here, hundreds of them, all by the same hand, in neat rows. The last row stops mid-stroke."
+> "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. Water has run down through the oldest. The last row stops mid-stroke."
 
 No combat, no price to pay (`kind: "instantReward"`) — same shape as Open Chest (§8.8): the flavor text shows first, a single confirm action grants the artifact. The confirm option reads **[1] Move on** (`EventDefinition.instantRewardActionLabel`) rather than "Open the chest" — there's nothing here shaped like a container. Confirming (`Game.openChest()`) grants 1 Artifact rolled on the standard rarity table, through the normal decision flow.
 
@@ -394,7 +394,7 @@ No combat, no price to pay (`kind: "instantReward"`) — same shape as Open Ches
 
 ## 8.12 Doubled Back (`doubled-back`) — *Common*
 
-> "Footprints lead into this room and stop. None lead back out. The room is empty."
+> "Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. The room is empty to its corners."
 
 Same shape as §8.11 — **[1] Move on**, 1 Artifact on the standard table.
 
@@ -406,7 +406,7 @@ Same shape as §8.11 — **[1] Move on**, 1 Artifact on the standard table.
 
 ## 8.13 The Delay (`the-delay`) — *Common*
 
-> "Still water pools at the edge of the room, dark enough to mirror the torchlight. Your reflection catches up to you a half-second late, every time you move."
+> "Still water pools at the edge of the room, black and flat, and the only sound is a slow drip from the ceiling into a far corner. The surface holds the torchlight like polished glass. Your reflection catches up to you a half-second late, every time you move."
 
 Same shape as §8.11/§8.12 — **[1] Move on** — but **`noArtifactReward: true`**: no Artifact at all, pure information. Along with `still-breathing`, `the-wanderer` and `the-one-who-stayed`, it has no reward attached, and it is the only common-tier event without one, so that common-tier events don't read as an unbroken loot piñata (10-event-narrative.md Part D) — not every anomaly in the dungeon pays out.
 
@@ -418,7 +418,7 @@ Same shape as §8.11/§8.12 — **[1] Move on** — but **`noArtifactReward: tru
 
 ## 8.14 Waiting Supplies (`waiting-supplies`) — *Common*
 
-> "A bundle sits wrapped and tied at the base of the wall, where someone would leave it to come back for later. The rope is knotted tight, every turn laid the same way. Dust lies thick on the knot."
+> "The corridor bends here, and in the dry angle of the bend, out of the draft, a bundle sits wrapped and tied at the base of the wall, where someone would leave it to come back for later. The cloth smells faintly of smoked meat. The rope is knotted tight, every turn laid the same way. Dust lies thick on the knot."
 
 Same shape as §8.11-8.13 — **[1] Move on** — but `guaranteedArtifactId: "travelers-ration"` rather than a standard-table roll: the reward is specifically the bundle described in the scene, not an unrelated artifact pulled from nowhere (10-event-narrative.md Part D).
 
@@ -430,9 +430,9 @@ The bundle also holds supplies: `guaranteedItems` adds **3 Exploration Kits** to
 
 ---
 
-## 8.15 Trade HP for an Artifact (`blood-altar`) — *Rare*
+## 8.15 Blood Altar (`blood-altar`) — *Rare*
 
-> "Ancient carvings on the stone pedestal ooze a dark, still-warm liquid, a spiral unwound and open at its center. The liquid creeps along every channel toward one cup and stops a finger's width short of it."
+> "A copper smell fills the room before the torchlight finds the pedestal. Worn carvings run down its sides and ooze a dark, still-warm liquid, a spiral unwound and open at its center. The liquid creeps along every channel toward one cup and stops a finger's width short of it."
 
 No combat. On entering the room, the player may:
 
@@ -449,7 +449,7 @@ No combat. On entering the room, the player may:
 
 ## 8.16 Cursed Shrine (`cursed-shrine`) — *Rare*
 
-> "A statue with three eyes. One of them is open. It wasn't the same one a moment ago."
+> "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other, and the stone around them is smooth from touching. One of them is open. It wasn't the same one a moment ago."
 
 **No combat** (`kind: "cursedOffer"`). Pre-rolls 1 random Artifact that may be Cursed (`rollArtifactOrCursed`, `src/data/artifacts.ts` — a fixed chance of landing in the Cursed-Artifact pool from §8.4, otherwise a normal roll on the standard table) — **shown in full before you accept it** (unlike `blood-altar` — you see the specific artifact and know whether it's cursed or not, you just don't know what it will be until the single roll happens).
 
@@ -463,7 +463,7 @@ No combat. On entering the room, the player may:
 
 ## 8.17 Twin Altars (`twin-altars`) — *Rare*
 
-> "Two stone pedestals face each other, each carved with a spiral, open at the center. A hairline crack already runs between them."
+> "Two stone pedestals face each other across a narrow room, close enough that a person standing between them could touch both. Each is carved with a spiral, open at the center, and the air between them is a little colder than the air around. A hairline crack already runs across the floor between them."
 
 **No combat** (`kind: "pairedOffer"`, `forceEquip: true` — the only event that forces immediate equipping). No resource is paid — the price is the missed opportunity.
 
@@ -478,7 +478,7 @@ No combat. On entering the room, the player may:
 
 ## 8.18 Ritual Circle (`sacrificial-circle`) — *Rare*
 
-> "Old dried blood traces a spiral across the stone, open at one end and too deliberate to be an accident."
+> "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end, its line as even as a drawn string. The broom marks stop a full stride short of it on every side."
 
 **No combat** (`kind: "artifactSacrifice"`). Sacrifice 1 **currently-equipped** artifact (every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) — deliberately not scaled by floor depth — excluding tiers below the threshold.
 
@@ -490,7 +490,7 @@ Choose the artifact to sacrifice from anywhere across the party, confirm → it'
 
 ## 8.19 Wandering Gambling Den (`gambling-den`) — *Rare*
 
-> "A stranger shuffles three cups on an upturned crate, his forearms bare and unmarked. 'Give me what you have. I'll double it, or keep it for good.'"
+> "Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. 'Put it on the crate. I want to see your face when the cup comes up.'"
 
 **No combat** (`kind: "coinGamble"`). A pure Cursed-Coin escalating gamble, up to 4 rounds, the stake carrying forward as long as the player keeps winning and choosing to continue — it **never wagers an Artifact**.
 
@@ -530,7 +530,7 @@ Implementation: `src/engine/events/gamblingDen.ts`.
 
 ## 8.20 Wandering Hermit (`wandering-hermit`) — *Rare*
 
-> "An old man sits cross-legged amid the rubble, a spiral mark scarred into his forearm. 'Put down what you want rid of. I'll name the price.'"
+> "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. His eyes are shut. Beside him a small fire of sticks burns without smoke. 'Put down what you want rid of. I'll name the price.'"
 
 **No combat** (`kind: "fortuneExchange"`), doesn't create a new Artifact from nothing — it's a paid service that interacts with an artifact the party already has. **Exchange fortune is the room's only service** (there's no free "remove curse" service):
 
@@ -551,7 +551,7 @@ see them."` (wary) · `"He shrugs and names his price before you've finished tal
 
 ## 8.21 Collapsed Floor (`collapsed-floor`) — *Rare*
 
-> "A section of floor has dropped away along a long crack. A weak groan echoes up from below."
+> "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it."
 
 A rescue mechanic: pay a fixed HP cost up front to attempt the rescue, and the outcome determines whether you get a reward. Still HP-only, same reasoning as Blood Altar.
 
@@ -572,7 +572,7 @@ Its successful/attempted payments count toward Chain 3 alongside Blood Altar's (
 
 ## 8.22 Vigil (`vigil-candle`) — *Rare*
 
-> "A candle burns at the end of a dusty corridor with no footprints in it. The wax has pooled thick on the floor, but the flame is a new candle's height. A cloth lies folded beside it."
+> "A candle burns at the end of a long, dusty corridor with no footprints in it, its light steady enough to read by. The wax has pooled thick on the floor and set in layers, like the rings of a cut tree, but the flame is a new candle's height. A cloth lies folded beside it."
 
 No combat. Same **[1] Move on** confirm as §8.11-8.14, but gated: `minFloorDepth` (never rolled before that floor; the gate is in the event table at the top of this doc) and `onceLifetime: true` (excluded from the roll pool for the rest of the run once it fires, tracked in `GameState.firedOnceEventIds`). The Artifact sits *in* the scene: `guaranteedArtifactId: "vigil-cloth"`, the cloth folded beside the candle, granted through the same `openChest()` path as Open Chest's but without a roll, framed as an offering rather than a separate loot beat.
 
@@ -584,7 +584,7 @@ No combat. Same **[1] Move on** confirm as §8.11-8.14, but gated: `minFloorDept
 
 ## 8.23 Broken Seal (`broken-seal`) — *Rare*
 
-> "A stone hatch, chained shut and mortared at the edges. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open."
+> "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open."
 
 Same shape as §8.22 — **[1] Move on**, `minFloorDepth` (see the event table at the top), `onceLifetime: true`, 1 Artifact: `guaranteedArtifactId: "torn-lock-plate"` rather than a standard-table roll.
 
@@ -601,7 +601,7 @@ The 2 readings are opposite on purpose — identical physical evidence, read thr
 
 ## 8.24 Half a Warning (`half-a-warning`) — *Rare*
 
-> "Someone carved this fast, and never finished it. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'"
+> "Someone carved this fast, low on the wall where the stone is soft, and never finished it; the last letters trail off into scratches. A snapped knife blade lies in the grit below. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'"
 
 Same shape as §8.22/§8.23 — **[1] Move on**, `minFloorDepth` (see the event table at the top), `onceLifetime: true`, 1 Artifact: `guaranteedArtifactId: "worn-chalk-stub"` rather than a standard-table roll.
 
@@ -613,10 +613,10 @@ The first non-institutional evidence of the containment/communion schism (§8.2)
 
 ## 8.25 Still Breathing (`still-breathing`) — *Rare*
 
-> "The walls curve like ribs here. Grown into one of them is a strip of old cloth with a mark burned into it, the same mark as on the goods you've traded for."
+> "The walls curve inward like ribs here, and the air between them is warm and damp, drawn in and out of the room by a slow draft. Grown into one of them is a strip of old cloth with a mark burned into it, the same mark as on the goods you've traded for."
 
 `minFloorDepth` (see the event table at the top), `onceLifetime: true` — the deepest-gated event in the game and, by design, the rarest a player will ever actually see. **`noArtifactReward: true`** — confirming (**[1] Move on**) grants nothing at all, no artifact, no stat effect of any kind. The lack of a mechanical reward is deliberate: a reveal this strong doesn't need one, and needing one would itself be a sign the reveal wasn't landing.
 
-The single deepest-lore reveal in the game — the spiral the Covenant built its entire ritual vocabulary around was never invented by them; it was copied from something already here first. Echoes forward once resolved: `merchant` (§8.10) gains a closing line on the party's next visit — "The cloth is the same weave as the strip grown into that wall."
+The single deepest-lore reveal in the game — the spiral the Covenant built its entire ritual vocabulary around was never invented by them; it was copied from something already here first. Echoes forward once resolved: `merchant` (§8.10) gains a closing line on the party's next visit — "The cloth is the weave of the strip grown into that wall."
 
 **No recurring NPC, no chain.** **Reflection**: see §8.6.
