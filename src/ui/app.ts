@@ -1168,7 +1168,7 @@ export class App implements ScreenContext {
       return {
         battlefieldRows: [...Array.from({ length: topPad }, (): TextChunk[] => []), ...map.rows],
         contentLeft: Math.max(0, Math.floor((width - map.width) / 2)),
-        backdropKey: FLOOR_MAP_BACKDROP_KEY,
+        backdropKey: `${FLOOR_MAP_BACKDROP_KEY}|${width}`,
         backdrop: null,
         shadow: null,
       };
