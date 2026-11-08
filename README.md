@@ -113,6 +113,8 @@ before your party doesn't make it back is up to you.
   play out.
 - **A real bestiary** — dozens of monsters, plus dedicated Elite/Boss guards
   waiting at the end of every floor.
+- **Know what you face** — a full floor map, and a record of every monster
+  your save has fought: its weaknesses, its skills, what it is doing now.
 - **Fear & Satiety** — two survival stats running alongside HP/MP, and they
   will turn on you if you're not careful.
 - **True permadeath.** No mid-run resurrections.

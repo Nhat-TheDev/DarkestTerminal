@@ -248,18 +248,28 @@ footer and at least one row of the main (Dungeon) panel; the party list may scro
 one line at that size, so a skill's `shortDescription` is limited by what its name and MP cost leave;
 `test/skillShortDescription.test.ts` fails on one that doesn't fit, naming its limit.
 
-From top to bottom the screen is the header, the Path panel, a row holding the Battlefield and the
+From top to bottom the screen is the header, a row holding the Battlefield and the
 Log beside it, the Party | Dungeon | Monsters row, and the key hints on the last line. The
 Battlefield's content has a fixed size (`BATTLEFIELD_CONTENT_WIDTH` in `src/ui/app.ts`, wide enough
 for the widest enemy side a fight starts with, and tall enough for a boss sprite), so it never resizes from one
 room to the next. The Log is a fixed-width column, as wide as the Monsters panel under it (`SIDE_PANEL_WIDTH`): each entry starts with its kind's
 icon and wraps with its later lines indented under the text. Every extra column goes to the
 Battlefield, which centres its content, and every extra row to the Party | Dungeon | Monsters row,
-which has 13 rows of content at 150×45. <!-- docs:intent -->
+which has 16 rows of content at 150×45. <!-- docs:intent -->
+
+Three viewers open over the current screen and keep every panel in place. `[p]` draws the floor map on the Battlefield
+without exit digits, and puts its summary in the Dungeon panel (`src/ui/screens/floorMapView.ts`: the room the party stands
+in, the rooms behind it, and the spread of rooms, rests and events left on the routes to the guard, a hidden room counting
+as a fight so it gives nothing away). `[v]` shows the fight's monsters in the Dungeon panel, as `[b]` shows the party
+(`src/ui/screens/monsterInfo.ts`: tier, race and reach on the heading, then traits, weaknesses and resistances, one stat per
+row with a second row for what status effects add or take, shell, bar and telegraph, the skills its tier can cast with their
+cooldowns, its statuses) or, outside a fight, the bestiary of every archetype the slot has fought. That list is the profile's `seenMonsterIds`, written by
+`Game.noteSeenMonsters()` whenever a fight starts, a round resolves (it may summon) or a run loads mid-fight. A viewer opened from another replaces it, so `[Esc]` always
+returns to the screen the first one was opened from.
 
 ### The "Battlefield" panel — pixel art
 
-A dedicated panel under the Path panel, beside the Log, showing the party of 4 characters
+A dedicated panel under the header, beside the Log, showing the party of 4 characters
 (left) and the monsters/boss in the current room (right), rendered as pixel
 art: **1 pixel = 1 character cell** (a space with a background color, no
 visible glyph). Characters/regular monsters are up to **10 pixels** tall,
@@ -554,7 +564,7 @@ is a key hint and belongs in the footer.
 4. paging      [←/→] Page
 5. back        [Esc] Back
    │
-6. globals     [b] Party   [m] Memory   [j] Journal   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit   ([m] only once the slot has unlocked Memory, [j] once its journal holds a written line)
+6. globals     [b] Party   [m] Memory   [j] Journal   [p] Map   [v] Monsters   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit   ([m] only once the slot has unlocked Memory, [j] once its journal holds a written line, [v] only with a fight or a bestiary entry to show)
 ```
 
 **R5 — Global hints are derived, never hand-written per screen.** `[q]`, `[s]`,
@@ -564,7 +574,10 @@ including where they are suppressed — `[q]` is off on `gameover`/`journalLastP
 `[b]` only opens party info from a fixed list of screen kinds, `[m]` exists only once the
 slot has unlocked Memory and read its intro and is off on `fullLog`/`gameover`/`abilityBuyback`/
 `gatekeeper`/`memoryIntro`/`memory` (`canOpenMemory`, `src/ui/keyHints.ts`), `[j]` exists once the slot's journal
-holds a written line and is off on those same screens and on its own (`canOpenJournal`); it opens mid-combat too. The footer's global group must be
+holds a written line and is off on those same screens and on its own (`canOpenJournal`); it opens mid-combat too. `[p]` (`canOpenMap`)
+and `[v]` (`canOpenMonsters`) each come from a fixed list of screen kinds in `src/ui/keyHints.ts`, and `[v]` also needs a fight or a
+bestiary entry to show. Both lists leave out every screen whose fullest footer would then overflow the 150-column minimum:
+`roomReward` for both, `room` and `pickItemInCombat` for `[v]`; `test/keyHints.test.ts` measures each screen that offers them. The footer's global group must be
 computed from those same conditions rather than typed into individual strings,
 otherwise the two drift apart and the hint outlives the binding. On the log screen itself
 only `[Ctrl+C]` remains in the global group: `App.handleKey` swallows every other key there,
@@ -628,7 +641,10 @@ screen contributes.
 | `endingCheckpoint` | `[1-n] Choose` — 1, 2 or 3 by `endingCheckpointMode` |
 | `founderDialogue` | `[1] Continue` |
 | `gatekeeper` | `[1-2] Choose`, then `[1] Move` once answered (no `[q]`/`[s]` until the party is inside) |
-| `characterInfo` | `[1-n] Character   [Esc] Back` — n = party size |
+| `characterInfo` | `[1-n] Character   [Esc] Back` — n = party size + living minions |
+| `floorMap` | `[Esc] Back` |
+| `monsterInfo` | `[1-n] Monster   [Esc] Back` — n = monsters in the fight, fallen ones included |
+| `bestiary` | `[1-n] Details   [Esc] Back` (+ `[←/→] Page`) — n = entries on this page; `[Esc] Back` alone on an entry |
 | `abilityBuyback` | `[1-2] Choose` |
 | `saveMenu` | `[1-3] Choose   [Esc] Cancel` |
 | `gameover` | `[n] New Run   [Esc] Main Menu` — `[Enter] Last page   [n] New Run   [Esc] Main Menu` when the ending showed journal echoes |
@@ -756,12 +772,12 @@ src/
   ui/layout.ts          # shared panel sizing/layout helpers for App.render
   ui/revealQueue.ts     # RevealQueue: the single clock pacing the combat log by session and driving the battlefield highlight
   ui/battlefieldFocus.ts # greying of bystanders, role icons and the icon band above the sprites
-  ui/floorMap.ts        # the whole-floor map the Battlefield shows on the room screen, drawn from the room graph
+  ui/floorMap.ts        # the whole-floor map the Battlefield shows on the room screen, drawn from the room graph (the `[p]` viewer reuses it without exit digits)
   ui/targetPicker.ts    # the target list rows: coloured HP/MP/fear, the stats a buff raises, the most-hurt `*`
   ui/pagination.ts      # listCountFor/pageSizeFor and the shared paged-list helpers
   ui/state.ts           # UiState union + the state shared across screens
   ui/app.ts            # OpenTUI: layout + keyboard input, only reads/writes through Game
-  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue, memory) — handleKey/renderMain/renderFooter
+  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue, memory, floorMapView, monsterInfo) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → partySelect/saveSelect → App)
 tools/
   game-editor/          # dev tool: sprites, backdrops, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
@@ -787,6 +803,7 @@ test/
   bigText.test.ts      # block font: every glyph has consistent width per row
   floorPatterns.test.ts # property-based test for generateFloorLayout: route, lane and unknown-room rules over many seeds and depths, validator
   floorMap.test.ts     # floor map: the approved mockup renders exactly, column alignment, width bound, old-save floors, unknown rooms
+  viewers.test.ts      # the viewers: [p] floor map on the Battlefield, [v] monster info and bestiary in the Dungeon panel, the profile's seen-monster list
   levelGrowth.test.ts  # 1-100 milestone table matches the docs, regression test for the "near-immortal" elite boss bug
   docsSync.test.ts     # the real docs against the real data: red after a rebalance until `bun run docs:sync` has rewritten them
   docsSyncTool.test.ts # the docs-sync tool itself (pairs, blocks, references, the shop-odds generator) on made-up data

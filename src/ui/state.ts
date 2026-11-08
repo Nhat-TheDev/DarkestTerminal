@@ -71,6 +71,9 @@ export type UiState =
   | { kind: "gatekeeper"; mapTaken?: boolean }
   | { kind: "abilityBuyback" }
   | { kind: "characterInfo"; characterIndex: number; previousUi: UiState }
+  | { kind: "floorMap"; previous: UiState; previousPage: number }
+  | { kind: "monsterInfo"; previous: UiState; previousPage: number; monsterIndex: number }
+  | { kind: "bestiary"; previous: UiState; previousPage: number; viewingId: Id | null }
   | { kind: "gameover" };
 
 export const ARTIFACT_ICON = "✦";

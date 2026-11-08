@@ -368,7 +368,7 @@ const SLOT = "slot1";
 
 describe("AbilityProfile persistence", () => {
   test("round-trips unlock/lock across save/load; commons are always unlocked regardless", () => {
-    saveProfile(SLOT, { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null });
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] });
     let profile = loadProfile(SLOT);
     expect(profile.unlockedAbilityIds).toEqual([]);
     expect(isAbilityUnlocked(profile, "iron-skin")).toBe(true);
@@ -387,13 +387,13 @@ describe("AbilityProfile persistence", () => {
   });
 
   test("unlockAbility is a no-op for an id already present", () => {
-    const profile: Profile = { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null };
+    const profile: Profile = { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] };
     unlockAbility(profile, "bloodletting");
     expect(profile.unlockedAbilityIds).toEqual(["bloodletting"]);
   });
 
   test("lockAbility is a no-op for an id not present", () => {
-    const profile: Profile = { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null };
+    const profile: Profile = { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] };
     lockAbility(profile, "bloodletting");
     expect(profile.unlockedAbilityIds).toEqual([]);
   });
@@ -412,7 +412,7 @@ function wipeParty(game: Game): void {
 
 describe("Game: ability death flow", () => {
   test("a common equipped ability is never at risk — no buyback needed", () => {
-    saveProfile(SLOT, { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null });
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] });
     const game = new Game(1, PARTY, undefined, ["battle-instinct", null, null, null], false, SLOT);
     wipeParty(game);
     expect(game.state.gameOver).toBe("defeat");
@@ -421,7 +421,7 @@ describe("Game: ability death flow", () => {
   });
 
   test("a non-common equipped ability is struck from the profile immediately, then reclaimable with enough Stardust", () => {
-    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null });
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] });
     const game = new Game(2, PARTY, undefined, ["bloodletting", null, null, null], false, SLOT);
     game.state.runStardust = 10;
     wipeParty(game);
@@ -440,7 +440,7 @@ describe("Game: ability death flow", () => {
   });
 
   test("skipping a buyback entry leaves it lost", () => {
-    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null });
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] });
     const game = new Game(3, PARTY, undefined, ["bloodletting", null, null, null], false, SLOT);
     wipeParty(game);
 
@@ -452,7 +452,7 @@ describe("Game: ability death flow", () => {
   });
 
   test("reclaim fails outright with insufficient Stardust, and nothing is consumed", () => {
-    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null });
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] });
     const game = new Game(4, PARTY, undefined, ["bloodletting", null, null, null], false, SLOT);
     game.state.runStardust = 0;
     wipeParty(game);
@@ -465,7 +465,7 @@ describe("Game: ability death flow", () => {
   });
 
   test("multiple lost abilities resolve one at a time, in order", () => {
-    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting", "predators-edge"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null });
+    saveProfile(SLOT, { version: 1, unlockedAbilityIds: ["bloodletting", "predators-edge"], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] });
     const game = new Game(5, PARTY, undefined, ["bloodletting", "predators-edge", null, null], false, SLOT);
     game.state.runStardust = 100;
     wipeParty(game);

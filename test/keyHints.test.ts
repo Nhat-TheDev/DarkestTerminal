@@ -2,8 +2,10 @@ import { describe, test, expect } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App } from "../src/ui/app";
 import { Game } from "../src/engine/game";
-import { STRINGS } from "../src/data/strings";
+import { STRINGS, t } from "../src/data/strings";
 import { composeFooter, globalHints, withPageHint, digitRange, digitHint, HINT_GAP } from "../src/ui/keyHints";
+import { MIN_TERMINAL_WIDTH } from "../src/ui/layout";
+import type { UiState } from "../src/ui/state";
 
 const FOOTER_KEYS = Object.keys(STRINGS).filter(
   (k) =>
@@ -51,13 +53,48 @@ describe("key-hint grammar (R2/R3)", () => {
 
 describe("global hints (R5)", () => {
   test("Memory goes after the party hint once unlocked, and never on screens that cannot open it", () => {
-    expect(globalHints("room", true, true)).toBe("[b] Party   [m] Memory   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("room", true, true)).toBe("[b] Party   [m] Memory   [p] Map   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
     expect(globalHints("gameover", true, true)).not.toContain("Memory");
     expect(globalHints("room")).not.toContain("Memory");
   });
 
-  test("room offers party info, saving and quicksaving", () => {
-    expect(globalHints("room")).toBe("[b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+  test("room offers party info, the map, saving and quicksaving", () => {
+    expect(globalHints("room")).toBe("[b] Party   [p] Map   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+  });
+
+  test("[v] is offered in a fight and at rest when there is something to show, never on the room screen", () => {
+    expect(globalHints("pickAction", true, false, false, true)).toBe("[b] Party   [p] Map   [v] Monsters   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("rest", true, false, false, true)).toContain("[v] Monsters");
+    expect(globalHints("pickAction")).not.toContain("[v]");
+    expect(globalHints("room", true, false, false, true)).not.toContain("[v]");
+  });
+
+  test("the viewers offer each other, not themselves, and no party info", () => {
+    expect(globalHints("floorMap", true, false, false, true)).toBe("[v] Monsters   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("monsterInfo", true, false, false, true)).toBe("[p] Map   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("bestiary", true, false, false, true)).toBe("[p] Map   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+  });
+
+  test("every screen offering [p] or [v] still fits its fullest footer on the smallest terminal", () => {
+    const fullest: [UiState["kind"], string, boolean][] = [
+      ["room", digitHint("ui.footerRoom", 3), false],
+      ["rest", digitHint("ui.footerRest", 3), false],
+      ["campPrompt", t("ui.footerCampPrompt"), false],
+      ["pickAction", digitHint("ui.footerChooseAction", 2), false],
+      ["pickSkill", digitHint("ui.footerChooseSkillEsc", 9), false],
+      ["skillDetail", t("ui.footerSkillDetail"), false],
+      ["pickItemInCombat", digitHint("ui.footerChooseItemEsc", 9), true],
+      ["pickTarget", digitHint("ui.footerChooseTargetEsc", 9), false],
+      ["roundResolved", t("ui.footerPressAnyKey"), false],
+      ["floorMap", t("ui.footerBackOnly"), false],
+      ["monsterInfo", digitHint("ui.footerMonsterInfo", 9), false],
+      ["bestiary", digitHint("ui.footerBestiary", 9), true],
+    ];
+    for (const [kind, contextual, paged] of fullest) {
+      const footer = composeFooter(contextual, kind, paged, true, true, true, true);
+      expect({ kind, length: footer.length }).toEqual({ kind, length: Math.min(footer.length, MIN_TERMINAL_WIDTH) });
+    }
+    expect(composeFooter(digitHint("ui.footerRoom", 3), "room", false, true, true, true, true)).toContain("[p] Map");
   });
 
   test("the save menu hides [q], since [q] is what opened it", () => {
@@ -77,7 +114,7 @@ describe("global hints (R5)", () => {
   });
 
   test("party info can be suppressed for a screen that swallows the key", () => {
-    expect(globalHints("room", false)).toBe("[l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(globalHints("room", false, false, false, true)).toBe("[l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 });
 
@@ -96,7 +133,7 @@ describe("page hint placement (R4)", () => {
   });
 
   test("composeFooter divides the screen's hints from the global ones", () => {
-    expect(composeFooter("[1-9] Action", "pickAction", false)).toBe("[1-9] Action   │   [b] Party   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
+    expect(composeFooter("[1-9] Action", "pickAction", false)).toBe("[1-9] Action   │   [b] Party   [p] Map   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
   });
 
   test("a screen contributing no hints still renders the globals alone", () => {

@@ -20,6 +20,7 @@ import { ARTIFACTS } from "../src/data/artifacts";
 import { showMainMenu } from "../src/ui/mainMenu";
 import { showSlotSelect } from "../src/ui/saveSelect";
 import { t } from "../src/data/strings";
+import { renderFloorMap } from "../src/ui/floorMap";
 import { CLASSES } from "../src/data/classes";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import { BALANCE } from "../src/data/balanceConfig";
@@ -1106,7 +1107,7 @@ describe("layout", () => {
     const { captureCharFrame, game } = await openFight(150, 45);
     const frame = captureCharFrame();
     const rows = frame.split("\n");
-    expect(panelRows(frame, t("ui.panelProgress"))).toBe(1);
+    expect(frame).not.toContain("─Path─");
     expect(panelRows(frame, t("ui.panelBattlefield"))).toBe(UNIT_BLOCK_HEIGHT);
     expect(panelRows(frame, t("ui.panelLog"))).toBe(UNIT_BLOCK_HEIGHT);
     expect(rows.findIndex((r) => r.includes(`─${t("ui.panelLog")}`))).toBe(rows.findIndex((r) => r.includes(`─${t("ui.panelBattlefield")}`)));
@@ -1270,6 +1271,23 @@ describe("layout", () => {
     expect(sameRgba(bgAt(captureSpans(), left + 200 - 35 - 2, top), PANEL_BG)).toBe(false);
     expect(labelColumn()).toBe(before + (200 - 150) / 2);
     renderer.destroy();
+  });
+
+  test("a resize re-centres the floor map on the battlefield", async () => {
+    const game = new Game(10, ["knight", "mage", "rogue", "acolyte"]);
+    game.state.combat = null;
+    getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
+    const setup = await createTestRenderer({ width: 180, height: 70 });
+    new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    setup.resize(150, 45);
+    await setup.renderOnce();
+    const map = renderFloorMap(game.state.floor, game.state.roomPath, game.state.currentRoomId);
+    const frame = setup.captureCharFrame();
+    const { left } = battlefieldOrigin(frame);
+    const row = frame.split("\n").find((r) => r.includes("[ ■ ]"))!;
+    expect(row.indexOf("[ ■ ]") - left - 1).toBe(Math.floor((150 - 35 - 2 - map.width) / 2));
+    setup.renderer.destroy();
   });
 
   test("label and HP rows keep the panel colour", async () => {

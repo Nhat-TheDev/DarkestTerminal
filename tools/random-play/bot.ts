@@ -141,7 +141,7 @@ function layoutRequirement(uiKind: string, atMinSize: boolean): LayoutRequiremen
   if (uiKind === "fullLog") return { panelTitles: [], mainPanelTitle: main, minMainRows: 0 };
   // At the minimum size the party list may scroll, but the choices panel must keep at least one row.
   if (atMinSize) return { panelTitles: [main], mainPanelTitle: main, minMainRows: 1 };
-  const panels = ["ui.headerTitle", "ui.panelProgress", "ui.panelBattlefield", "ui.panelParty", "ui.panelMain", "ui.panelMonsters", "ui.panelLog"];
+  const panels = ["ui.headerTitle", "ui.panelBattlefield", "ui.panelParty", "ui.panelMain", "ui.panelMonsters", "ui.panelLog"];
   return { panelTitles: panels.map((key) => t(key)), mainPanelTitle: main, minMainRows: 1 };
 }
 

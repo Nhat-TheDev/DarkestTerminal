@@ -80,6 +80,8 @@ export class Game {
   readonly runNumber: number;
   /** The slot's dropped journal, kept in step with the profile so screens don't read the file to show it. */
   private dropped: DroppedJournal | null;
+  /** Archetypes the slot has fought, kept in step with the profile; the bestiary lists them. */
+  public seenMonsterIds: Id[];
   private readonly playTimeBaseSec: number;
   private readonly sessionStart = Date.now();
 
@@ -99,6 +101,7 @@ export class Game {
     this.memoryIntroShown = profile.memoryIntroShown;
     this.journal = profile.journal;
     this.dropped = profile.droppedJournal;
+    this.seenMonsterIds = profile.seenMonsterIds;
     this.runNumber = profile.runCount;
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
@@ -106,6 +109,7 @@ export class Game {
       rng.setState(restore.rngState);
       this.ctx = { party: restore.state.party, monsters: restore.monsters, summons: restore.summons, rng, inventory: restore.state.inventory };
       this.state = restore.state;
+      this.noteSeenMonsters();
       return;
     }
     const { floor, monsters } = createFloor(rng);
@@ -259,6 +263,23 @@ export class Game {
     return Object.values(this.journal.lines).some((e) => e.directionId || e.split);
   }
 
+  /** Adds every monster of the current fight to the slot's bestiary; writes the profile only when one is new. */
+  noteSeenMonsters(): void {
+    const combat = this.state.combat;
+    if (!combat) return;
+    const fresh: Id[] = [];
+    for (const c of combat.combatants) {
+      if (c.ref.kind !== "monster") continue;
+      const monster = this.ctx.monsters.find((m) => m.id === c.ref.id);
+      if (monster && !this.seenMonsterIds.includes(monster.archetypeId) && !fresh.includes(monster.archetypeId)) fresh.push(monster.archetypeId);
+    }
+    if (fresh.length === 0) return;
+    this.seenMonsterIds = [...this.seenMonsterIds, ...fresh];
+    const profile = loadProfile(this.currentSaveSlot);
+    profile.seenMonsterIds = this.seenMonsterIds;
+    saveProfile(this.currentSaveSlot, profile);
+  }
+
   /** The torn-out readings still lying somewhere in the dungeon, for the viewer. */
   droppedJournal(): DroppedJournal | null {
     return this.dropped;
@@ -284,6 +305,7 @@ export class Game {
     const hasLiving = room.monsterIds.some((id) => (this.ctx.monsters.find((m) => m.id === id)?.hp ?? 0) > 0);
     if (hasLiving && !room.cleared) {
       this.state.combat = startCombat(room.id, room.monsterIds, this.ctx, room.type === "boss");
+      this.noteSeenMonsters();
       applyBlessing(this.state, this.ctx, room.id);
       this.state.message = t("dungeon.ambush", { room: room.name });
     }
@@ -314,6 +336,7 @@ export class Game {
       return;
     }
     moveToRoom(this.state, targetRoomId, this.ctx);
+    this.noteSeenMonsters();
     this.pickEventEcho();
     this.postMoveCheck();
   }
@@ -664,7 +687,9 @@ export class Game {
   }
 
   enterGuardianFight(): PartyActionError | null {
-    return guardianFightEnter(this.state, this.ctx);
+    const error = guardianFightEnter(this.state, this.ctx);
+    this.noteSeenMonsters();
+    return error;
   }
 
   skipGuardianFight(): PartyActionError | null {
@@ -695,6 +720,8 @@ export class Game {
     // Coins/EXP/satiety only change in the reward block below, so this is the reveal's baseline for the whole round.
     this.state.combat.roundStartPartySnapshot = { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety };
     resolveRound(this.state.combat, this.ctx, this.state.floor.depth, this.state.satiety);
+    // A round can summon monsters the fight did not start with.
+    this.noteSeenMonsters();
     if (this.state.combat.phase === "over") {
       if (this.state.combat.outcome === "victory") {
         const room = getRoom(this.state.floor, this.state.combat.roomId);
@@ -849,6 +876,7 @@ export class Game {
     this.ctx.monsters.push(founder);
     room.monsterIds = [founder.id];
     this.state.combat = startCombat(room.id, room.monsterIds, this.ctx, true);
+    this.noteSeenMonsters();
     this.state.message = t("dungeon.ambush", { room: room.name });
   }
 
