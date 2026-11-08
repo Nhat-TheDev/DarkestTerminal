@@ -322,6 +322,26 @@ describe("rollAbility", () => {
     }
   });
 
+  test("boss always drops an ability while one is left to unlock", () => {
+    expect(BALANCE.abilities.dropChance.boss).toBe(1);
+    const rng = new Rng(5);
+    for (let i = 0; i < 500; i++) {
+      expect(rollAbility("boss", 5, rng, [])).not.toBeNull();
+    }
+  });
+
+  test("elite drops nothing below its minimum depth, and can drop from it on", () => {
+    const minDepth = BALANCE.abilities.dropMinDepth.elite;
+    expect(minDepth).toBe(5);
+    const rng = new Rng(8);
+    let droppedAtMin = false;
+    for (let i = 0; i < 500; i++) {
+      expect(rollAbility("elite", minDepth - 1, rng, [])).toBeNull();
+      if (rollAbility("elite", minDepth, rng, [])) droppedAtMin = true;
+    }
+    expect(droppedAtMin).toBe(true);
+  });
+
   test("catalog exhaustion: only the 1 remaining unfilled id can ever be rolled", () => {
     const allNonCommon = ABILITIES.filter((a) => a.rarity !== "common").map((a) => a.id);
     const target = "bloodletting";

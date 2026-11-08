@@ -280,7 +280,7 @@ of the Artifact drop on the same kill.
   the roll simply missed.
 - **Boss kills additionally, unconditionally, grant exactly 1 Stardust**,
   `GameState.runStardust: number += 1`, regardless of whether the ability
-  roll above hit or missed. Since a real Boss only appears every
+  roll above found anything left to unlock. Since a real Boss only appears every
   `bossFloorInterval` floors (5, `data/level-growth.json`), this works out to
   1 Stardust every 5 floors. Stardust has exactly one use: buying back a lost
   ability at this run's death flow (below) — it plays no role in mid-run
@@ -289,10 +289,17 @@ of the Artifact drop on the same kill.
 The ability roll shares the same drop-chance/rarity mechanics for both
 sources:
 
-- **Drop chance**: `abilities.dropChance` (0.35) per eligible kill —
-  deliberately below `items.itemDropChance` (0.9) since an Ability
-  affects the permanent profile, a much higher-stakes reward than a
-  consumable.
+- **Drop chance, per source**: a Boss kill always rolls an ability
+  (`abilities.dropChance.boss` (1)), so a Boss never leaves empty-handed
+  while the catalog still has something to give. An Elite kill rolls
+  `abilities.dropChance.elite` (0.35), and only from floor depth
+  `abilities.dropMinDepth.elite` (5) on; Elites on shallower floors drop
+  no ability at all (`abilities.dropMinDepth.boss` (1) leaves Bosses
+  ungated). The Elite chance sits deliberately below
+  `items.itemDropChance` (0.9) since an Ability affects the permanent
+  profile, a much higher-stakes reward than a consumable. With the depth
+  gate, a slot's first ability comes from its first Boss, the same kill
+  that unlocks Memory.
 - **The roll excludes any ability id already in `unlockedAbilityIds`**, so
   a hit always surfaces something the player doesn't already have.
   - **Catalog-exhaustion fallback**: if every ability in the rolled
@@ -311,7 +318,8 @@ sources:
 ```
 // data/balance-config.json, "abilities" block
 "abilities": {
-  "dropChance": 0.35,
+  "dropChance": { "elite": 0.35, "boss": 1 },
+  "dropMinDepth": { "elite": 5, "boss": 1 },
   "depthCap": 30,
   "rarityWeightsByDepth": {
     "elite": {
@@ -343,7 +351,9 @@ The slot's first kill of a boss-tier monster (the guard of the first boss floor;
 of the floors before it are elites) unlocks Memory, a read-only list of the non-common
 abilities the slot holds. It is unlocked where the boss kill grants Stardust
 (`Game.unlockMemory`), and the flag is `memoryUnlocked` in the slot profile, so it belongs
-to the slot and survives permadeath; `clearSlot` resets it.
+to the slot and survives permadeath; `clearSlot` resets it. Since a Boss kill always rolls
+an ability, Memory opens holding at least the one that kill dropped, unless the slot already
+holds every non-common ability.
 
 A one-time intro screen follows (`Game.memoryIntroPending`, shown by
 `App.syncUiToGameState` after the floor milestone check; `proceedAfterVictory` routes

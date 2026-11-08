@@ -222,7 +222,8 @@ interface BalanceConfig {
     anchorWeights: { consumable: Partial<Record<ItemTier, number>>; trophy: Partial<Record<ItemTier, number>> };
   };
   abilities: {
-    dropChance: number;
+    dropChance: Record<"elite" | "boss", number>;
+    dropMinDepth: Record<"elite" | "boss", number>;
     depthCap: number;
     rarityWeightsByDepth: Record<"elite" | "boss", { atDepth1: Record<ArtifactRarity, number>; atDepthCap: Record<ArtifactRarity, number> }>;
     stardustCostByRarity: Record<Exclude<ArtifactRarity, "common">, number>;
