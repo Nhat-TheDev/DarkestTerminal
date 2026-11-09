@@ -34,7 +34,7 @@ Satiety drains once per room the party resolves, never per combat turn or per ac
 
 Implementation: `drainSatiety(state, amount, log)` (`src/engine/survival.ts`), called from `src/engine/dungeon.ts`'s `enterRoom()` (the shared room-arrival dispatch that `moveToRoom` calls into) for non-combat entries and from `src/engine/game.ts` (`Game.resolve()`, victory branch) for combat.
 
-**Backtracking can drain satiety a second time for the same room.** `RoomType` is only `"combat" | "rest" | "boss" | "event"`, and `enterRoom`'s dispatch falls through to a catch-all branch (`dungeon.ts`, draining `SATIETY_DRAIN_COMBAT`) whenever the room isn't an uncleared combat/boss room with living monsters, isn't a rest room, and isn't an uncleared event room. An already-cleared combat or boss room matches none of those cases, so walking back into it hits the catch-all and drains `SATIETY_DRAIN_COMBAT` again — on top of the drain already applied at victory time by `Game.resolve()`. There's no dedicated "already visited, do nothing" case for a cleared combat/boss room.
+**A room never drains satiety twice.** Rooms only link forward: `moveToRoom` (`dungeon.ts`) refuses any room that isn't in the current room's `connectedRoomIds`, so the party never walks back into a room it has cleared. `enterRoom`'s dispatch ends in a catch-all branch that drains `SATIETY_DRAIN_COMBAT` for an arrival matching none of its cases (a cleared room, or a combat/boss room with no living monsters). Forward-only movement keeps a cleared room out of reach in play; the dev tools that call `enterRoom` directly (`tools/dev-save-dump`, `tools/curve`) can still land in that branch.
 
 The drain/threshold numbers are sized against the existing floor-generation guarantee: every route already passes through `floorGeneration.minRestRoomsPerRoute`–`maxRestRoomsPerRoute` Rest rooms (`src/data/floorPatterns.ts`), and the Rest room's Eat & Drink option restores satiety too (see below) — so a party following any route is expected to hit at least 1 Rest room before satiety drains far enough to reach Exhausted, as long as they don't stall on Skip repeatedly.
 
@@ -184,10 +184,13 @@ rather than repeat. It is armed on entering the Rest room but shown only once th
 `eventOutcomes`, `pendingReflection`, or `eventReflectionStances`:
 
 ```ts
-/** Increments by 1 each time the party resolves an event in LORE_EXPOSURE_EVENT_IDS — every event
-    id except open-chest, the 1 event explicitly "Outside the Balance" (12-world-bible.md §12.12).
+/** Increments by 1 each time the party resolves an event in LORE_EXPOSURE_EVENT_IDS
+    (src/data/loreExposure.ts) — every event id except one marked noLoreExposure (open-chest, the 1
+    event explicitly "Outside the Balance", 12-world-bible.md §12.12) and the scripted Gatekeeper.
     Never resets, never decreases. Written in closeEvent() (src/engine/events/shared.ts), alongside
-    but independent of that function's eventOutcomes/firedOnceEventIds writes. */
+    but independent of that function's eventOutcomes/firedOnceEventIds writes; a combatReward event
+    won in combat never reaches closeEvent(), so Game.resolve() (src/engine/game.ts) increments it
+    on that victory instead. */
 loreExposureCount: number;
 
 /** Set at rest-room entry (enterRoom's "rest" branch, src/engine/dungeon.ts) when a new tier —
@@ -293,8 +296,9 @@ having met the hermit:
 > "He shuts his eyes for the trade before you've set anything down."
 
 **Compliance check against `12-world-bible.md`**: no mechanic here implies the dream is tracking
-the party — `loreExposureCount` is entirely the party's own accumulated behavior, read by nothing
-outside this mechanism except the 1 synthetic bridge tag above. Agency stays real at every tier
+the party — `loreExposureCount` is entirely the party's own accumulated behavior, read outside
+this mechanism only by the 1 synthetic bridge tag above and by the ending checkpoint, which offers
+its `"full"` set of choices only at tier 4 (`endingCheckpointMode`, `src/data/endings.ts`). Agency stays real at every tier
 (§12.5) — tier 3's "whoever was closest paid" and tier 4's knife by the fire both show the
 party's own hands acting, never the dream choosing for them. Resolves nothing on §12.9's open list — entirely about the party's own psychology, never
 about Sleeper, the Covenant, or any of the 3 recurring figures' unresolved questions. Never names

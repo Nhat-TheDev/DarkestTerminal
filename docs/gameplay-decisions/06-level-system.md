@@ -36,7 +36,7 @@ Elite/boss multipliers are split per individual stat, skewed toward HP — see `
 
 ### 6.6 Monsters share the same formula (using `floorDepth` instead of `level`)
 
-Monsters have no separate `level` concept — monster stats scale with `floorDepth` using the exact same tier table as §6.3 (`growthBonusForDepth`, `src/data/monsters.ts`), preserving character/monster symmetry: both sides grow at the same rate, so the deeper the floor, the stronger the monster, proportionally.
+Monsters have no separate `level` concept — monster stats scale with `floorDepth` using the exact same tier table as §6.3 (`growthBonusForDepth`, `src/data/levelGrowth.ts`), preserving character/monster symmetry: both sides grow at the same rate, so the deeper the floor, the stronger the monster, proportionally.
 
 On top of this, every archetype has a fixed `monsterType` (see `02-monster.md` for the full list) whose per-stat weight (`data/growth-weights.json` → `monsterGrowthWeights`, loaded as `MONSTER_TYPE_MULTIPLIER`) scales **only the depth-growth curve** in `spawnMonster()` — mirroring how a class's `growthWeights` scale only `growthBonus`, never `baseX`/class-base stats (§6.4). `eliteMultiplier`/`bossMultiplier` (§6.5) and the depth-buff/race statBuff, by contrast, scale the *whole* `base + weighted growth` total, and stack with each other and with `monsterType`'s weighting. This reshapes an archetype's stat *spread* without changing its base-stat Balance Points (`02-monster.md` "Monster type" / "Monster Balance Points"). Full details: `02-monster.md`.
 
@@ -59,7 +59,7 @@ Each class additionally has `growthWeights: { attack, defense, maxHp, maxMp, mag
 classGrowthBonus(stat, level, weights) = round(growthBonus(stat, level) × weights[stat])
 ```
 
-`magicPower` is a separate offensive stat for skills flagged `isMagic` (Mage's fire/lightning/ice, Acolyte's holy heal/purge — see `01-class-skill.md` §1.1) — the resolver uses `magicPower` instead of `attack` for exactly those skills; `attack` keeps its usual role for all physical skills. The basic attacks of Mage, Acolyte, Plague Doctor and Summoner are flagged `isMagic` and use `magicPower` (`data/classes.json`). Design intent: no class should get more total growth than another — compare the sum of all 5 weights across classes in `data/classes.json` directly rather than trusting a hand-copied total here.
+`magicPower` is a separate offensive stat for skills flagged `isMagic` (Mage's fire/lightning/ice, Acolyte's holy heal/purge — see `01-class-skill.md` §1.1) — the resolver uses `magicPower` instead of `attack` for exactly those skills; `attack` keeps its usual role for all physical skills. The basic attacks of Mage, Acolyte, Plague Doctor, Summoner and Warlock are flagged `isMagic` and use `magicPower` (`data/classes.json`). Design intent: no class should get more total growth than another — compare the sum of all 5 weights across classes in `data/classes.json` directly rather than trusting a hand-copied total here.
 
 `growthWeights` applies only to characters (`party.ts`); monsters use the unweighted `growthBonus()` for the floor-depth curve itself, weighted separately afterward by `monsterType` (§6.6).
 
@@ -114,7 +114,7 @@ See §6.12 for Elite/Boss's own skillset. As with §6.7, a TTK comparison betwee
 
 ### 6.12 Elite/Boss kits — one kit per guard-room archetype
 
-Elite and real Boss monsters (not regular monsters, including a guard-room archetype when it spawns in an ordinary combat room) fight with a **kit** declared in data: a handful of skills in `data/monster-skills.json`, listed in the archetype's `skillIds`, with per-tier weights in `data/monsters.json` (`actionWeights.elite` / `actionWeights.boss`). Every guard-room archetype — Skeleton Guard, the nine guard-only archetypes and The Founder — has its own kit built around what its `description` says it does; there is no shared strike/cleave/debuff/finisher template any more. Monsters do not go through `queueAction`/MP/cooldowns like the player (they are always "free" and always hit — the invariant in `resolver.ts`); a kit is resolved on the monster's own turn by `runMonsterTurn` (`src/engine/monsterAI.ts`).
+Elite and real Boss monsters (not regular monsters, including a guard-room archetype when it spawns in an ordinary combat room) fight with a **kit** declared in data: a handful of skills in `data/monster-skills.json`, listed in the archetype's `skillIds`, with per-tier weights in `data/monsters.json` (`actionWeights.elite` / `actionWeights.boss`). Every guard-room archetype — Skeleton Guard, the nine guard-only archetypes and The Founder (the final boss, shown in game as "What's Left of Him") — has its own kit built around what its `description` says it does; there is no shared strike/cleave/debuff/finisher template any more. Monsters do not go through `queueAction`/MP/cooldowns like the player (they are always "free" and always hit — the invariant in `resolver.ts`); a kit is resolved on the monster's own turn by `runMonsterTurn` (`src/engine/monsterAI.ts`).
 
 Design rules the data keeps (the kit data test under `test/` enforces them):
 

@@ -2,9 +2,9 @@
 
 *(section 9 of `00-index.md`)*
 
-**Source of truth for every number below**: `data/balance-config.json` fields `currency`/`events`/`runner`, read into `src/data/currency.ts`/`src/engine/events/*.ts`.
+**Source of truth for every number below**: `data/balance-config.json` fields `currency`/`events`/`runner`/`party`/`gatekeeper`, read into `src/data/currency.ts`/`src/engine/events/*.ts`.
 
-A single resource, separate from `partyExp`/`inventory`, tracked as `GameState.coins: number` — **party-wide, shared** (like `partyExp`, not per-character). Earned from combat kills (and by selling items to the Runner, 9.3), spent in 3 specific event rooms as an alternative to paying with HP, and at the Rest room's Runner (9.3).
+A single resource, separate from `partyExp`/`inventory`, tracked as `GameState.coins: number` — **party-wide, shared** (like `partyExp`, not per-character). A run opens with `party.startingCoins` (50) (`Game` constructor, `src/engine/game.ts`). Earned from combat kills (and by selling items to the Runner, 9.3), spent on the Gatekeeper's toll before floor 1 (9.2), in 3 specific event rooms as an alternative to paying with HP, and at the Rest room's Runner (9.3).
 
 ## 9.1 Drop rule
 
@@ -26,9 +26,11 @@ A single resource, separate from `partyExp`/`inventory`, tracked as `GameState.c
 
 Config: `currency.coinDropByTier: { weak: [min,max], medium: [min,max], strong: [min,max], elite: [min,max], boss: [min,max] }` (`data/balance-config.json`), read by `rollCoinDrop(monster, rng)` (`src/data/currency.ts`) — same shape/spirit as `rollItemDrop`. A room with multiple monsters rolls coins independently per monster, same as Items. Awarded in `Game.resolve()`'s victory branch, alongside item drops and Artifact grants.
 
-## 9.2 Spend — Merchant, Gambling Den, Wandering Hermit
+## 9.2 Spend — the Gatekeeper, Merchant, Gambling Den, Wandering Hermit
 
-Exactly 3 events accept coins; Blood Altar and Collapsed Floor are HP-only (`08-events.md` §8.10, §8.19, §8.20 for the mechanics; this section only covers the currency side):
+**The Gatekeeper's toll.** Before floor 1 the scripted Gatekeeper (`08-events.md` §8.7) asks for `gatekeeper.tollCoins` (50). Paying takes the coins and grants its blessing for the next rooms; a party short of the toll can't pay, and refusing costs nothing (`answerGatekeeper`, `src/engine/events/gatekeeper.ts`). The run opens with `party.startingCoins` (50), so a party that pays enters the dungeon with whatever the toll leaves of it.
+
+Inside the dungeon, exactly 3 event rooms accept coins; Blood Altar and Collapsed Floor are HP-only (`08-events.md` §8.10, §8.19, §8.20 for the mechanics; this section only covers the currency side):
 
 | Event | Cost |
 |---|---|
@@ -59,4 +61,4 @@ The Rest room's Runner (`03-survival-stats.md`, "The Merchant's Runner") adds a 
 - **Shop** — 5 items per visit, singly or as a lot of 3 at a price set by the item's tier (`runner.priceByTier`, `data/balance-config.json`); Refresh uses the Merchant's cost and limit. Trophies appear as a rare offer.
 - **Buyback** — he pays one fifth of the single price for consumables and trophies (`runner.buybackDivisor`), and refuses what he never sells (Legendary trophies, Exploration Kit). Selling is a coin source, small enough that buying and reselling never profits.
 
-The "exactly 3 events accept coins" rule in 9.2 counts event rooms only; the Runner is not an event room.
+The "exactly 3 event rooms accept coins" rule in 9.2 counts rooms only; the Gatekeeper stands outside any room, and the Runner is not an event room.

@@ -7,7 +7,7 @@ event's text reacts to what the party did at another, how the event chains escal
 the discovery curve at floors 15/35/70, the narrative-layer events' specs, the Wanderer, and the
 floor-100/120 ending system. The player-facing mechanics are in `08-events.md`: the shared
 worldview, recurring characters, chains and reflection in §8.2-§8.6, and each event's own entry
-from §8.7 on. The hidden ground-truth worldview behind this text (what the Sleeper/Covenant actually are, never told
+from §8.7 on, except `the-wanderer` (Part E) and `the-one-who-stayed` (§F.2), which are specified here. The hidden ground-truth worldview behind this text (what the Sleeper/Covenant actually are, never told
 to the player) lives in `12-world-bible.md`, which also settles the party's single reason for
 descending (§12.5, "the Call") — never told to the player either. Every quote below has passed a
 craft review (cringe/slop/craft) and a compliance check against `12-world-bible.md`.
@@ -441,8 +441,8 @@ discovery. So "walls are ribs" is only a likeness ("curve like ribs") rather tha
 the whole line builds toward the 1 real reveal: a trade-mark grown into bone, identical to the
 party's own. The "copied, not invented" conclusion is never stated — it's left entirely to
 inference, per §12.11's show-don't-tell rule, at the game's single deepest lore moment. Whether the
-growth is ongoing or long finished is never stated either; the reflection prompt only confirms the
-match "stroke for stroke", and the curious option's wall that "gives, a little" is as far as the
+growth is ongoing or long finished is never stated either; the reflection prompt only sends the party
+to check the seams of their own pack, and the curious option's wall that "gives, a little" is as far as the
 text goes toward an answer. Never "consuming" or "hunting" (§12.4 — passive and
 involuntary, like the whirlpool-finds-the-drain framing, never implying Dream has intent). Doesn't
 confirm any §12.9 item: the embedded object is generic, never tied to a specific named figure.
@@ -698,7 +698,7 @@ read as "you failed to unlock" anything, since no condition anywhere in this sys
 
 ### F.2 Ending 1 — Stay
 
-> "To stay — to be part of what holds this floor together."
+> "Stay — and be part of what holds this floor together."
 
 Resolution, once chosen:
 
@@ -754,7 +754,7 @@ overwrites a slot that still holds a run, removes it too.
 
 ### F.3 Ending 2 — Let Go
 
-> "To let go, together, all at once — however far down that actually leads."
+> "Let go, together, all at once — however far down that leads."
 
 Resolution:
 
@@ -871,7 +871,7 @@ unambiguously survived, the bad branch as unresolved, never as a confirmed death
 
 Available only under §F.1's condition.
 
-> "To keep going, past the point where any of you can call this a choice."
+> "Keep going, past the last place any of you would have turned back."
 
 Choosing it does not end the run — floor generation resumes normally from floor 101 onward, unchanged,
 until floor 120.
@@ -943,7 +943,12 @@ depth-scaling every monster already uses — no bespoke stat multiplier needed. 
 and, like every guard-room archetype's, data-declared (`06-level-system.md` §6.12): ropes that reach
 several targets ("Paid In Full"), one that strikes everyone through defense ("The Same Price"), a
 gaze that blinds and raises fear ("What's Left Listening"), a telegraphed heavy hit ("Everything You
-Asked For"), and two phase skills. It carries no `elite` action weights and no elite sprite, because
+Asked For"). Its HP comes in three bars, and each later bar brings two more skills: one it uses the
+moment the bar begins and a telegraph that replaces "Everything You Asked For". The second bar opens
+with "Hung Lower" (it heals itself each turn) and telegraphs "Ask Properly", a heavy hit on several
+targets; the third opens with "The Last of It" (fear on the whole party) and telegraphs "The Answer",
+a heavy hit on everyone. Eight skills in all (`skillIds` in `data/monsters.json`, defined in
+`data/monster-skills.json`). It carries no `elite` action weights and no elite sprite, because
 it can never spawn at Elite tier.
 
 **After victory**: the party can continue past floor 120 to "hunt down the cult's remnants" — pure

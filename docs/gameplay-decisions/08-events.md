@@ -39,21 +39,27 @@ EventDefinition {
   id: Id
   name: string
   description: string
-  kind: "instantReward" | "combatReward" | "artifactShop" | "hpGamble" | "cursedOffer" | "pairedOffer" | "artifactSacrifice" | "fortuneExchange" | "rescueGamble" | "coinGamble"
+  kind: "instantReward" | "combatReward" | "artifactShop" | "hpGamble" | "cursedOffer" | "pairedOffer" | "artifactSacrifice" | "fortuneExchange" | "rescueGamble" | "coinGamble" | "scripted"
+  tier: "common" | "rare"
   forceEquip?: boolean       // true only for twin-altars, see 07-items-artifacts.md §7.2
   minFloorDepth?: number     // rollEvent() gate — never rolled before this floor (values in the tier table above)
   onceLifetime?: boolean     // rollEvent() excludes it once fired
   freeTake?: boolean         // §8.5 Chain 4 — a zero-cost artifact grant, counted in freeRewardsTakenCount
+  noLoreExposure?: boolean   // never counts toward loreExposureCount; open-chest only
+  retiredCharacterEvent?: boolean  // rolls only once a retired character is recorded, {{class}} names its class; the-one-who-stayed only
+  escalation?: { counter: keyof narrativeCounters, thresholds: [string, string, string] }  // §8.5 Chain 2/3 — the counter and the 3 events.* threshold names; sacrificial-circle/blood-altar
   reflectionRequiresOutcome?: string // reflection shows only when eventOutcomes[id] holds this tag
   removedOnFounderVictory?: boolean  // 10-event-narrative.md Part F.5 — leaves the roll pool once the founder falls
   noArtifactReward?: boolean // instantReward only — still-breathing/the-delay/the-wanderer/the-one-who-stayed skip the usual artifact grant
   guaranteedArtifactId?: Id  // instantReward only — grants this exact artifact instead of rolling; waiting-supplies, vigil-candle, broken-seal, half-a-warning
   guaranteedItems?: { itemId: Id, count: number }[]  // instantReward only — items added to the inventory on top of the artifact; waiting-supplies only
+  backdrop?: string          // scene in data/backdrops.json shown while the event stands outside any room; the-gatekeeper only
 
   // Narrative layer fields (§8.2-§8.6) — optional, never change an event's underlying mechanic,
   // only what description/prompt text is shown and when.
   returnDescription?: string | Record<"won" | "lost" | "declined", string>   // §8.3 — merchant/wandering-hermit (string) or gambling-den (object, keyed by last outcome)
   stanceEcho?: { curious: string; wary: string; dismissive: string }        // §8.6 — appended to returnDescription per the party's dominant reflection stance; wandering-hermit only
+  campReflectionUnawareEcho?: string   // appended to a returnDescription visit once eventOutcomes["camp-reflection"] is "unaware"; wandering-hermit only
   chainBuildupDescription?: string     // §8.5 Chain 1 — guardian-fight/desecrated-altar only, shown at 2 skips
   chainForcedDescription?: string      // §8.5 Chain 1 — shown at 3 skips, Skip option hidden from then on
   chainForced2Description?: string     // §8.5 Chain 1 tier 2 — 2nd+ firing, past chainTier2MinFloorDepth
@@ -115,10 +121,14 @@ Darkest Terminal runs entirely on a TUI — no cutscene, no character portrait, 
 | `broken-seal` | schism evidence, dual-reading | a torn seal read as communion OR containment depending on the party's own recent bias — never both, never neither |
 | `half-a-warning` | schism evidence | a personal testimony, not a Covenant ritual object |
 | `still-breathing` | Covenant's own origin, undercut | reveals the spiral was copied, not invented by the Covenant |
+| `the-wanderer` | — (mundane, a remnant who gets a voice) | a different lost adventurer each time; specified in `10-event-narrative.md` Part E |
+| `the-one-who-stayed` | — (personal) | a figure in the gear of the class that stayed behind in an earlier run's Stay ending; specified in `10-event-narrative.md` §F.2 |
 
 Not every Covenant event picks a containment/communion lean — `merchant` and `cursed-shrine` are left
 ambiguous on purpose, per `12-world-bible.md` §12.6's own caution against forcing every location to
 declare a side.
+
+`the-wanderer` and `the-one-who-stayed` have no entry of their own below; their specs live in `10-event-narrative.md` (Part E and §F.2).
 
 **Tone, for any future writer touching this content**: the game never confirms whether the Sleeper is real, a delusion of the Covenant, or already dead. No event ever *names* the Sleeper or the Covenant to the player, in dialogue or narration — the player only ever sees a **trace** (an unexplained mark, brand, or pattern recurring across otherwise-unrelated events) and is meant to notice the repetition without being told what it means.
 
@@ -188,7 +198,7 @@ Chains 1-3 each also have a **tier-2 escalation** (`12-world-bible.md` §12.13) 
 
 Reuses the "Leave without fighting" choice from §8.9. **This counter is shared across both event ids** — `guardianFightSkip()` (`src/engine/events/guardianFight.ts`) is the same function for both `guardian-fight` and `desecrated-altar`, so skipping 1 of each counts as 2 toward the same total, not 1 toward 2 separate counters.
 
-- **At 2 skips**: the next room that rolls `guardian-fight` or `desecrated-altar` shows `chainBuildupDescription` — Skip is still offered, nothing mechanical changes, just 1 quiet detail changed in the description (e.g. guardian-fight's scraping is now "closer to the door than it was in the last room like this").
+- **At 2 skips**: the next room that rolls `guardian-fight` or `desecrated-altar` shows `chainBuildupDescription` — Skip is still offered, nothing mechanical changes, just 1 quiet detail changed in the description (guardian-fight's reads "Claws scrape on stone in the dark corner, then once more, a stride nearer the door.").
 - **At `events.guardianGrudgeForcedThreshold` (3) skips**: the next such room shows `chainForcedDescription` (per-id — guardian-fight's and desecrated-altar's differ) and **does not offer Skip** — `enterGuardianFight()` is the only option, checked both in the UI (`eventCombatReward` screen hides the option) and in `guardianFightSkip()` itself (rejects the call as a 2nd line of defense).
 - The counter **resets to 0** after that forced encounter fires, so the whole cycle (quiet buildup → forced fight) can happen again later in a long run rather than exactly once. `guardianGrudgeFiredCount` increments alongside the reset and never resets itself — it's how a later firing can tell it isn't the first.
 - **Tier 2**: once `guardianGrudgeFiredCount >= 1` (this chain has fired before) and floor depth is past `events.chainTier2MinFloorDepth`, the next forced encounter shows `chainForced2Description` instead — per-id like tier 1, each one a single line placing the threat further out toward the party than before (guardian-fight's scraping starts "while you're still on the stairs"; desecrated-altar's glow "had reached the doorframe"). Skip is rejected exactly as at tier 1.
