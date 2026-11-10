@@ -203,7 +203,7 @@ one-observable-change rule.
 | `collapsed-floor` | `"rescued"` / `"failed"` / `"declined"` | `collapsedFloorAttempt()` (whether the trapped person was reached in time) / the skip path |
 | `sacrificial-circle` | `"sacrificed"` | `sacrifice()`, on any successful call |
 | `wandering-hermit` | `"traded"` | `hermitExchangeFortune()`, on a completed trade (gates its reflection) |
-| `guardian-fight` / `desecrated-altar` | `"resolved"` / `"skipped"` | `game.ts`'s combat-victory reward block (the win path never reaches `closeEvent()`) / the skip path |
+| `guardian-fight` / `desecrated-altar` | `"resolved"` / `"skipped"` | `Game.grantVictoryRewards` (the win path never reaches `closeEvent()`) / the skip path |
 
 The `collapsed-floor` split is what lets a later `collapsed-floor` visit (its own 2 variants,
 below) read whether the trapped person was actually reached, not just that a payment was made.
