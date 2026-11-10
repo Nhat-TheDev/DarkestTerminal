@@ -90,7 +90,10 @@ between rooms, choosing skills/items, picking targets, rest-room choices,
 event choices. After a round of combat resolves, the log plays back what
 happened one line at a time (press any key to skip straight to the end),
 then press any key again to move on. Use **↑/↓** to scroll back through the
-combat log and **l** to open the full run log. **q** opens the pause menu
+combat log and **l** to open the full run log. **b** shows your party,
+**p** the floor map, **v** the monsters you've met, **m** your Memory (the
+abilities you've unlocked) and **j** your Journal; the footer always lists
+the keys that work on the current screen. **q** opens the pause menu
 (save, or save and exit), **s** quicksaves, and **Ctrl+C** quits.
 
 ![Skill select — a fight's first round, with the party's skills listed under the Dungeon panel](./docs/images/skill-select.svg)
@@ -127,6 +130,8 @@ before your party doesn't make it back is up to you.
 - **Cursed Coins** — a currency to spend, gamble, or trade away.
 - **Event rooms with real narrative** — random encounters, some of them tied
   to faces you'll see again.
+- **A journal that outlives the party** — piece together what the dungeon
+  shows you, run after run, in the party's own words.
 - **Save & continue** — pick up a run later from a list of your saves.
 - **Pixel art rendered directly in the terminal** — every character and
   monster is hand-drawn pixel art, composited straight into your terminal

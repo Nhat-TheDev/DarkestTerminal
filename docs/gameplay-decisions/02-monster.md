@@ -8,7 +8,7 @@
 
 ### Scaling formula by floor depth (`floorDepth`, floor 1 = depth 1)
 
-Current implementation: `growthBonus(stat, floorDepth)`, using the same tapered curve as characters — see `06-level-system.md` **§6.3/§6.6**. `speed = baseSpeed` (does not scale with floor).
+Current implementation: `monsterGrowthBonus(stat, floorDepth, typeWeight)` (`src/data/levelGrowth.ts`), which is `growthBonusForDepth(stat, floorDepth)` times the archetype's type weight below, using the same tapered curve as characters — see `06-level-system.md` **§6.3/§6.6**. `speed = baseSpeed` (does not scale with floor).
 
 This is the archetype → instance formula, used when spawning monsters into `Room.monsterIds`; the `attack/defense/hp/maxHp/speed` fields on a `Monster` are always the resolved values — the formula itself is never stored.
 
@@ -120,9 +120,9 @@ by `assertMonsterDataConsistent` (`src/data/monsters.ts`) at load time. `data/mo
 source of truth for the actual values, not this doc.
 
 This gates 2 things, both in `src/data/floor.ts`: which **archetype** fills a tier slot
-(`ARCHETYPES_BY_TIER[tier].filter(a => (a.minFloor ?? 0) <= depth)`), and — more importantly —
+(`eligibleAtDepth`: `minFloor ?? 0` at or below the depth), and — more importantly —
 which **`floorGeneration.roomCompositionTemplates` entry** (`data/balance-config.json`) **is even selectable** at a given depth
-(`eligibleTemplatesAtDepth`: a template is only eligible if *every* tier it lists has at least 1
+(`poolsAtDepth`: a template is only eligible if *every* tier it lists has at least 1
 archetype available at that depth). This is deliberately not "fall back to the one low-`minFloor`
 archetype in that tier" — a template needing "strong" tier simply isn't rolled at all below
 whatever floor the earliest strong-tier archetype unlocks at, so early floors stop rolling
@@ -198,7 +198,7 @@ A pattern is a key of `targeting.profiles` in `data/balance-config.json`; adding
 - **`aggressive`** — goes at whatever is most in front of it: mindless, slow, or a straightforward brawler. Mostly `aggro`, so taunting works on it. A slime has no way to pick a target, and giving the Void Amalgamation one would be giving it intent.
 - **`defensive`** — owns a self-targeted skill and turtles with it, and turns on whoever has been hurting it (`damage`). `aggro` still counts.
 
-  `runMonsterTurn` (`src/engine/monsterAI.ts`) also intercepts before the normal `actionWeights` roll: for a **normal-tier** monster whose archetype has `aiPattern: "defensive"`, once its HP drops below the threshold defined in code, it uses a self-targeted skill instead of rolling a normal action — see `src/engine/monsterAI.ts` for the exact HP threshold and chance rather than trusting a hand-copied number here. No other pattern has this branch.
+  `runMonsterTurn` (`src/engine/monsterAI.ts`) also intercepts before the normal `actionWeights` roll: for a **normal-tier** monster whose archetype has `aiPattern: "defensive"`, once its HP drops below `combat.defensiveLowHpThresholdFraction` (40%) of its max HP, it has `combat.defensiveLowHpSkillChance` (70%) to use a self-targeted skill instead of rolling a normal action. No other pattern has this branch.
 
   The branch looks for a skill whose `target` is `self` **and whose id is a key of the tier's own `actionWeights`** (a weight of 0 still counts: Zombie and Skeleton Warrior keep their skill at weight 0, so it fires only from this branch). It does not take the first entry of `skillIds`: that list holds every skill an archetype can roll at any tier, so a positional pick would reach into the guard-room kit. Skeleton Guard is the case that matters — its `skillIds` hold self-targeted guard-room skills (a guard stance, a riposte stance), but its normal weights name only the basic attack, so a normal-tier Skeleton Guard never reaches them. In practice the branch is live for Zombie and Skeleton Warrior (see "Regular monster skill kits" below). The guard-room `defensive` archetypes (Skeleton Guard, Zombie Knight, Dark Knight, Ancient Golem) use their self-targeted skills through their elite/boss weights and AI rules instead (`06-level-system.md` §6.12).
 - **`opportunistic`** — has both a reason and a means to get past the front line: it flies, it is small and low enough to slip through, or it is clever enough to choose. It ignores `aggro` entirely, so only a taunt's `targetPull` reaches it, and it goes for the wounded and the frightened.
@@ -215,7 +215,7 @@ Every archetype in `data/monsters.json` declares `roles: MonsterTier[]` (`Monste
 - **Trash** (`roles: ["normal"]` + `powerTier`): appear randomly in ordinary combat rooms — `COMBAT_ROOM_ARCHETYPES` in `src/data/monsters.ts`.
 - **Guard-only** (`roles: ["elite","boss"]`, no `powerTier`): guard the boss/elite room at the end of each floor — `GUARD_ROOM_ARCHETYPES`, 1 randomly chosen when building a `boss` room. Never appear as ordinary trash (e.g. Dragon never shows up as filler).
 - **Triple-role** (`roles: ["normal","elite","boss"]`): both. **Skeleton Guard** is currently the only one.
-- **Final boss** (`roles: ["boss"]` + `finalBoss: true`): exactly 1 (`the-founder`), spawned by name from `Game.enterFounderFight()`, never rolled.
+- **Final boss** (`roles: ["boss"]` + `finalBoss: true`): exactly 1 (`the-founder`, The Founder, shown in game as "What's Left of Him"), spawned by name from `Game.enterFounderFight()`, never rolled.
 
 `roles` must match `actionWeights` keys exactly, and sprite coverage in `data/sprites.json` must match `roles` exactly (normal→`monsters`, elite→`elites`, boss→`bosses`). Both are validated at load (`assertMonsterDataConsistent`, `assertMonsterSpritesConsistent`).
 

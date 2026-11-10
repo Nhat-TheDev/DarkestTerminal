@@ -52,11 +52,11 @@ with the description of existing gameplay.
 
 ### 1.8 Event room
 - Event room: stepping in rolls randomly for one of several event types, split by rarity tier
-- 3 of these events spend **Cursed Coins**, a party-wide currency earned from every monster kill, instead of HP
+- 3 of these events spend **Cursed Coins**, a party-wide currency earned from every monster kill, instead of HP; the scripted Gatekeeper encounter also asks a toll in coins
 - Details of each event type: **[`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)** §8; the currency itself: **[`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)** §9
 
 ### 1.9 Status Effect (buff/debuff)
-- Temporary states applied to characters/monsters (e.g. `poisoned`, `stunned`, `weakened`, `burning`, and buffs like `guard`/`rallied`), expiring after `durationTurns` — reapplying one only refreshes its duration, except a status marked `stackable` in `data/status-effects.json` (`bleeding`, Mage's `shredded`), which also adds a stack up to its `maxStacks`
+- Temporary states applied to characters/monsters (e.g. `poisoned`, `stunned`, `weakened`, `burning`, and buffs like `guard`/`rallied`), expiring after `durationTurns` — reapplying one only refreshes its duration, except a status marked `stackable` in `data/status-effects.json` (`bleeding`, `shredded`/`shredded-ii`/`shredded-iii`, `hexed`, `searing-light`, `chilled`), which also adds a stack up to its `maxStacks`
 - List of status effects and how they interact with skills: **[`gameplay-decisions/01-class-skill.md`](./gameplay-decisions/01-class-skill.md)** §1
 
 ---
@@ -85,7 +85,7 @@ Main type groups:
 - `ItemDefinition`, `ArtifactDefinition`
 - `Room`, `Floor` (dungeon structure)
 - `EventDefinition` (event room)
-- `Monster`, `Combatant`, `QueuedAction`, `CombatState` (`phase: "command" | "resolution"`)
+- `Monster`, `Combatant`, `QueuedAction`, `CombatState` (`phase: "command" | "resolution" | "over"`)
 - `GameState` — includes `coins` (Cursed Coins, §1.8/§9), `satiety` (§1.3), and `pendingArtifactDecision` (the in-flight Artifact equip/discard decision, §1.6)
 
 ---
@@ -101,11 +101,11 @@ Main type groups:
 - Consumable items + equippable Artifacts (permanent, one-shot equip/discard decision), rarity, drop sources
 - Event room: event types, split by rarity tier
 - Abilities: persistent cross-run meta-progression, 1 per character (no duplicates in a party), Elite/Boss both grant instant free unlocks, Boss additionally grants Stardust, guaranteed loss on death recoverable only by reclaiming (no swap) via Stardust — full catalog and mechanics in §11
-- Cursed Coins: a party-wide currency from combat kills, spent in 3 of the event rooms
+- Cursed Coins: a party-wide currency from combat kills, spent in 3 of the event rooms and on the Gatekeeper's toll
 
 ### Technical — [`technical-decisions.md`](./technical-decisions.md)
-- Generating rooms/floors via a runtime algorithm, guaranteeing no dead ends and that every branch converges on the boss by construction (no need for validate-and-retry)
-- The 2-phase round algorithm: command phase (locking in all 4 characters' actions, deducting MP/uses right then) followed by the execution phase (sorted by `speed`, monsters decide on the spot, retarget/cancel rule if the target died before its turn)
+- Generating rooms/floors via a runtime algorithm, that draws a shape and room types, checks every route rule (no dead ends, every branch converging on the boss, room/rest/event counts per route) and redraws until they hold, with a fixed single-lane fallback if no draw passes
+- The 2-phase round algorithm: command phase (locking in all 4 characters' actions; only items are consumed right then, while a skill's MP/uses/cooldown are committed when it actually executes) followed by the execution phase (sorted by `speed`, monsters decide on the spot, retarget/cancel rule if the target died before its turn)
 - Resolver function for `SkillEffect`: a single pure function that switches on `kind`, shared across skills/items/status effects
 
 ---

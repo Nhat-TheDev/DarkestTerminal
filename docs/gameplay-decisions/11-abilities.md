@@ -269,7 +269,7 @@ of the Artifact drop on the same kill.
   *current* run — equipped abilities are still locked in for the run,
   §11.1 "Character-select flow"). Revealed the same way an Artifact drop
   is — an entry in the room-clear reward screen (`GameState.lastRoomDrops`
-  → `buildRewardEntries`, `src/ui/screens/rewards.ts`), viewable for its
+  → `buildRewardEntries`, `src/ui/state.ts`), viewable for its
   name/rarity/effect/description exactly like an Artifact entry — not a
   combat-log line the way a passive Item pickup is. A permanent catalog
   unlock earns the same popup weight as an Artifact, since it changes the
@@ -432,7 +432,7 @@ shallow, lower-investment runs.
 
 - **One profile per save slot, not per run and not shared.** Each of the
   5 slots keeps its own unlocks; an ability earned in slot 1 never shows
-  up at slot 2's character select. The game over screen's `[1] New run`
+  up at slot 2's character select. The game over screen's `[n] New Run`
   starts the next run in the same slot, so its pool carries straight
   over. A character's
   `equippedAbilityId` is locked in once, at that run's creation

@@ -249,9 +249,11 @@ applied to whatever else it happens to fit.
 the dream. A transaction is one of the most rigid shapes a mind can carry — a price, a good, a
 bow — and everything else about him may have eroded around that one shape long before anyone
 noticed. Whether there's still someone "in there" running the transaction, or only the shape
-itself still executing, isn't answered here. `"The same hooded figure — or one just like it"`
-(§8.3) can be read literally: whatever holds this position may already have outlasted whoever
-first held it.
+itself still executing, isn't answered here. The return text (§8.3),
+"A hooded figure bows over a cloth of new wares, its hands folded at the same height, the bow
+dipping to the same depth.", never says it is the same figure; only the bow repeats, exactly. It
+can be read literally: whatever holds this position may already have outlasted whoever first held
+it.
 
 **The Hermit and the hooded figure are two people who went far down §12.7's line, in very
 different directions. The Stranger went somewhere else entirely.** The party's own repeated
