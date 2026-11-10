@@ -94,7 +94,8 @@ combat log and **l** to open the full run log. **b** shows your party,
 **p** the floor map, **v** the monsters you've met, **m** your Memory (the
 abilities you've unlocked) and **j** your Journal; the footer always lists
 the keys that work on the current screen. **q** opens the pause menu
-(save, or save and exit), **s** quicksaves, and **Ctrl+C** quits.
+(save, or save and exit), **s** quicksaves, and **Ctrl+C** quits. The run
+also saves itself after every action, so quitting never loses progress.
 
 ![Skill select — a fight's first round, with the party's skills listed under the Dungeon panel](./docs/images/skill-select.svg)
 

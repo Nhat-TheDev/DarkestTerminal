@@ -748,7 +748,9 @@ already causes.
 - **Save-scumming the ability roll**: the roll shares the Artifact drop's
   hook and draws from the run's live RNG stream. A save stores the RNG state
   (`rngState`, `src/engine/save.ts`), so reloading and replaying the same
-  actions reproduces the same roll — but a player who quicksaves before or
-  during an Elite/Boss fight and then acts differently consumes a different
-  number of draws and gets a fresh roll. Seeding the roll off the room's own
-  seed would close this; that is an RNG-architecture change.
+  actions reproduces the same roll. The run is written to its slot after
+  every key that changes it, so quitting never returns to a point before
+  the roll; what remains is copying the save file aside by hand before an
+  Elite/Boss fight and acting differently after restoring it. Seeding the
+  roll off the room's own seed would close this; that is an
+  RNG-architecture change.

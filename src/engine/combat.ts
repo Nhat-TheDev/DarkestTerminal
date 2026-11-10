@@ -152,8 +152,8 @@ function refEquals(a: CombatantRef, b: CombatantRef): boolean {
 }
 
 export function startCombat(roomId: string, monsterIds: string[], ctx: EngineContext, isBossFight: boolean): CombatState {
-  // A summon never outlives its combat.
-  dismissSummonsAtCombatEnd(ctx);
+  // A summon never outlives its combat. Emptied in place: a round's context shares this array.
+  ctx.summons.length = 0;
   for (const c of ctx.party) {
     c.usesRemainingThisCombat = {};
     c.cooldownsRemaining = {};
@@ -1274,8 +1274,8 @@ function resolveOneDamageEffect(
   );
 }
 
-// Dead summons stay in `ctx.summons` (and in saves), so ids count past every existing one, dead
-// included: a reused id would make getActorByRef resolve to the stale dead entry.
+// Dead summons stay in `ctx.summons` (and in saves) until the next fight starts, so ids count past every
+// existing one, dead included: a reused id would make getActorByRef resolve to the stale dead entry.
 function nextSummonId(ownerId: Id, archetypeId: Id, ctx: EngineContext): Id {
   const prefix = `${ownerId}-${archetypeId}-`;
   let highest = 0;
