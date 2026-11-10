@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import type { CombatantRef, GameState, Id, Monster, Summon } from "../types";
 import { Game } from "./game";
@@ -10,7 +10,7 @@ import { ABILITIES } from "../data/abilities";
 import { MONSTER_ARCHETYPES } from "../data/monsters";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
-import { SAVE_DIR } from "./paths";
+import { SAVE_DIR, writeFileAtomic } from "./paths";
 import { DEV_MODE } from "./devMode";
 import { LEGACY_PROFILE_FILENAME, deleteProfile, hasProfile, loadProfile, parseProfile, saveProfile } from "./profile";
 import pkg from "../../package.json";
@@ -67,10 +67,6 @@ export interface SlotEntry {
   unreadable: boolean;
 }
 
-function ensureSaveDir(): void {
-  if (!existsSync(SAVE_DIR)) mkdirSync(SAVE_DIR, { recursive: true });
-}
-
 // `id` goes straight into a filename and can be user input (dev save dump): block path traversal.
 const SAFE_SAVE_ID = /^[A-Za-z0-9_-]+$/;
 
@@ -100,9 +96,8 @@ function buildSaveFile(game: Game, id: Id, devDump?: true): SaveFile {
 }
 
 function writeSave(game: Game, id: Id, devDump?: true): SaveMeta {
-  ensureSaveDir();
   const save = buildSaveFile(game, id, devDump);
-  writeFileSync(savePath(id), JSON.stringify(save));
+  writeFileAtomic(savePath(id), JSON.stringify(save));
   return save.meta;
 }
 

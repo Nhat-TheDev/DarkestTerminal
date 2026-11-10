@@ -18,7 +18,7 @@ import {
   gameFromSave,
   SLOT_IDS,
 } from "../src/engine/save";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { beginRun, loadProfile, saveProfile } from "../src/engine/profile";
 import { join } from "node:path";
 import { SAVE_DIR } from "../src/engine/paths";
@@ -149,6 +149,16 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       saveRun(game);
       const slot = listSlots().find((s) => s.id === "slot2");
       expect(slot?.meta?.runId).toBe(game.state.runId);
+      expect(loadSave("slot2").state.runId).toBe(game.state.runId);
+    });
+  });
+
+  test("saveRun leaves no temp file behind", () => {
+    withGame(2, (game) => {
+      game.currentSaveSlot = "slot2";
+      saveRun(game);
+      saveRun(game);
+      expect(readdirSync(SAVE_DIR).filter((name) => name.endsWith(".tmp"))).toEqual([]);
       expect(loadSave("slot2").state.runId).toBe(game.state.runId);
     });
   });

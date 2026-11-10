@@ -220,6 +220,11 @@ Abilities, not shown above.
   slot then starts over from nothing.
 - A slot that has never held a run has no profile file → treated as
   `{ version: 1, unlockedAbilityIds: [] }` (only commons available).
+- A profile file that can't be parsed is renamed to
+  `slotN.profile.corrupt.json` and the slot reads as a fresh profile, so
+  the next write doesn't destroy what the file held. Profiles and saves
+  are written to a `.tmp` file and renamed into place
+  (`writeFileAtomic`, `src/engine/paths.ts`).
 - A legacy `profile.json`, shared by every slot, is copied at startup by
   `migrateLegacyProfile()` (`src/engine/save.ts`) into each slot that holds
   a loadable run and has no profile of its own yet, then renamed to
