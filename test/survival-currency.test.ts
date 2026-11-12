@@ -7,6 +7,7 @@ import { migrateGameState } from "../src/engine/migration";
 import { startCombat } from "../src/engine/combat";
 import { BALANCE } from "../src/data/balanceConfig";
 import { getItem } from "../src/data/items";
+import { addItem, applyDyingDamage } from "../src/engine/survival";
 import { makeCtx } from "./helpers";
 
 describe("Camp", () => {
@@ -31,6 +32,27 @@ describe("Camp", () => {
   test("party starts with BALANCE.party.startingExplorationKits", () => {
     const game = new Game(3);
     expect(game.state.inventory["exploration-kit"]).toBe(BALANCE.party.startingExplorationKits);
+  });
+
+  test("the inventory holds at most BALANCE.party.maxExplorationKits kits; other items have no cap", () => {
+    const game = new Game(4);
+    const max = BALANCE.party.maxExplorationKits;
+    game.state.inventory["exploration-kit"] = max - 1;
+    expect(addItem(game.state, "exploration-kit", 3)).toBe(1);
+    expect(game.state.inventory["exploration-kit"]).toBe(max);
+    expect(addItem(game.state, "exploration-kit", 1)).toBe(0);
+    expect(game.state.inventory["exploration-kit"]).toBe(max);
+    game.state.inventory["small-health-potion"] = max;
+    expect(addItem(game.state, "small-health-potion", 3)).toBe(3);
+  });
+
+  test("Dying takes dyingDamagePerRound plus dyingDamageMaxHpFraction of max HP each round", () => {
+    const { ctx } = makeCtx();
+    const c = ctx.party[0]!;
+    c.hp = c.maxHp;
+    applyDyingDamage([c], []);
+    const { dyingDamagePerRound, dyingDamageMaxHpFraction } = BALANCE.survival;
+    expect(c.maxHp - c.hp).toBe(dyingDamagePerRound + Math.round(c.maxHp * dyingDamageMaxHpFraction));
   });
 
   test("party starts with every item in BALANCE.party.startingItems", () => {

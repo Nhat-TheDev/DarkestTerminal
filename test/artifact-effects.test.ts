@@ -345,10 +345,14 @@ describe("artifacts", () => {
     expect(isPartyDying(state.satiety)).toBe(false);
 
     state.satiety = 30;
+    expect(isPartyExhausted(state.satiety)).toBe(false);
+    state.satiety = 29;
     expect(isPartyExhausted(state.satiety)).toBe(true);
     expect(isPartyDying(state.satiety)).toBe(false);
 
     state.satiety = 10;
+    expect(isPartyDying(state.satiety)).toBe(false);
+    state.satiety = 9;
     expect(isPartyExhausted(state.satiety)).toBe(true);
     expect(isPartyDying(state.satiety)).toBe(true);
   });
@@ -362,7 +366,7 @@ describe("artifacts", () => {
     recomputeCharacterStats(c, 100);
     expect(c.attack).toBe(baseAttack + 3);
 
-    recomputeCharacterStats(c, 30); // Exhausted threshold
+    recomputeCharacterStats(c, 29); // Exhausted threshold
     expect(c.attack).toBe(Math.round(baseAttack * (2 / 3)) + 3);
     expect(c.maxHp).toBe(statsForLevel(getClass(c.classId), c.level).maxHp);
   });
@@ -512,7 +516,7 @@ describe("artifacts", () => {
     expect(c.magicPower).toBe(baseMagic + 8);
     expect(c.speed).toBe(cls.baseSpeed + 2);
 
-    recomputeCharacterStats(c, 30);
+    recomputeCharacterStats(c, 29);
     expect(c.magicPower).toBe(Math.round(baseMagic * (2 / 3)) + 8);
     expect(c.speed).toBe(Math.round(cls.baseSpeed * (2 / 3)) + 2);
   });

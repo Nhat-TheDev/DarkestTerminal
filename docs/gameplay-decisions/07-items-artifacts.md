@@ -52,7 +52,9 @@ When the drop roll succeeds, `rollItemDrop` (`src/data/items.ts`) first picks a 
 
 - **Trophy bucket** — chosen with probability `items.trophyDropShare` (0.4), only for a monster that has trophies (`archetypeIds` containing its archetype). A monster with no trophy (Lesser Vampire, The Founder) skips this step.
 - **General pool** — every other drop: the items with no `archetypeIds`.
-- **Weight inside a bucket** = `items.tierWeights[tier]` (one weight per tier, falling from common to legendary), times `items.groupDropMultiplier` (0.6) for a `groupItem`. Weight does not scale with floor depth. Read `data/balance-config.json` for the current numbers rather than trusting a hand-copied percentage here.
+- **Inside the trophy bucket**, weight = `items.tierWeights[tier]` (one weight per tier, falling from common to legendary), times `items.groupDropMultiplier` (0.6) for a `groupItem`.
+- **Inside the general pool**, a tier is rolled first by `items.generalTierShare` (one share per tier the pool uses), then an item of that tier, each equally likely. A tier's share is split among its items, so adding an item to a tier thins the others in that tier and leaves every other tier alone. The loader refuses a general-pool item whose tier has no share.
+- Neither scales with floor depth. Read `data/balance-config.json` for the current numbers rather than trusting a hand-copied percentage here.
 
 With every consumable in one general pool, any given potion drops rarely, and a monster with a trophy spends 40% of its drops on trophies. That thins out healing and mana income on purpose, so coins and the Runner matter.
 
@@ -60,7 +62,7 @@ A dropped item is added directly to `GameState.inventory[itemId] += 1`. A room w
 
 ### 7.1.3 Catalog — general pool
 
-Full list (id, name, effect, tier): `data/items.json`, filtered to entries without an `archetypeIds` restriction — 45 items: 15 Common, 14 Uncommon, 15 Rare and 1 Unique (`exploration-kit`, `combatUsable: false`). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the rare Exploration Kit drop described there.
+Full list (id, name, effect, tier): `data/items.json`, filtered to entries without an `archetypeIds` restriction — 45 items: 15 Common, 14 Uncommon, 15 Rare and 1 Unique (`exploration-kit`, `combatUsable: false`). Satiety recovery is **not** a consumable-item concern — it only comes from the Rest room's Eat & Drink and from Camp (§3), plus the Exploration Kit drop described there.
 
 Every new run also starts with the items listed in `party.startingItems` (`data/balance-config.json`), on top of its Exploration Kits. `src/engine/game.ts` adds them to the inventory as they are, so changing the list needs no code.
 

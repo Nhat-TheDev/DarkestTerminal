@@ -38,34 +38,35 @@ Implementation: `drainSatiety(state, amount, log)` (`src/engine/survival.ts`), c
 
 The drain/threshold numbers are sized against the existing floor-generation guarantee: every route already passes through `floorGeneration.minRestRoomsPerRoute`–`maxRestRoomsPerRoute` Rest rooms (`src/data/floorPatterns.ts`), and the Rest room's Eat & Drink option restores satiety too (see below) — so a party following any route is expected to hit at least 1 Rest room before satiety drains far enough to reach Exhausted, as long as they don't stall on Skip repeatedly.
 
-### Exhausted — satiety ≤ 30
+### Exhausted — satiety < 30
 
-While satiety ≤ `survival.exhaustedThreshold` (30), the **whole party** is Exhausted:
+While satiety < `survival.exhaustedThreshold` (30), the **whole party** is Exhausted:
 
 - Every character's **own** `attack`, `defense`, `magicPower`, `aggro`, `speed` is multiplied by `survival.exhaustedStatMultiplier` (≈ 2/3) — `maxHp`/`maxMp` are never touched.
 - **Artifact `statBoost` bonuses are not reduced** — only the character's own base/leveled stat shrinks. Example: a character with 30 `attack` + 6 `attack` from an equipped artifact, while Exhausted: `round(30 × 2/3) = 20`, plus the untouched `+6` from the artifact → effective `attack = 26`.
 
-Modeled as a **live-computed condition, not a stored status effect** — mirrors how fear tiers work (`getFearTier(fear)` in `resolver.ts`, a function of the current value, not an `ActiveStatusEffect` with `turnsRemaining`). `isPartyExhausted(satiety)` (`src/engine/survival.ts`) is applied inside `recomputeCharacterStats` (`src/engine/party.ts`) — after the character's own base stat, before artifact bonuses are added on top. Whenever `GameState.satiety` itself changes (room-entry drain, Camp, Rest room Eat & Drink), `recomputeAllPartyStats(state)` re-runs this for the whole party, so Exhausted turns on/off instantly and continuously as satiety crosses 30 in either direction — no `StatusEffectDefinition` entry at all.
+Modeled as a **live-computed condition, not a stored status effect** — mirrors how fear tiers work (`getFearTier(fear)` in `resolver.ts`, a function of the current value, not an `ActiveStatusEffect` with `turnsRemaining`). `isPartyExhausted(satiety)` (`src/engine/survival.ts`) is applied inside `recomputeCharacterStats` (`src/engine/party.ts`) — after the character's own base stat, before artifact bonuses are added on top. Whenever `GameState.satiety` itself changes (room-entry drain, Camp, Rest room Eat & Drink), `recomputeAllPartyStats(state)` re-runs this for the whole party, so Exhausted turns on/off instantly and continuously as satiety crosses below 30 or back to it — no `StatusEffectDefinition` entry at all.
 
-### Dying — satiety ≤ 10
+### Dying — satiety < 10
 
-While satiety ≤ `survival.dyingThreshold` (10), the **whole party** additionally takes a poison-like DOT: every living character loses a fixed amount of HP each combat round (`applyDyingDamage`, `src/engine/survival.ts`, called from `resolveRound` in `combat.ts`), using the same per-round tick point the `poisoned` status uses.
+While satiety < `survival.dyingThreshold` (10), the **whole party** additionally takes a poison-like DOT: every living character loses HP each combat round (`applyDyingDamage`, `src/engine/survival.ts`, called from `resolveRound` in `combat.ts`), using the same per-round tick point the `poisoned` status uses.
 
-Per-round damage is `survival.dyingDamagePerRound`, set to match **Poisoned II**'s flat tick `amount` (`poisoned-ii`, `data/status-effects.json`). It is its own field, so retuning Poisoned II does not retune Dying. Same live-computed approach as Exhausted, not a stored status effect. **Stacks with Exhausted** — 10 ≤ 30, so both conditions are active at once below the Dying threshold: Exhausted's stat penalty plus Dying's HP tick, simultaneously.
+Per-round damage is `survival.dyingDamagePerRound` (10) plus `survival.dyingDamageMaxHpFraction` (0.05) of the character's `maxHp`, rounded, so it scales with the party's level instead of fading against a growing HP pool. Same live-computed approach as Exhausted, not a stored status effect. **Stacks with Exhausted** — the Dying threshold sits below the Exhausted one, so both conditions are active at once below the Dying threshold: Exhausted's stat penalty plus Dying's HP tick, simultaneously.
 
-Same reasoning as Exhausted — it's not a normal status-effect instance, so it has no cure mechanic of its own — the only way out is raising satiety back above 10 (Rest room, Camp, Exploration Kit).
+Same reasoning as Exhausted — it's not a normal status-effect instance, so it has no cure mechanic of its own — the only way out is raising satiety back to 10 or more (Rest room, Camp, Exploration Kit).
 
 ### Camp — a post-victory option, distinct from the Rest room
 
 A choice offered **after winning any combat room** (regular/Elite/Boss, not just entering a dedicated Rest room — a separate room type with its own 3-option flow, see below):
 
-- Costs **1 Exploration Kit** item (the `data/items.json` entry flagged `campKit`, `exploration-kit`; `combatUsable: false`) — the party starts a run with `party.startingExplorationKits` (4).
+- Costs **1 Exploration Kit** item (the `data/items.json` entry flagged `campKit`, `exploration-kit`; `combatUsable: false`) — the party starts a run with `party.startingExplorationKits` (6).
 - Restores **+30 satiety only** (`survival.campSatietyRestore`) — explicitly **no** HP/MP restore, that's what the Rest room is for.
 - Not offered if the party has 0 Exploration Kits left.
+- The inventory holds at most `party.maxExplorationKits` (10) kits. Every source goes through `addItem` (`src/engine/survival.ts`): a kit dropped at the cap is lost and left off the reward screen, `waiting-supplies` adds only what fits, and the Runner refuses the sale without taking coins.
 
 Implementation: `Game.camp()` → `campAction` (`src/engine/survival.ts`); UI flow in `src/ui/screens/camp.ts`, wired in after `roomReward` via `proceedAfterVictory`/`finishVictorySequence` (`src/ui/screens/context.ts`).
 
-**Drop source**: part of the general item pool (§7.1), from any monster, at the Unique tier (`items.tierWeights.unique`, the lowest weight of any general-pool item). It has no monster restriction. The `waiting-supplies` event (`08-events.md` §8.14) is the other source: it adds 3 kits.
+**Sources**: a drop from any monster, as the only Unique item of the general pool (§7.1), so it takes the whole Unique share of `items.generalTierShare`; the `waiting-supplies` event (`08-events.md` §8.14), which adds 3 kits; and the Merchant's Runner, who sometimes sells one (below).
 
 Exploration Kit's `effects: [{ kind: "modifyStat", stat: "satiety", amount: 30 }]` is what its item card shows. The kit is never used as an item: it is `combatUsable: false`, items can't be used outside combat (`07-items-artifacts.md`), and Camp restores `survival.campSatietyRestore` (30) itself.
 
@@ -116,7 +117,7 @@ Entering a rest room, the player picks 1 of 3 options (`Game.restAction`):
 
 | Option | Effect |
 |---|---|
-| **Eat & Drink** (`restEatDrink`) | `hp`/`mp` restored by `survival.eatDrinkRestoreFraction` (30%) of max, **plus** `survival.eatDrinkSatietyRestore` (30) satiety, all in 1 action |
+| **Eat & Drink** (`restEatDrink`) | `hp`/`mp` restored by `survival.eatDrinkRestoreFraction` (30%) of max, **plus** `survival.eatDrinkSatietyRestore` (40) satiety, all in 1 action |
 | **Chat** (`restChat`) | `hp`/`mp` restored by `survival.chatRestoreFraction` of max, plus `fear` reduced by `survival.chatFearRelief` — doesn't touch satiety (satiety recovery is tied to "eating") |
 | **Skip** | No effect at all, just marks the room as cleared (`room.cleared = true`) and moves on |
 
@@ -158,7 +159,9 @@ Resulting odds at `shop.tilt` (2), in percent:
 | 91–100 | 0.2 / 5.2 / 94.6 | 0.0 / 0.0 / 0.7 / 9.4 / 89.9 |
 <!-- docs:end -->
 
-A tier is rolled first, then an item of that tier. A trophy must be one that can drop at this depth (`trophyAvailableAt`: a monster in its `archetypeIds` has `minFloor` at or below the floor), and an item already in this visit's stock is skipped; a tier left with nothing to offer is dropped and the roll repeats over the rest. A trophy offer that finds no trophy falls back to a consumable. Legendary trophies and Exploration Kit are never offered. Code: `rollShopOffers`, `src/data/shopStock.ts`.
+A tier is rolled first, then an item of that tier. A trophy must be one that can drop at this depth (`trophyAvailableAt`: a monster in its `archetypeIds` has `minFloor` at or below the floor), and an item already in this visit's stock is skipped; a tier left with nothing to offer is dropped and the roll repeats over the rest. A trophy offer that finds no trophy falls back to a consumable. Legendary trophies are never offered. Code: `rollShopOffers`, `src/data/shopStock.ts`.
+
+**Exploration Kit.** The kit is not part of those rolls. When the Runner appears, `rollRestRunner` rolls `runner.campKitOfferChance` (0.3) once; on a success one of his 5 offers is a single kit at the Unique single price, never a lot. A refresh rerolls only the other offers: a kit still on the cloth stays, a sold one stays sold, and a visit that began without a kit never gets one. He does not buy kits back.
 
 **Barter.** The Trade screen's `[t] Barter` lists 2 trophy kinds the Runner will take (`barter.offerCount`), drawn from those that can drop on the current floor, Legendary included. Each offer is made once, both in the same visit if the party can pay. The offer shows what it buys; once traded the buff waits, hidden, for **this floor's elite/boss room**: when that fight starts it applies to the whole party, and it ends with the fight. A buff still waiting when the floor ends is lost.
 

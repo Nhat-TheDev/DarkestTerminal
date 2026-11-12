@@ -11,7 +11,7 @@ import {
 } from "../data/endings";
 import { FINAL_BOSS_ARCHETYPE, spawnMonster } from "../data/monsters";
 import { createCharacter, applyPartyExp, resolveArtifactEquip, discardPendingArtifact, grantArtifact, recomputeAllPartyStats, type PartyActionError } from "./party";
-import { restEatDrink, restEatDrinkSatiety, restChat, campAction, drainSatiety, SATIETY_DRAIN_COMBAT } from "./survival";
+import { restEatDrink, restEatDrinkSatiety, restChat, campAction, drainSatiety, addItem, SATIETY_DRAIN_COMBAT } from "./survival";
 import { Rng, derivedRng } from "./rng";
 import {
   type EngineContext,
@@ -734,10 +734,7 @@ export class Game {
       if (!monster) continue;
       coinsGained += rollCoinDrop(monster, rewardRng);
       const itemId = rollItemDrop(monster.archetypeId, rewardRng);
-      if (itemId) {
-        this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
-        droppedItemIds.push(itemId);
-      }
+      if (itemId && addItem(this.state, itemId, 1) > 0) droppedItemIds.push(itemId);
       if (monster.tier === "elite" || monster.tier === "boss") {
         // Only a real Boss kill may roll boss-restricted artifacts; Collapsed Floor rolls the same table without qualifying.
         const artifactId = rollArtifact(monster.tier, rewardRng, this.state.floor.depth, monster.tier === "boss" ? "boss" : undefined);

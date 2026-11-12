@@ -119,10 +119,11 @@
     "exhaustedThreshold": 30,
     "exhaustedStatMultiplier": 0.667,
     "dyingThreshold": 10,
-    "dyingDamagePerRound": 6,
+    "dyingDamagePerRound": 10,
+    "dyingDamageMaxHpFraction": 0.05,
     "campSatietyRestore": 30,
     "eatDrinkRestoreFraction": 0.3,
-    "eatDrinkSatietyRestore": 30,
+    "eatDrinkSatietyRestore": 40,
     "chatRestoreFraction": 0.1,
     "chatFearRelief": 20,
     "campReflectionTier1Threshold": 3,
@@ -147,7 +148,8 @@
   "party": {
     "size": 4,
     "maxEquippedArtifacts": 3,
-    "startingExplorationKits": 4,
+    "startingExplorationKits": 6,
+    "maxExplorationKits": 10,
     "startingItems": {
       "small-health-potion": 4,
       "small-mana-potion": 4
@@ -267,6 +269,12 @@
     "itemDropChance": 0.9,
     "trophyDropShare": 0.4,
     "groupDropMultiplier": 0.6,
+    "generalTierShare": {
+      "common": 50,
+      "uncommon": 30,
+      "rare": 15,
+      "unique": 5
+    },
     "tierWeights": {
       "common": 1,
       "uncommon": 0.8,
@@ -282,6 +290,7 @@
     "offerCount": 5,
     "singleChance": 0.3,
     "trophyOfferChance": 0.05,
+    "campKitOfferChance": 0.3,
     "lotSize": 3,
     "buybackDivisor": 5,
     "priceByTier": {
