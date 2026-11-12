@@ -1152,6 +1152,8 @@ export interface CombatState {
 
 export interface GameState {
   runId: string;
+  /** Seeds the run's derived streams (`derivedRng`): floor generation and a won fight's rewards. */
+  runSeed: number;
   party: Character[];
   floor: Floor;
   currentRoomId: Id;

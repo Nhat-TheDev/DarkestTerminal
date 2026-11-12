@@ -153,6 +153,15 @@ seed. `Game.advanceToNextFloor()` (`src/engine/game.ts`) calls `createFloor`
 again with `depth + 1` every time the guard room is cleared
 (`gameplay-decisions/06-level-system.md` §6.9).
 
+A run draws from 3 streams, so a draw spent on one never moves another.
+The main stream (`ctx.rng`, saved as `rngState`) serves combat and events.
+Floor generation and a won fight's rewards each take a stream derived from
+`GameState.runSeed` and a label (`derivedRng`, `src/engine/rng.ts`):
+`"floor"` with the depth, and `"rewards"` with the depth and the room id.
+A floor's layout and a room's drops are the same for a run however its
+fights were played. A save from before `runSeed` gets one from its `runId`
+(`migrateGameState`).
+
 `test/floorPatterns.test.ts` is the property test for the generator;
 `test/floorMap.test.ts` checks the map against the approved mockup, column
 alignment, the width bound and an old-save floor.
@@ -253,7 +262,7 @@ Used for Acolyte's Purify (choose one of two sides), Divine Descent (both sides 
 - 2 `SkillTarget` values cover the "both/either side" shape: `"singleAllyOrEnemy"` (Purify — the player picks a single target, which can be an ally or an enemy) and `"allAlliesAndEnemies"` (Divine Descent, Total Plague — automatically targets everyone on both sides).
 - `SkillEffect.appliesToRelation?: "ally" | "enemy"` narrows one effect to only the side of the population already resolved by the skill's own `target` — e.g. Purify's `removeStatusEffect` effect has `appliesToRelation: "ally"` and its `damage` effect has `appliesToRelation: "enemy"`, both still resolved against whatever `target` picked out. This is a *filter within* an already-resolved population, not a separate resolution — the only shape that correctly expresses Purify, whose `singleAllyOrEnemy` target is exactly 1 player-picked actor whose side decides which effect fires.
 - `SkillEffect.target?: SkillTarget` instead *overrides* the skill's own `target` for one effect, resolving it against a wholly separate population — e.g. a `summon` effect always lands on the caster (`target: "self"`) even when the skill's own `target` is `allEnemies`. Only self/all-* targets are supported (a `single*` override is skipped — there's no UI to pick a 2nd target mid-cast).
-- `applySkillEffects` (`src/engine/combat.ts`): `isOverrideEffect(e)` is `e.kind === "summon" || (e.target !== undefined && e.target !== skill.target)`. Override effects are resolved once each, against their own `effect.target ?? "self"` (for `summon`) or `effect.target` population, before the main per-target loop runs. Every other effect goes through the normal per-target loop (1 accuracy roll per target, shared by every effect on that target); an effect with `appliesToRelation` set is skipped there for any target on the wrong side.
+- `applySkillEffects` (`src/engine/combat.ts`) runs a cast in 3 steps that share one `Cast` object: `castOwnPopulationEffects`, `castOnTarget` per target, then `finishCast`. `hasOwnPopulation(e, skill)` is true for a `summon`, `summonMonster`, `commandSummons` or `throwDice` effect and for any effect whose `target` differs from the skill's. Those are resolved once each by `castOwnPopulationEffects`, against their own `effect.target ?? "self"` (for `summon`) or `effect.target` population, before the main per-target loop runs. Every other effect goes through the normal per-target loop (1 accuracy roll per target, shared by every effect on that target); an effect with `appliesToRelation` set is skipped there for any target on the wrong side.
 - `autoResolveTargets`: for `"allAlliesAndEnemies"` → returns the union of all living characters + monsters; for `"singleAllyOrEnemy"` → returns `null` just like `singleEnemy`/`singleAlly` (forcing the UI to prompt).
 - `resolveExecutionTargets`: for `"singleAllyOrEnemy"` — if the original target died, redirect according to the original target's type (if it was a monster → redirect like `singleEnemy`; if it was a character → fizzle like `singleAlly`). For `"allAlliesAndEnemies"` — filter dead entries out of the combined list.
 - The AoE accuracy roll (`gameplay-decisions/04-fear-combat.md` §4.1) applies to the `enemy`-facing effects of these skills; `ally`-facing effects don't roll.

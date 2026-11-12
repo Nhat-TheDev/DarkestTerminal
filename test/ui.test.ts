@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { KeyEvent, RGBA, type CapturedFrame } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
@@ -334,6 +334,43 @@ describe("key handler lifecycle", () => {
   });
 });
 
+describe("autosave", () => {
+  async function fightInSlot(slotId: string) {
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    clearSlot(slotId);
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"], undefined, undefined, false, slotId);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    const monster = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+    game.ctx.monsters.push(monster);
+    room.monsterIds = [monster.id];
+    room.cleared = false;
+    game.state.combat = startCombat(room.id, [monster.id], game.ctx, true);
+    const app = new App(setup.renderer, game);
+    await setup.renderOnce();
+    return { setup, game, app, path: join(SAVE_DIR, `${slotId}.json`) };
+  }
+
+  test("a key that leaves the run as it was writes nothing", async () => {
+    const { setup, app, path } = await fightInSlot("slot2");
+    setup.mockInput.pressKey("b");
+    expect(app.debugUiState.kind).toBe("characterInfo");
+    expect(existsSync(path)).toBe(false);
+    clearSlot("slot2");
+  });
+
+  test("a key that changes the run writes it to the slot", async () => {
+    const { setup, game, app, path } = await fightInSlot("slot2");
+    for (let presses = 0; presses < 10 && game.state.combat!.queuedActions.length === 0; presses++) {
+      setup.mockInput.pressKey(app.debugUiState.kind === "skillDetail" ? "RETURN" : "1");
+      await setup.renderOnce();
+    }
+    expect(game.state.combat!.queuedActions.length).toBeGreaterThan(0);
+    expect(existsSync(path)).toBe(true);
+    expect(loadSave("slot2").state.combat?.queuedActions).toEqual(game.state.combat!.queuedActions);
+    clearSlot("slot2");
+  });
+});
+
 describe("game over", () => {
   async function defeatedRunInSlot() {
     const setup = await createTestRenderer({ width: 150, height: 45 });
@@ -376,6 +413,14 @@ describe("game over", () => {
     await tick();
     await tick();
     expect(second.exits).toEqual(["menu"]);
+  });
+
+  test("a key pressed on the game over screen does not write the ended run back", async () => {
+    const { setup } = await defeatedRunInSlot();
+    setup.mockInput.pressKey("1");
+    await tick();
+    expect(listSlots()[0]!.meta).toBeNull();
+    expect(existsSync(join(SAVE_DIR, "slot1.json"))).toBe(false);
   });
 
   test("a slot whose run ended before the next party was picked still shows in Continue", async () => {

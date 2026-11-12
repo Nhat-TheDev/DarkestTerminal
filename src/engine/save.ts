@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import type { CombatantRef, GameState, Id, Monster, Summon } from "../types";
 import { Game } from "./game";
@@ -10,7 +10,7 @@ import { ABILITIES } from "../data/abilities";
 import { MONSTER_ARCHETYPES } from "../data/monsters";
 import { MAX_LEVEL } from "../data/levelGrowth";
 import { BALANCE } from "../data/balanceConfig";
-import { SAVE_DIR } from "./paths";
+import { SAVE_DIR, writeFileAtomic } from "./paths";
 import { DEV_MODE } from "./devMode";
 import { LEGACY_PROFILE_FILENAME, deleteProfile, hasProfile, loadProfile, parseProfile, saveProfile } from "./profile";
 import pkg from "../../package.json";
@@ -67,10 +67,6 @@ export interface SlotEntry {
   unreadable: boolean;
 }
 
-function ensureSaveDir(): void {
-  if (!existsSync(SAVE_DIR)) mkdirSync(SAVE_DIR, { recursive: true });
-}
-
 // `id` goes straight into a filename and can be user input (dev save dump): block path traversal.
 const SAFE_SAVE_ID = /^[A-Za-z0-9_-]+$/;
 
@@ -79,41 +75,41 @@ function savePath(id: Id): string {
   return join(SAVE_DIR, `${id}.json`);
 }
 
-function buildSaveFile(game: Game, id: Id, devDump?: true): SaveFile {
-  return {
-    meta: {
-      id,
-      timestamp: Date.now(),
-      floorDepth: game.state.floor.depth,
-      partyLevel: game.state.party[0]?.level ?? 1,
-      partyClassIds: game.state.party.map((c) => c.classId),
-      saveVersion: APP_VERSION,
-      runId: game.state.runId,
-      playTime: game.playTimeSec(),
-      ...(devDump ? { devDump } : {}),
-    },
-    state: JSON.parse(JSON.stringify(game.state)),
-    monsters: JSON.parse(JSON.stringify(game.ctx.monsters)),
-    summons: JSON.parse(JSON.stringify(game.ctx.summons)),
-    rngState: game.ctx.rng.getState(),
+/**
+ * The run as it is written to disk, without `meta`. A log entry's combatant snapshot is only read while its
+ * round is revealed, and a loaded save never replays one, so each is written empty: still present, which is
+ * how the UI tells a resolved round from a fresh fight.
+ */
+export function saveBody(game: Game): string {
+  const body: Omit<SaveFile, "meta"> = { state: game.state, monsters: game.ctx.monsters, summons: game.ctx.summons, rngState: game.ctx.rng.getState() };
+  return JSON.stringify(body, (key, value) => (key === "snapshot" ? [] : value));
+}
+
+function writeSave(game: Game, id: Id, body: string, devDump?: true): SaveMeta {
+  const meta: SaveMeta = {
+    id,
+    timestamp: Date.now(),
+    floorDepth: game.state.floor.depth,
+    partyLevel: game.state.party[0]?.level ?? 1,
+    partyClassIds: game.state.party.map((c) => c.classId),
+    saveVersion: APP_VERSION,
+    runId: game.state.runId,
+    playTime: game.playTimeSec(),
+    ...(devDump ? { devDump } : {}),
   };
+  writeFileAtomic(savePath(id), `{"meta":${JSON.stringify(meta)},${body.slice(1)}`);
+  return meta;
 }
 
-function writeSave(game: Game, id: Id, devDump?: true): SaveMeta {
-  ensureSaveDir();
-  const save = buildSaveFile(game, id, devDump);
-  writeFileSync(savePath(id), JSON.stringify(save));
-  return save.meta;
-}
-
-export function saveRun(game: Game): SaveMeta | null {
+/** `body` lets a caller that already built it (to see whether the run changed) skip a second pass. */
+export function saveRun(game: Game, body = saveBody(game)): SaveMeta | null {
   if (!game.currentSaveSlot) return null;
-  return writeSave(game, game.currentSaveSlot);
+  return writeSave(game, game.currentSaveSlot, body);
 }
 
 export function writeDevDumpSave(game: Game, id: Id): SaveMeta {
   if (!DEV_MODE) throw new Error("writeDevDumpSave is only available in dev mode");
-  return writeSave(game, id, true);
+  return writeSave(game, id, saveBody(game), true);
 }
 
 /** Clears the run only; the slot's profile survives permadeath. */

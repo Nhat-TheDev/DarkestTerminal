@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
-import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadProfile, addRetiredCharacter, markRetiredCharacterEventShown, profileFilename } from "../src/engine/profile";
+import { loadProfile, addRetiredCharacter, markRetiredCharacterEventShown, profileFilename, corruptProfileFilename } from "../src/engine/profile";
 
 const SLOT = "slot1";
 
@@ -54,5 +54,20 @@ describe("profile.ts — Part F.2's cross-run persistence layer", () => {
     writeFileSync(path, "{ not valid json");
     expect(() => loadProfile(SLOT)).not.toThrow();
     expect(loadProfile(SLOT).retiredCharacters).toEqual([]);
+  });
+
+  test("a corrupt profile file is set aside, so the next write does not destroy it", () => {
+    resetProfile();
+    const dir = process.env.DARKEST_TERMINAL_SAVE_DIR!;
+    writeFileSync(join(dir, profileFilename(SLOT)), "{ not valid json");
+    addRetiredCharacter(SLOT, "knight");
+    expect(readFileSync(join(dir, corruptProfileFilename(SLOT)), "utf8")).toBe("{ not valid json");
+    expect(loadProfile(SLOT).retiredCharacters).toEqual([{ classId: "knight" }]);
+  });
+
+  test("a profile write leaves no temp file behind", () => {
+    resetProfile();
+    addRetiredCharacter(SLOT, "knight");
+    expect(readdirSync(process.env.DARKEST_TERMINAL_SAVE_DIR!).filter((name) => name.endsWith(".tmp"))).toEqual([]);
   });
 });

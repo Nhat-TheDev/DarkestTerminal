@@ -220,6 +220,11 @@ Abilities, not shown above.
   slot then starts over from nothing.
 - A slot that has never held a run has no profile file → treated as
   `{ version: 1, unlockedAbilityIds: [] }` (only commons available).
+- A profile file that can't be parsed is renamed to
+  `slotN.profile.corrupt.json` and the slot reads as a fresh profile, so
+  the next write doesn't destroy what the file held. Profiles and saves
+  are written to a `.tmp` file and renamed into place
+  (`writeFileAtomic`, `src/engine/paths.ts`).
 - A legacy `profile.json`, shared by every slot, is copied at startup by
   `migrateLegacyProfile()` (`src/engine/save.ts`) into each slot that holds
   a loadable run and has no profile of its own yet, then renamed to
@@ -741,9 +746,11 @@ already causes.
   rate or the catalog size may need adjusting before the Stardust-side
   numbers do.
 - **Save-scumming the ability roll**: the roll shares the Artifact drop's
-  hook and draws from the run's live RNG stream. A save stores the RNG state
-  (`rngState`, `src/engine/save.ts`), so reloading and replaying the same
-  actions reproduces the same roll — but a player who quicksaves before or
-  during an Elite/Boss fight and then acts differently consumes a different
-  number of draws and gets a fresh roll. Seeding the roll off the room's own
-  seed would close this; that is an RNG-architecture change.
+  hook, and a won fight's rewards draw from a stream of their own, seeded
+  by the run and the room (`derivedRng(runSeed, "rewards", depth, roomId)`,
+  `Game.grantVictoryRewards`). What an Elite or Boss drops is therefore
+  fixed before the fight starts: restoring a copied save and playing the
+  fight another way gives the same Artifact and the same Ability. Which
+  event a room holds and how an event's own rolls land still come from
+  the run's main stream, so those can differ after an earlier fight is
+  replayed differently.

@@ -1,3 +1,4 @@
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -16,3 +17,11 @@ function resolveSaveDir(): string {
 
 /** In a leaf module: save.ts and profile.ts both need it, and defining it in either would close an import cycle. */
 export const SAVE_DIR = resolveSaveDir();
+
+/** Writes beside `path` and renames over it, so a crash mid-write leaves the old file whole. */
+export function writeFileAtomic(path: string, text: string): void {
+  mkdirSync(SAVE_DIR, { recursive: true });
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, text);
+  renameSync(tmp, path);
+}

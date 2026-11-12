@@ -152,8 +152,8 @@ function refEquals(a: CombatantRef, b: CombatantRef): boolean {
 }
 
 export function startCombat(roomId: string, monsterIds: string[], ctx: EngineContext, isBossFight: boolean): CombatState {
-  // A summon never outlives its combat.
-  dismissSummonsAtCombatEnd(ctx);
+  // A summon never outlives its combat. Emptied in place: a round's context shares this array.
+  ctx.summons.length = 0;
   for (const c of ctx.party) {
     c.usesRemainingThisCombat = {};
     c.cooldownsRemaining = {};
@@ -1148,16 +1148,13 @@ function applyStacks(effect: SkillEffect, skill: SkillDefinition, source: Actor,
   }
 }
 
-/** Set while a stack burst's free cast resolves, so that cast cannot set off another burst. */
-let stackBurstRunning = false;
-
 /**
  * Warlock's passive — once a target reaches the passive's `stackBurst.atStacks` of its status, it
  * loses `removeStacks` of them and takes a free cast of `stackBurst.skillId` at the rank's
  * `stackBurstPowerPercent` of that skill's damage. Unlocked at level 5/20/35.
  */
 function stackBurst(source: Character, target: Actor, combat: CombatState, ctx: EngineContext, log: LogEntry[]): void {
-  if (stackBurstRunning || !isActorAlive(target)) return;
+  if (!isActorAlive(target)) return;
   const passive = getClass(source.classId).passiveSkill;
   const burst = passive.stackBurst;
   const rankDef = passiveRankDef(passive, source.level);
@@ -1174,12 +1171,8 @@ function stackBurst(source: Character, target: Actor, combat: CombatState, ctx: 
       e.kind === "damage" ? { ...e, amount: Math.round((e.amount ?? 0) * power), offenseMultiplierPercent: Math.round((e.offenseMultiplierPercent ?? 100) * power) } : e
     ),
   };
-  stackBurstRunning = true;
-  try {
-    applySkillEffects(free, source, [target], combat, ctx, log);
-  } finally {
-    stackBurstRunning = false;
-  }
+  // The free cast cannot set off another burst.
+  applySkillEffects(free, source, [target], combat, ctx, log, { noStackBurst: true });
 }
 
 /** A `coinFlip`'s win chance for this caster: its own, times every `coinFlipWinChanceMultiplier` status the caster carries, at most 1. */
@@ -1274,8 +1267,8 @@ function resolveOneDamageEffect(
   );
 }
 
-// Dead summons stay in `ctx.summons` (and in saves), so ids count past every existing one, dead
-// included: a reused id would make getActorByRef resolve to the stale dead entry.
+// Dead summons stay in `ctx.summons` (and in saves) until the next fight starts, so ids count past every
+// existing one, dead included: a reused id would make getActorByRef resolve to the stale dead entry.
 function nextSummonId(ownerId: Id, archetypeId: Id, ctx: EngineContext): Id {
   const prefix = `${ownerId}-${archetypeId}-`;
   let highest = 0;
@@ -1636,12 +1629,51 @@ function rollStatusLevel(effect: SkillEffect, ctx: EngineContext): SkillEffect {
   return { ...effect, statusEffectId: statusAtRankLevel(effect.statusEffectId, level)!.id, rankWeights: undefined };
 }
 
-export function applySkillEffects(skill: SkillDefinition, source: Actor, targets: Actor[], combat: CombatState, ctx: EngineContext, log: LogEntry[]): Summon | undefined {
-  const hasBonus = hasConditionalBonusStatus(skill, source);
-  let landedDamageHit = false;
-  let bonusEffectLanded = false;
-  const attackerBuffRolledOn = new Set<Actor>();
+/** What one cast's phases share: what was settled before any effect resolved, and what they found out. */
+interface Cast {
+  skill: SkillDefinition;
+  source: Actor;
+  combat: CombatState;
+  ctx: EngineContext;
+  log: LogEntry[];
+  hasBonus: boolean;
+  stealthBreak: { guaranteedCrit: boolean; damageBonusPercent: number };
+  /** Undefined for a skill with no `coinFlip`. */
+  coinWon: boolean | undefined;
+  casterLowHp: boolean;
+  /** Damage reaching the opposing side marks every opposing target as attacked, whatever its own effects. */
+  skillDealsDamage: boolean;
+  allowStackBurst: boolean;
+  landedDamageHit: boolean;
+  bonusEffectLanded: boolean;
+  brokeStealthThisCast: boolean;
+  attackerBuffRolledOn: Set<Actor>;
+  spawnedSummon?: Summon;
+}
 
+/** An effect with its own `target`, and every effect that lands on the caster's side by nature, resolves against its own population instead of the skill's targets. */
+function hasOwnPopulation(e: SkillEffect, skill: SkillDefinition): boolean {
+  return e.kind === "summon" || e.kind === "summonMonster" || e.kind === "commandSummons" || e.kind === "throwDice" || (e.target !== undefined && e.target !== skill.target);
+}
+
+/**
+ * A party-side caster can fall mid-cast to damage turned back on it (riposte); the cast stops
+ * there. Monsters are exempt: Self-Destruct's self-hit resolves before its area hit by design.
+ */
+function casterFell(cast: Cast): boolean {
+  return isPlayerSide(cast.source) && !isActorAlive(cast.source);
+}
+
+export function applySkillEffects(
+  skill: SkillDefinition,
+  source: Actor,
+  targets: Actor[],
+  combat: CombatState,
+  ctx: EngineContext,
+  log: LogEntry[],
+  options: { noStackBurst?: boolean } = {}
+): Summon | undefined {
+  const hasBonus = hasConditionalBonusStatus(skill, source);
   const breakStatus = findBreakBonusStatus(source);
   const breakDef = breakStatus ? getStatusEffect(breakStatus.statusEffectId) : undefined;
   const thresholdStatusActive = !skill.isBuff && syncPassiveThresholdStatus(source, log);
@@ -1652,199 +1684,220 @@ export function applySkillEffects(skill: SkillDefinition, source: Actor, targets
   // One roll for the whole cast, before any target is hit.
   const coinWon = skill.coinFlip ? ctx.rng.chance(coinFlipWinChance(skill, source)) : undefined;
   const casterLowHp = skill.casterHpBelowBonus !== undefined && source.hp / source.maxHp < skill.casterHpBelowBonus.hpPercentThreshold / 100;
-  let brokeStealthThisCast = false;
-
-  // An effect with its own `target`, and every `summon` effect (it lands on the caster), resolves here
-  // against its own population, before the per-target loop below, which skips it.
-  const isOverrideEffect = (e: SkillEffect) => e.kind === "summon" || e.kind === "summonMonster" || e.kind === "commandSummons" || e.kind === "throwDice" || (e.target !== undefined && e.target !== skill.target);
-  const overrideEffects = (skill.effects ?? []).filter(isOverrideEffect);
-  // Damage reaching the opposing side marks every opposing target as attacked, whatever its own effects.
   // `appliesToRelation` names a board side ("ally" = the player's side), not one relative to the caster.
   const skillDealsDamage = (skill.effects ?? []).some((e) => e.kind === "damage" && (!e.appliesToRelation || (e.appliesToRelation === "ally") !== isPlayerSide(source)));
-  // Set by this cast's summon effect (resolved first, in array order) for a later `linksToCasterSummon` effect.
-  let spawnedSummonId: Id | undefined;
-  let spawnedSummon: Summon | undefined;
-  if (overrideEffects.length > 0) {
-    const sourceRef: CombatantRef = isCharacter(source)
-      ? { kind: "character", id: source.id }
-      : isSummon(source)
-        ? { kind: "summon", id: source.id }
-        : { kind: "monster", id: source.id };
-    for (const effect of overrideEffects) {
-      // A Command cast is resolved as the minion skill it orders (`commandedSkill`); the marker effect itself does nothing.
-      if (effect.kind === "commandSummons") continue;
-      if (effect.kind === "throwDice") {
-        if (isCharacter(source) && throwDice(effect, skill, source, combat, ctx, log)) landedDamageHit = true;
-        continue;
-      }
-      if (effect.kind === "summonMonster") {
-        if (isMonster(source)) spawnMonsterSummons(effect, source, combat, ctx, log);
-        continue;
-      }
-      const overrideTarget = effect.kind === "summon" ? (effect.target ?? "self") : effect.target!;
-      const overrideTargets = (autoResolveTargets(overrideTarget, sourceRef, combat, ctx) ?? []).map((r) => getActorByRef(r, ctx));
-      for (const resolved of overrideTargets) {
-        if (effect.kind === "summon") {
-          if (isCharacter(source)) {
-            spawnedSummon = spawnSummon(effect, source, combat, ctx, log);
-            spawnedSummonId = spawnedSummon?.id;
-          }
-          continue;
-        }
-        if (effect.excludesSummonTargets && isSummon(resolved)) continue;
-        noteSkillTarget(combat, source, resolved, [effect], skillDealsDamage);
-        const overrideEnemyFacing = isPlayerSide(source) !== isPlayerSide(resolved);
-        if (overrideEnemyFacing && !skill.isUltimate && !skill.alwaysHits && !rollsAlwaysHit(source, overrideEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) {
-          noteMiss(combat, resolved);
-          continue;
-        }
-        const resistRoll = rollDebuffResist(effect, resolved, overrideEnemyFacing, ctx, log);
-        if (resistRoll === null ? effect.chance !== undefined && !ctx.rng.chance(effect.chance) : resistRoll !== "landed") continue;
-        resolveOneDamageEffect(
-          rollStatusLevel(effect, ctx),
-          skill,
-          source,
-          resolved,
-          ctx,
-          log,
-          { guaranteedCrit: false, damageBonusPercent: 0 },
-          { linkedSummonId: effect.linksToCasterSummon ? spawnedSummonId : undefined }
-        );
-      }
-    }
-  }
-
-  // A party-side caster can fall mid-cast to damage turned back on it (riposte); the cast stops
-  // there. Monsters are exempt: Self-Destruct's self-hit resolves before its area hit by design.
-  const sourceFell = () => isPlayerSide(source) && !isActorAlive(source);
-
+  const cast: Cast = {
+    skill,
+    source,
+    combat,
+    ctx,
+    log,
+    hasBonus,
+    stealthBreak,
+    coinWon,
+    casterLowHp,
+    skillDealsDamage,
+    allowStackBurst: !options.noStackBurst,
+    landedDamageHit: false,
+    bonusEffectLanded: false,
+    brokeStealthThisCast: false,
+    attackerBuffRolledOn: new Set(),
+  };
+  castOwnPopulationEffects(cast);
   for (const target of targets) {
-    if (sourceFell()) break;
-    const isEnemyFacing = isPlayerSide(source) !== isPlayerSide(target);
-    // Before the accuracy roll: a missed or dodged target is still the one the action was aimed at.
-    noteSkillTarget(
-      combat,
-      source,
-      target,
-      (skill.effects ?? []).filter((e) => !isOverrideEffect(e) && (!e.appliesToRelation || (e.appliesToRelation === "ally") === isPlayerSide(target))),
-      skillDealsDamage
-    );
-    if (isEnemyFacing && !skill.isUltimate && !skill.alwaysHits && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) {
-      noteMiss(combat, target);
-      log.push({ text: t("combat.missedFear", { source: sourceName(source), target: target.name }), kind: "info" });
-      continue;
-    }
-    const activeEffects = (skill.effects ?? []).filter((e) => !isOverrideEffect(e));
-    if (isEnemyFacing && !skill.alwaysHits && isCharacter(target) && activeEffects.some((e) => e.kind === "damage") && rollDodge(target, ctx.rng)) {
-      noteMiss(combat, target);
-      log.push({ text: t("combat.dodge", { target: target.name, actor: sourceName(source) }), kind: "info" });
-      continue;
-    }
+    if (casterFell(cast)) break;
+    castOnTarget(cast, target);
+  }
+  finishCast(cast, breakStatus, thresholdStatusActive);
+  return cast.spawnedSummon;
+}
 
-    // A target that threw off a status and took nothing else from the action counts as missed.
-    let resisted = false;
-    let landed = false;
-    for (const effect of activeEffects) {
-      if (sourceFell()) break;
-      if (effect.excludesCaster && target === source) continue;
-      if (effect.excludesSummonTargets && isSummon(target)) continue;
-      if (coinWon === false && effect.kind === "damage") continue;
-      if (effect.appliesToRelation) {
-        const targetIsAlly = isPlayerSide(target);
-        if ((effect.appliesToRelation === "ally") !== targetIsAlly) continue;
-      }
-      // A target felled by an earlier effect of this cast takes nothing more from it, statuses included.
-      if (!isActorAlive(target)) continue;
-      const resistRoll = rollDebuffResist(effect, target, isEnemyFacing, ctx, log);
-      if (resistRoll === "resisted") resisted = true;
-      if (resistRoll === null ? effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance) : resistRoll !== "landed") continue;
-      landed = true;
-      let rolledEffect = effect;
-      if (effect.kind === "damage") {
-        let offense = effect.offenseMultiplierPercent ?? 100;
-        if (effect.damageRollFaces?.length) {
-          const face = ctx.rng.pick(effect.damageRollFaces);
-          log.push({ text: t("combat.diceRolled", { actor: sourceName(source), face: effect.damageRollFaces.indexOf(face) + 1 }), kind: "info" });
-          offense = Math.round((offense * face) / 100);
+/** Runs first, in array order, so a `summon` effect's minion exists for a later `linksToCasterSummon` effect. */
+function castOwnPopulationEffects(cast: Cast): void {
+  const { skill, source, combat, ctx, log, skillDealsDamage } = cast;
+  const overrideEffects = (skill.effects ?? []).filter((e) => hasOwnPopulation(e, skill));
+  if (overrideEffects.length === 0) return;
+  let spawnedSummonId: Id | undefined;
+  const sourceRef: CombatantRef = isCharacter(source)
+    ? { kind: "character", id: source.id }
+    : isSummon(source)
+      ? { kind: "summon", id: source.id }
+      : { kind: "monster", id: source.id };
+  for (const effect of overrideEffects) {
+    // A Command cast is resolved as the minion skill it orders (`commandedSkill`); the marker effect itself does nothing.
+    if (effect.kind === "commandSummons") continue;
+    if (effect.kind === "throwDice") {
+      if (isCharacter(source) && throwDice(effect, skill, source, combat, ctx, log)) cast.landedDamageHit = true;
+      continue;
+    }
+    if (effect.kind === "summonMonster") {
+      if (isMonster(source)) spawnMonsterSummons(effect, source, combat, ctx, log);
+      continue;
+    }
+    const overrideTarget = effect.kind === "summon" ? (effect.target ?? "self") : effect.target!;
+    const overrideTargets = (autoResolveTargets(overrideTarget, sourceRef, combat, ctx) ?? []).map((r) => getActorByRef(r, ctx));
+    for (const resolved of overrideTargets) {
+      if (effect.kind === "summon") {
+        if (isCharacter(source)) {
+          cast.spawnedSummon = spawnSummon(effect, source, combat, ctx, log);
+          spawnedSummonId = cast.spawnedSummon?.id;
         }
-        if (casterLowHp) offense += skill.casterHpBelowBonus!.offenseMultiplierPercentBonus;
-        const lifestealPercent = casterLowHp && skill.casterHpBelowBonus!.lifestealPercent ? (effect.lifestealPercent ?? 0) + skill.casterHpBelowBonus!.lifestealPercent : effect.lifestealPercent;
-        rolledEffect = { ...effect, offenseMultiplierPercent: offense, lifestealPercent, damageRollFaces: undefined };
-      }
-      if (effect.kind === "applyStatusEffect") rolledEffect = rollStatusLevel(effect, ctx);
-      const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(rolledEffect, source) : rolledEffect, hasBonus);
-
-      if (finalEffect.kind === "applyStatusEffect" && finalEffect.stackCount) {
-        applyStacks(finalEffect, skill, source, target, combat, ctx, log);
         continue;
       }
-      const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;
-      const wasAliveBefore = isActorAlive(target);
-      const sourceHpBefore = source.hp;
-      const fearBefore = isCharacter(target) ? target.survival.fear : 0;
-      // Summed over every hit, so onDamageDealt hooks see the cast's full damage, not its last swing.
-      let appliedAmount = 0;
-      // Hits after the target falls are shown, not dealt, and test execute against the HP share before the felling hit.
-      let hpFraction = target.hp / target.maxHp;
-      const swing = (): number => {
-        const fallen = !isActorAlive(target);
-        if (!fallen) hpFraction = target.hp / target.maxHp;
-        return resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, { unapplied: fallen, executeHpFraction: hpFraction });
-      };
-      for (let hit = 0; hit < hitCount; hit++) {
-        if (sourceFell()) break;
-        appliedAmount += swing();
-        if (finalEffect.kind === "damage") {
-          brokeStealthThisCast = true;
-          if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance) && !sourceFell()) appliedAmount += swing();
-        }
+      if (effect.excludesSummonTargets && isSummon(resolved)) continue;
+      noteSkillTarget(combat, source, resolved, [effect], skillDealsDamage);
+      const overrideEnemyFacing = isPlayerSide(source) !== isPlayerSide(resolved);
+      if (overrideEnemyFacing && !skill.isUltimate && !skill.alwaysHits && !rollsAlwaysHit(source, overrideEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) {
+        noteMiss(combat, resolved);
+        continue;
       }
-      if (finalEffect.kind === "modifyStat" && isCharacter(target) && target.survival.fear !== fearBefore) noteFearChange(combat, target);
-      if (effect.kind === "damage") {
-        for (const hook of combatHooks) hook.onHit?.(source, target, log);
-        if (isCharacter(source)) {
-          landedDamageHit = true;
-          if (hasBonus) bonusEffectLanded = true;
-        }
+      const resistRoll = rollDebuffResist(effect, resolved, overrideEnemyFacing, ctx, log);
+      if (resistRoll === null ? effect.chance !== undefined && !ctx.rng.chance(effect.chance) : resistRoll !== "landed") continue;
+      resolveOneDamageEffect(
+        rollStatusLevel(effect, ctx),
+        skill,
+        source,
+        resolved,
+        ctx,
+        log,
+        { guaranteedCrit: false, damageBonusPercent: 0 },
+        { linkedSummonId: effect.linksToCasterSummon ? spawnedSummonId : undefined }
+      );
+    }
+  }
+}
+
+/** The skill's remaining effects against one of its targets: accuracy and dodge once, then each effect in order. */
+function castOnTarget(cast: Cast, target: Actor): void {
+  const { skill, source, combat, ctx, log, hasBonus, stealthBreak, coinWon, casterLowHp, skillDealsDamage } = cast;
+  const isEnemyFacing = isPlayerSide(source) !== isPlayerSide(target);
+  // Before the accuracy roll: a missed or dodged target is still the one the action was aimed at.
+  noteSkillTarget(
+    combat,
+    source,
+    target,
+    (skill.effects ?? []).filter((e) => !hasOwnPopulation(e, skill) && (!e.appliesToRelation || (e.appliesToRelation === "ally") === isPlayerSide(target))),
+    skillDealsDamage
+  );
+  if (isEnemyFacing && !skill.isUltimate && !skill.alwaysHits && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !rollHits(source, () => ctx.rng.next())) {
+    noteMiss(combat, target);
+    log.push({ text: t("combat.missedFear", { source: sourceName(source), target: target.name }), kind: "info" });
+    return;
+  }
+  const activeEffects = (skill.effects ?? []).filter((e) => !hasOwnPopulation(e, skill));
+  if (isEnemyFacing && !skill.alwaysHits && isCharacter(target) && activeEffects.some((e) => e.kind === "damage") && rollDodge(target, ctx.rng)) {
+    noteMiss(combat, target);
+    log.push({ text: t("combat.dodge", { target: target.name, actor: sourceName(source) }), kind: "info" });
+    return;
+  }
+
+  // A target that threw off a status and took nothing else from the action counts as missed.
+  let resisted = false;
+  let landed = false;
+  for (const effect of activeEffects) {
+    if (casterFell(cast)) break;
+    if (effect.excludesCaster && target === source) continue;
+    if (effect.excludesSummonTargets && isSummon(target)) continue;
+    if (coinWon === false && effect.kind === "damage") continue;
+    if (effect.appliesToRelation) {
+      const targetIsAlly = isPlayerSide(target);
+      if ((effect.appliesToRelation === "ally") !== targetIsAlly) continue;
+    }
+    // A target felled by an earlier effect of this cast takes nothing more from it, statuses included.
+    if (!isActorAlive(target)) continue;
+    const resistRoll = rollDebuffResist(effect, target, isEnemyFacing, ctx, log);
+    if (resistRoll === "resisted") resisted = true;
+    if (resistRoll === null ? effect.chance !== undefined && !rollsAlwaysHit(source, isEnemyFacing, ctx) && !ctx.rng.chance(effect.chance) : resistRoll !== "landed") continue;
+    landed = true;
+    let rolledEffect = effect;
+    if (effect.kind === "damage") {
+      let offense = effect.offenseMultiplierPercent ?? 100;
+      if (effect.damageRollFaces?.length) {
+        const face = ctx.rng.pick(effect.damageRollFaces);
+        log.push({ text: t("combat.diceRolled", { actor: sourceName(source), face: effect.damageRollFaces.indexOf(face) + 1 }), kind: "info" });
+        offense = Math.round((offense * face) / 100);
       }
-      if (finalEffect.kind === "damage" && appliedAmount > 0) {
-        for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
-        applyMonsterHitFear(source, target, combat, ctx);
-        if (isMonster(source)) onStruckByMonster(target, source, combat, ctx);
-        if (isCharacter(source) && !skill.fromItem && !attackerBuffRolledOn.has(target)) {
-          attackerBuffRolledOn.add(target);
-          applyAttackerBuffsOnHit(source, target, ctx, log);
-        }
-        // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
-        if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
-        if (finalEffect.lifestealPercent && finalEffect.lifestealPartySharePercent && isCharacter(source)) {
-          shareLifesteal(source, Math.round((appliedAmount * finalEffect.lifestealPercent) / 100), finalEffect.lifestealPartySharePercent, combat, ctx, log);
-        }
-        if (wasAliveBefore && !isActorAlive(target)) {
-          for (const hook of combatHooks) hook.onKill?.(source, target, log);
-        }
+      if (casterLowHp) offense += skill.casterHpBelowBonus!.offenseMultiplierPercentBonus;
+      const lifestealPercent = casterLowHp && skill.casterHpBelowBonus!.lifestealPercent ? (effect.lifestealPercent ?? 0) + skill.casterHpBelowBonus!.lifestealPercent : effect.lifestealPercent;
+      rolledEffect = { ...effect, offenseMultiplierPercent: offense, lifestealPercent, damageRollFaces: undefined };
+    }
+    if (effect.kind === "applyStatusEffect") rolledEffect = rollStatusLevel(effect, ctx);
+    const finalEffect = applyConditionalBonus(skill, skill.isUltimate ? scaleEffectForUltimate(rolledEffect, source) : rolledEffect, hasBonus);
+
+    if (finalEffect.kind === "applyStatusEffect" && finalEffect.stackCount) {
+      applyStacks(finalEffect, skill, source, target, combat, ctx, log);
+      continue;
+    }
+    const hitCount = finalEffect.kind === "damage" && finalEffect.hitCountRange ? ctx.rng.int(finalEffect.hitCountRange.min, finalEffect.hitCountRange.max) : 1;
+    const wasAliveBefore = isActorAlive(target);
+    const sourceHpBefore = source.hp;
+    const fearBefore = isCharacter(target) ? target.survival.fear : 0;
+    // Summed over every hit, so onDamageDealt hooks see the cast's full damage, not its last swing.
+    let appliedAmount = 0;
+    // Hits after the target falls are shown, not dealt, and test execute against the HP share before the felling hit.
+    let hpFraction = target.hp / target.maxHp;
+    const swing = (): number => {
+      const fallen = !isActorAlive(target);
+      if (!fallen) hpFraction = target.hp / target.maxHp;
+      return resolveOneDamageEffect(finalEffect, skill, source, target, ctx, log, stealthBreak, { unapplied: fallen, executeHpFraction: hpFraction });
+    };
+    for (let hit = 0; hit < hitCount; hit++) {
+      if (casterFell(cast)) break;
+      appliedAmount += swing();
+      if (finalEffect.kind === "damage") {
+        cast.brokeStealthThisCast = true;
+        if (finalEffect.extraHitChance && ctx.rng.chance(finalEffect.extraHitChance) && !casterFell(cast)) appliedAmount += swing();
       }
     }
-    if (resisted && !landed) noteResisted(combat, target);
-    if (landed && isCharacter(source) && !sourceFell()) stackBurst(source, target, combat, ctx, log);
+    if (finalEffect.kind === "modifyStat" && isCharacter(target) && target.survival.fear !== fearBefore) noteFearChange(combat, target);
+    if (effect.kind === "damage") {
+      for (const hook of combatHooks) hook.onHit?.(source, target, log);
+      if (isCharacter(source)) {
+        cast.landedDamageHit = true;
+        if (hasBonus) cast.bonusEffectLanded = true;
+      }
+    }
+    if (finalEffect.kind === "damage" && appliedAmount > 0) {
+      for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
+      applyMonsterHitFear(source, target, combat, ctx);
+      if (isMonster(source)) onStruckByMonster(target, source, combat, ctx);
+      if (isCharacter(source) && !skill.fromItem && !cast.attackerBuffRolledOn.has(target)) {
+        cast.attackerBuffRolledOn.add(target);
+        applyAttackerBuffsOnHit(source, target, ctx, log);
+      }
+      // HP the source regained across these hits is lifesteal; a heal-on-kill (below) is not.
+      if (source !== target && source.hp > sourceHpBefore) noteLifesteal(combat, source);
+      if (finalEffect.lifestealPercent && finalEffect.lifestealPartySharePercent && isCharacter(source)) {
+        shareLifesteal(source, Math.round((appliedAmount * finalEffect.lifestealPercent) / 100), finalEffect.lifestealPartySharePercent, combat, ctx, log);
+      }
+      if (wasAliveBefore && !isActorAlive(target)) {
+        for (const hook of combatHooks) hook.onKill?.(source, target, log);
+      }
+    }
   }
-  if (breakStatus && brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
-  if (landedDamageHit && isCharacter(source) && !sourceFell()) applyOnHitAoeDamage(source, combat, ctx, log);
-  if (landedDamageHit && isCharacter(source) && thresholdStatusActive && !sourceFell()) {
+  if (resisted && !landed) noteResisted(combat, target);
+  if (cast.allowStackBurst && landed && isCharacter(source) && !casterFell(cast)) stackBurst(source, target, combat, ctx, log);
+}
+
+/** What a finished cast sets off on its caster: a spent stealth, on-hit splash, passive follow-ups and a lost coin flip. */
+function finishCast(cast: Cast, breakStatus: ReturnType<typeof findBreakBonusStatus>, thresholdStatusActive: boolean): void {
+  const { skill, source, combat, ctx, log, coinWon } = cast;
+  if (breakStatus && cast.brokeStealthThisCast) expireStatusEffect(source, breakStatus, { log });
+  if (cast.landedDamageHit && isCharacter(source) && !casterFell(cast)) applyOnHitAoeDamage(source, combat, ctx, log);
+  if (cast.landedDamageHit && isCharacter(source) && thresholdStatusActive && !casterFell(cast)) {
     const selfDamage = Math.round(source.maxHp * ((getClass(source.classId).passiveSkill.selfDamagePerHitMaxHPPercent ?? 0) / 100));
     source.hp = Math.max(1, source.hp - selfDamage);
   }
-  if (landedDamageHit && isCharacter(source) && !sourceFell()) passiveSecondCloneProc(source, combat, ctx, log);
-  if (landedDamageHit && isCharacter(source) && !sourceFell()) applyLandedHitFollowUps(source, ctx, log);
-  if (coinWon === false && !sourceFell()) {
+  if (cast.landedDamageHit && isCharacter(source) && !casterFell(cast)) passiveSecondCloneProc(source, combat, ctx, log);
+  if (cast.landedDamageHit && isCharacter(source) && !casterFell(cast)) applyLandedHitFollowUps(source, ctx, log);
+  if (coinWon === false && !casterFell(cast)) {
     log.push({ text: t("combat.coinFlipLost", { actor: sourceName(source), skill: skill.name }), kind: "info" });
     for (const lose of skill.coinFlip!.loseSelfStatuses ?? []) {
       resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: lose.statusEffectId, durationTurns: lose.durationTurns }, source, source, { log });
     }
     if (skill.coinFlip!.resetCooldownOnLose && isCharacter(source)) source.cooldownsRemaining[skill.id] = 0;
   }
-  consumeConditionalBonusStatus(skill, source, bonusEffectLanded);
-  return spawnedSummon;
+  consumeConditionalBonusStatus(skill, source, cast.bonusEffectLanded);
 }
 
 /** Every other living party member heals `percent` of the lifesteal `drawn` by the caster's hit. */

@@ -13,7 +13,7 @@ import { isPartyExhausted, isPartyDying } from "../engine/survival";
 import { expCostForLevel, MAX_LEVEL } from "../data/levelGrowth";
 import { t } from "../data/strings";
 import { getArchetype, getBossTelegraph } from "../data/monsters";
-import { saveRun, deleteSlot } from "../engine/save";
+import { saveRun, saveBody, deleteSlot } from "../engine/save";
 import { recordRunEnd } from "../engine/profile";
 import {
   PALETTE,
@@ -151,7 +151,12 @@ export class App implements ScreenContext {
   private listPage = 0;
   private onExit: ((next: RunExit) => void) | undefined;
   private exited = false;
-  private readonly onKeypress = (key: KeyEvent) => this.handleKey(key);
+  /** The run as last written to its slot; a key that leaves it unchanged writes nothing. */
+  private savedBody: string;
+  private readonly onKeypress = (key: KeyEvent) => {
+    this.handleKey(key);
+    this.autosave();
+  };
   // A resize changes how panel text wraps, which only render() settles. OpenTUI shields keypress handlers from a throw but not resize listeners, so catch draw errors here.
   private readonly onResize = () => {
     try {
@@ -165,6 +170,7 @@ export class App implements ScreenContext {
     this.autoReveal = options.autoReveal ?? true;
     this.onExit = options.onExit;
     this.game = game ?? new Game();
+    this.savedBody = saveBody(this.game);
 
     const panel = {
       border: true as const,
@@ -765,6 +771,15 @@ export class App implements ScreenContext {
     this.root.destroyRecursively();
     // OpenTUI drops a render request while the remove's frame settles, so the next screen mounts a tick later.
     setTimeout(() => this.onExit?.(next), 0);
+  }
+
+  /** A run that just ended is not written back: its slot was cleared. */
+  private autosave(): void {
+    if (this.exited || !this.game.currentSaveSlot || this.game.state.gameOver) return;
+    const body = saveBody(this.game);
+    if (body === this.savedBody) return;
+    this.savedBody = body;
+    saveRun(this.game, body);
   }
 
   quit(): void {

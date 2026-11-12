@@ -18,7 +18,7 @@ import {
   gameFromSave,
   SLOT_IDS,
 } from "../src/engine/save";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { beginRun, loadProfile, saveProfile } from "../src/engine/profile";
 import { join } from "node:path";
 import { SAVE_DIR } from "../src/engine/paths";
@@ -150,6 +150,46 @@ describe("Save slots (isolated temp dir via bunfig.toml preload)", () => {
       const slot = listSlots().find((s) => s.id === "slot2");
       expect(slot?.meta?.runId).toBe(game.state.runId);
       expect(loadSave("slot2").state.runId).toBe(game.state.runId);
+    });
+  });
+
+  test("saveRun leaves no temp file behind", () => {
+    withGame(2, (game) => {
+      game.currentSaveSlot = "slot2";
+      saveRun(game);
+      saveRun(game);
+      expect(readdirSync(SAVE_DIR).filter((name) => name.endsWith(".tmp"))).toEqual([]);
+      expect(loadSave("slot2").state.runId).toBe(game.state.runId);
+    });
+  });
+
+  test("a save mid-fight writes each log entry's snapshot empty and still loads", () => {
+    withGame(2, (game) => {
+      game.currentSaveSlot = "slot2";
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      const monster = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+      game.ctx.monsters.push(monster);
+      room.monsterIds = [monster.id];
+      game.state.combat = startCombat(room.id, [monster.id], game.ctx, true);
+      const snapshot = [{ id: "p1", hp: 1, maxHp: 1, isAlive: true, activeStatusEffects: [] }];
+      game.state.combat.log.push({ text: "resolved", kind: "info", snapshot });
+      saveRun(game);
+      expect(game.state.combat.log.at(-1)!.snapshot).toBe(snapshot);
+      const saved = loadSave("slot2");
+      expect(saved.state.combat!.log.at(-1)).toEqual({ text: "resolved", kind: "info", snapshot: [] });
+      expect(gameFromSave(saved, "slot2").state.combat!.log).toHaveLength(game.state.combat.log.length);
+    });
+  });
+
+  test("a new fight starts with none of the last fight's summons", () => {
+    withGame(2, (game) => {
+      const summons = game.ctx.summons;
+      summons.push({ id: "p1-shadow-clone-1", ownerId: "p1", archetypeId: "shadow-clone", name: "Clone", hp: 0, maxHp: 10, attack: 1, defense: 1, magicPower: 1, aggro: 1, speed: 1, activeStatusEffects: [], actionsTaken: 1, maxActions: 1 });
+      const monster = spawnMonster("skeleton-guard", 1, { tier: "boss" });
+      game.ctx.monsters.push(monster);
+      startCombat(game.state.currentRoomId, [monster.id], game.ctx, true);
+      expect(game.ctx.summons).toBe(summons);
+      expect(summons).toEqual([]);
     });
   });
 

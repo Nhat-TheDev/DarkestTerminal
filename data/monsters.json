@@ -144,7 +144,7 @@
       "abbr": "CLT",
       "color": "#6a5a68"
     },
-    "description": "Its candle shakes enough to spill wax down its wrist. The robe was cut for someone taller and pools at its feet, the hem trodden black and worn through at the back.",
+    "description": "Its pale hands shake at the ends of sleeves that almost cover them. The robe was cut for someone taller and pools at its feet, the hem trodden black and worn through at the back.",
     "baseHp": 50,
     "baseAttack": 25,
     "baseDefense": 3,
@@ -177,7 +177,7 @@
       "abbr": "CRW",
       "color": "#7d8168"
     },
-    "description": "The smell reaches the room well before it does, sweet and spoiled. Elbows and jaw do the work of dragging it along. The elbows have gone flat; the jaw is in worse condition.",
+    "description": "The smell reaches the room well before it does, sweet and spoiled. Its arms hang low beside the exposed ribs, the fingers nearly scraping stone. The jaw works with each step, a little behind the rest of the body.",
     "baseHp": 50,
     "baseAttack": 25,
     "baseDefense": 2,
@@ -930,7 +930,7 @@
       "abbr": "WTH",
       "color": "#6a638a"
     },
-    "description": "Frost forms along the seams of its armour, and the air it passes through smells of a cellar. The armour keeps its shape and none of its weight. It is through the front rank before the front rank has registered anything at all, touching neither of them on the way.",
+    "description": "Frost gathers along its outline, and the air smells of a cellar. A pale face hangs above a red stain. It passes through the front rank without touching them; the cold stays behind, caught inside their collars.",
     "baseHp": 75,
     "baseAttack": 35,
     "baseDefense": 4,
@@ -966,7 +966,7 @@
       "abbr": "BTL",
       "color": "#7a6c55"
     },
-    "description": "Its plates clack together as it turns, loud as boots on a stair. Plate overlaps the whole length of the back; a blade slides off it. The seam shows and closes inside the same movement, opening only when the beetle wants something.",
+    "description": "Forked feelers rise ahead of its head, and the plates along its back clack together as it turns. Plate overlaps the whole length of the back; a blade slides off it. The seam shows and closes inside the same movement, opening only when the beetle wants something.",
     "baseHp": 75,
     "baseAttack": 25,
     "baseDefense": 12,
@@ -1104,7 +1104,7 @@
       "abbr": "GRD",
       "color": "#8a8579"
     },
-    "description": "Its spear butt has worn a hollow in the floor beside its foot. Someone who is not anywhere now put it on this spot, and it has not come off it for anything since. The floor around it is scuffed bare in a ring as wide as its reach.",
+    "description": "The shield has worn smooth where its arm rests against it. It holds the same patch of floor, turning only far enough to meet a blow. Around its feet, the stone is scuffed bare in a ring as wide as its reach.",
     "baseHp": 110,
     "baseAttack": 18,
     "baseDefense": 12,
@@ -1287,7 +1287,7 @@
       "abbr": "ZKN",
       "color": "#5a7a3a"
     },
-    "description": "Its visor is rusted shut, and something inside it scrapes at each step. The armour was fitted to a body that has changed shape inside it since. It works through the guard positions in order, correctly, one into the next, and has never found the end of the sequence.",
+    "description": "Green flesh shows through the gaps in its helmet; something inside scrapes at each step. The armour fits badly now. It works through the guard positions in order, correctly, one into the next, and has never found the end of the sequence.",
     "baseHp": 115,
     "baseAttack": 25,
     "baseDefense": 14,
@@ -1404,7 +1404,7 @@
       "abbr": "CHF",
       "color": "#7a9a45"
     },
-    "description": "The floor around its seat is littered with gnawed bones and broken helmets. The largest of them, wearing pieces of everything that ever tried to be larger. It watches you cross the whole room towards it and does not get up.",
+    "description": "Gnawed bones and broken helmets lie around its feet. It wears pieces of everything that ever tried to be larger. When it calls, the answer comes from the corridor behind you, followed by smaller feet running over stone.",
     "baseHp": 150,
     "baseAttack": 26,
     "baseDefense": 8,
