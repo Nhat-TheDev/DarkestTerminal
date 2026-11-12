@@ -19,7 +19,8 @@ appendix; they move into `data/*.json` during implementation and are then delete
 One spec, three implementation plans, built in order:
 
 - M1a, structure: Strata, the 1–13 depth scale, the four Strata rules, floor 13, endings, Endless,
-  skill points (using existing skills and passives), progression compression.
+  skill points (using existing skills and passives), progression compression, difficulty targets
+  and the curve rules that check them (§5.1–5.4).
 - M1b, monsters and atmosphere: monster rework and new monsters, sprites, Stratum entry text,
   omens, room names.
 - M1c, class content: one new skill per class, six optional passives per class.
@@ -74,6 +75,7 @@ One record per Stratum:
   `data/room-names.json` for floors inside a Stratum
 - `omenIds`: the Stratum's omens, see §2.5
 - `tuning`: optional, see §1.1
+- `targets`: how hard the Stratum is meant to be, see §5.1
 
 A thin loader in `src/data/strata.ts` validates the shape and exposes typed accessors
 (`getStratum`, `stratumForDepth`), like every other `src/data/*.ts` loader.
@@ -96,7 +98,7 @@ Each Stratum carries exactly one `rule`. The engine supports a small, fixed set 
 each kind's parameters are data. Behavior that belongs to a specific monster (acid, bleed,
 targeting style, self-destruct) lives in that monster's kit or traits, not in the rule.
 
-Rules describe reflexes, never intent (`11-world-bible.md` §11.4). Player-facing text shows what
+Rules describe reflexes, never intent (`12-world-bible.md` §12.4). Player-facing text shows what
 happens (acid eats, blood draws blows, fear feeds something), never that the dungeon or its
 creatures choose or hunt.
 
@@ -157,7 +159,7 @@ Two further S4 traits are not part of the rule:
 
 - Rules appear as a short HUD tag next to the stat they affect, and their effects land visibly in
   the log. No screen explains the mechanism.
-- Entry text is one line on first entering a Stratum, following §11.11's one-observable-change
+- Entry text is one line on first entering a Stratum, following §12.11's one-observable-change
   rule. Drafts, to be finalized in M1b:
   - S1: *"The stairs give out onto stonework someone meant to keep. Nobody kept it."*
   - S2: *"The passage narrows and runs wet. Every surface down here slopes the same way."*
@@ -171,9 +173,9 @@ Two further S4 traits are not part of the rule:
 
 The four Strata follow the anatomy of a body from the outside in: outer layer, gullet, nerve and
 flesh, mind. As the dream nears its core it takes on the shape of the one dreaming it
-(`11-world-bible.md` §11.1). These labels never appear in player-facing text; the player sees only
+(`12-world-bible.md` §12.1). These labels never appear in player-facing text; the player sees only
 concrete images and draws the conclusion. M1a adds this as an internal section of
-`11-world-bible.md`.
+`12-world-bible.md`.
 
 ---
 
@@ -222,6 +224,11 @@ Stratum boss: 59 archetypes plus The Founder, made of the 42 existing ones rewor
 - Race changes where the creature's nature changed. S4 gets a new race (working id `nightmare`)
   with its own resistances and weaknesses, so S4 creatures don't fight like ordinary undead or
   beasts. This is data only.
+- Counter-play: a guard mechanic that shuts out a kind of damage or a way of targeting (a shell,
+  flight, a riposte stance, an immunity) leaves an answer every party has, whatever its classes:
+  waiting it out, an item, the basic attack, or breaking it by a means no class lacks. A class's
+  own tool may make that answer cheaper; it is never the only one. §5.2's team-spread rule is the
+  check.
 - Each monster's M1b entry also carries a fuller visual brief for future Unity art. In-game text
   stays spare; the brief does not.
 
@@ -240,6 +247,12 @@ erosion (S2), moving or breaking `focused` or stopping bleed (S3), lowering fear
 fear-tier debuffs (S4). Different classes cover different Strata, so choosing a party also means
 choosing which Strata it handles well. Each class's current kit is audited for gaps first, and the
 concepts are approved per class before any data is written.
+
+That choice makes a Stratum harder or easier, never closed. A party without a class's tool against
+a rule still has the answers every party has (items, Camp, ending the fight sooner), and §5.2's
+team-spread rule bounds how far two parties may differ against the same guard. The party is set
+when the run starts and the point budget always buys the full build (§4.2), so nothing in a run can
+answer a hard counter once it is met. One must not exist.
 
 ### 4.2 Skill points
 
@@ -296,8 +309,67 @@ This section gives method and targets only; values are tuned with `random-play` 
 - `fearPerRoundDepthGrowth` is retuned for 12 floors. Satiety, Camp and rest rooms keep their
   mechanics; balancing checks that satiety still matters on shorter floors.
 - `random-play` reports per Stratum: survival rate through each Stratum boss, average level at each
-  Stratum boss, rooms and rounds per run, Stardust earned and buybacks made. Target rates are set
-  during balancing, outside this spec.
+  Stratum boss, rooms and rounds per run, Stardust earned and buybacks made. The rates they are
+  balanced to are each Stratum's `targets` (§5.1).
+
+### 5.1 Difficulty targets
+
+Each Stratum declares `targets` in `data/strata.json`, beside `tuning`. `targets` says how hard the
+Stratum is meant to be, and `tuning` is what gets adjusted until the tools measure it there. The
+game never reads `targets`; `curve` and `random-play` do.
+
+- `bossWinRate`: the range the Stratum boss's win rate falls in, averaged over the bench teams, for
+  a party at the level this section expects on that floor.
+- `bossHpLost`: the range for the share of the party's max HP the boss fight costs.
+- `survival`: the range for the share of runs that enter the Stratum and leave it alive.
+
+The Founder carries `bossWinRate` and `bossHpLost` under `balance-config.json` `endings`. Floor
+13's `survival` sits there too and is set when that floor is balanced on its own (§10, risk 3).
+
+The ranges step down from S1 to The Founder: each Stratum is harder than the one before by a margin
+a player notices, and S1 is not free. Every range has an upper bound as well as a lower one. A boss
+every team always beats fails the check the same way a boss nobody beats does. Starting ranges are
+in the appendix.
+
+### 5.2 Curve rules
+
+`bun run curve --check` keeps the rules it has (a floor under every guard's win rate, The Founder
+no easier than the hardest guard, a Boss costing no less HP than its own Elite form) and gains
+three:
+
+- In range: each Stratum boss's win rate and HP lost fall inside its Stratum's `targets`.
+- Downhill: a Stratum boss's win rate is not above the previous Stratum boss's.
+- Team spread: for every guard, the gap between the bench team that wins most and the one that wins
+  least is at most `maxTeamSpread`. A guard one team finds harder passes. A guard one team always
+  beats and another never does fails.
+
+`maxTeamSpread` and §5.3's `suspectWinRate` are constants of the tool, beside the ones
+`tools/curve/bench.ts` already holds. The bench teams between them field every class, so no
+class's matchup goes unmeasured. On the 1–13 scale the bench runs each guard on the floors of its
+own Stratum, and each floor-13 room as §6.2 builds it.
+
+### 5.3 Trusting the bench
+
+The bench plays through `random-play`'s team policy, so a row can report the policy's mistake
+instead of the game's. Before `tuning` or a kit is changed because of a row, every team that wins
+under `suspectWinRate` on it is checked: the logs of its fights are read, or the fight is played by
+hand from a dev save (`bun run dump-save`). Where the policy misplays a class (it never breaks a
+stance, it feeds minions into a riposte), the policy is fixed and the row is run again. Only what
+is left after that is a balance finding.
+
+### 5.4 Attrition
+
+A guard fought from full HP measures the guard alone. A player meets it after a floor of rooms.
+
+- `random-play` records the party's state on entering each guard room: HP and MP as shares of max,
+  fear, satiety and items left. The per-Stratum report gives the median and the spread.
+- `curve` takes that entry state and runs its fights from it. `targets` are read against the
+  entry-state run. The team-spread and downhill rules are read against both runs, entry state and
+  full HP.
+- `targets.survival` is read from `random-play`.
+
+Until `random-play` has produced a report on the new scale, `curve` runs from full HP only and the
+in-range rule waits.
 
 ---
 
@@ -331,7 +403,7 @@ This staging script is shared by the TUI and Unity builds.
 
 1. Arrival: a library. Ritual circles are drawn densely across the floor and walls, the spiral mark
    turning both inward (sealing) and outward (inviting), overlapping. This is the room where the
-   schism began, and it does not say which side was right (§11.9). Books lie scattered across the
+   schism began, and it does not say which side was right (§12.9). Books lie scattered across the
    floor and the shelves. In the middle stands a low dais, and The Founder stands on it in human
    form.
 2. Dialogue: the six lines and two interleaved beats from Part F.5, unchanged. Only the arrival
@@ -340,7 +412,7 @@ This staging script is shared by the TUI and Unity builds.
 3. Transformation: the circles light, the books rise and burn, and the burning sounds like the
    things the party fought on the way down, layered over each other. The scene says only that it
    sounds like them. It never states the books made the monsters, which would make The Founder the
-   dungeon's architect and contradict §11.6 and §11.4. The Founder becomes the final form: more
+   dungeon's architect and contradict §12.6 and §12.4. The Founder becomes the final form: more
    brain than body, nerve-thick ropes trailing where legs should be. This is the existing
    description, kept because it already combines S3's nerve and flesh with S4's mind.
 4. The fight is against the final form only. The existing kit stays; stats come from floor 13 on
@@ -364,8 +436,6 @@ existing founder dialogue screen. The Unity build stages it in full.
 
 ## 7. Removed
 
-- Mini-games. Delete `docs/minigame-decisions.md` and the mini-game bullet in `design-doc.md`'s
-  "Future direction". No mini-game code exists.
 - `bossFloorInterval` (see §1).
 - The floor-100 and floor-120 ending depths (moved to the new scale).
 
@@ -387,18 +457,20 @@ existing founder dialogue screen. The Unity build stages it in full.
   cap equal to the full build.
 - Endings and Endless: checkpoint after the S4 boss, The Founder on floor 13, Endless skipping both.
 - Save: version bump, older saves rejected cleanly, `profile.json` intact.
+- Curve rules: each new rule fails on a set of rows built to break it and passes on one that does
+  not; the bench teams cover every class; an entry state changes the party a fight starts with.
 - UI: key hints for the point-allocation screen, the seven-skill combat menu, and `random-play`
   layout checks at 120×40 plus the per-Stratum report.
 - Every plan ends green on `bun test`, `bun run typecheck` and `bun run docs:sync --check`.
 
 ## 9. Docs to update during implementation
 
-- `design-doc.md`: run structure, Strata, remove mini-games.
+- `design-doc.md`: run structure, Strata.
 - `developer-guide.md`: `strata.json` and its loader, the floor-13 builder, the point-allocation
   screen.
 - `gameplay-decisions/`: 01 (skill points, new slot), 02 (roster by Stratum, self-destruct,
   `prescient`, new race), 03 and 04 (S4 fear), 06 (level cap, points), 07 (drops by Stratum), 08
-  and 10 (event gating, ending depths, Founder staging), 11-world-bible (internal body-metaphor
+  and 10 (event gating, ending depths, Founder staging), 12-world-bible (internal body-metaphor
   section).
 - Generated tables via `bun run docs:sync`.
 
@@ -410,6 +482,10 @@ existing founder dialogue screen. The Unity build stages it in full.
 3. Floor 13. Consecutive boss rooms with only items and Camp may be close to unwinnable; it is
    balanced on its own.
 4. In-progress saves stop loading on upgrade.
+5. Hard counters. Strata rules, and class tools built to answer them, pull toward a party that
+   cannot clear a Stratum at all. The team-spread rule (§5.2) guards against it, and it sees only
+   the bench teams, not every party a player can pick.
+6. The bench's policy. Balance tuned to a bot's mistakes is tuned wrong (§5.3).
 
 ---
 
@@ -421,5 +497,10 @@ existing founder dialogue screen. The Unity build stages it in full.
   5, slot 5 at level 7, the ultimate (slot 6) at level 12.
 - Class passive rank 1 from level 2.
 - Optional passive picks: the 1st from level 3, the 2nd from level 8, the 3rd from level 12.
+- Stratum boss win rate, entry-state run: S1 85–95%, S2 75–85%, S3 65–75%, S4 55–65%, The Founder
+  40–50%.
+- Stratum boss HP lost: S1 15–30%, S2 25–40%, S3 35–50%, S4 45–60%, The Founder 55–70%.
+- Survival through a Stratum: S1 90–97%, S2 80–90%, S3 70–80%, S4 60–70%.
+- `maxTeamSpread` 40 points; `suspectWinRate` 25%.
 - S2 erosion every 2 rounds; S3 `focused` lasts 2 rounds; S3 blood-scent thresholds at 80, 60, 40
   and 20% of party HP; S4 `minFear` 30.
