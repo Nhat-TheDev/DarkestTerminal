@@ -1,9 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import type { Id, AbilityProfile, DroppedJournal, JournalLineState, SlotJournal } from "../types";
 import { ABILITIES } from "../data/abilities";
+import { MONSTER_ARCHETYPES } from "../data/monsters";
 import { JOURNAL_LINES, getJournalEcho, getJournalFragment } from "../data/journal";
-import { SAVE_DIR } from "./paths";
+import { SAVE_DIR, writeFileAtomic } from "./paths";
 import { renamedClassId } from "./migration";
 
 /**
@@ -37,6 +38,8 @@ export interface Profile extends AbilityProfile {
   droppedJournal: DroppedJournal | null;
   /** Written as a wipe deletes the save, which held the run's play time. */
   lastRun: LastRun | null;
+  /** Monster archetypes the slot has fought, in the order first met; the bestiary lists these. */
+  seenMonsterIds: Id[];
 }
 
 export function profileFilename(slotId: Id): string {
@@ -47,8 +50,16 @@ function profilePath(slotId: Id): string {
   return join(SAVE_DIR, profileFilename(slotId));
 }
 
+export function corruptProfileFilename(slotId: Id): string {
+  return `${slotId}.profile.corrupt.json`;
+}
+
 function defaultProfile(): Profile {
-  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null };
+  return { version: CURRENT_VERSION, unlockedAbilityIds: [], retiredCharacters: [], shownRetiredCharacterEvent: false, runCount: 0, memoryUnlocked: false, memoryIntroShown: false, journal: { fragments: [], lines: {}, echoes: [] }, droppedJournal: null, lastRun: null, seenMonsterIds: [] };
+}
+
+function isKnownArchetype(id: unknown): id is Id {
+  return MONSTER_ARCHETYPES.some((a) => a.id === id);
 }
 
 function isKnownAbility(id: Id): boolean {
@@ -110,6 +121,7 @@ export function parseProfile(text: string): Profile {
     journal: parseJournal(raw.journal),
     droppedJournal: parseDroppedJournal(raw.droppedJournal),
     lastRun: parseLastRun(raw.lastRun),
+    seenMonsterIds: Array.isArray(raw.seenMonsterIds) ? [...new Set(raw.seenMonsterIds.filter(isKnownArchetype))] : [],
   };
 }
 
@@ -117,12 +129,20 @@ export function hasProfile(slotId: Id): boolean {
   return existsSync(profilePath(slotId));
 }
 
-/** No slot, a missing file or an unparseable one all mean a fresh profile: only commons are available. */
+/**
+ * No slot, a missing file or an unparseable one all mean a fresh profile: only commons are available.
+ * An unparseable file is moved aside first, so the next write cannot destroy what it held.
+ */
 export function loadProfile(slotId: Id | null): Profile {
   if (!slotId || !existsSync(profilePath(slotId))) return defaultProfile();
   try {
     return parseProfile(readFileSync(profilePath(slotId), "utf8"));
   } catch {
+    try {
+      renameSync(profilePath(slotId), join(SAVE_DIR, corruptProfileFilename(slotId)));
+    } catch (err) {
+      console.error(`Failed to set aside unreadable profile ${profilePath(slotId)}:`, err);
+    }
     return defaultProfile();
   }
 }
@@ -130,8 +150,7 @@ export function loadProfile(slotId: Id | null): Profile {
 /** A run with no slot keeps nothing. */
 export function saveProfile(slotId: Id | null, profile: Profile): void {
   if (!slotId) return;
-  if (!existsSync(SAVE_DIR)) mkdirSync(SAVE_DIR, { recursive: true });
-  writeFileSync(profilePath(slotId), JSON.stringify(profile));
+  writeFileAtomic(profilePath(slotId), JSON.stringify(profile));
 }
 
 export function deleteProfile(slotId: Id): void {

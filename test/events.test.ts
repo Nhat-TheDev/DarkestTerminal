@@ -356,7 +356,7 @@ describe("events", () => {
     for (let seed = 1; seed < 60 && !(sawSuccess && sawFailure); seed++) {
       const game = new Game(seed);
       forceEventRoom(game, "collapsed-floor");
-      game.state.floor.depth = 61; // deep enough that the depth-scaled boss odds are effectively Unique/Epic only
+      game.state.floor.depth = 131; // the deepest step of the depth-scaled boss odds: Rare is about 1 in 50 million there
       const c = game.state.party[0]!;
       const hpBefore = c.hp;
       expect(game.collapsedFloorAttempt(c.id)).toBeNull();

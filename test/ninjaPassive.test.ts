@@ -65,8 +65,8 @@ describe("Ninja passive: 2nd clone on hit", () => {
     const ninja = ctx.party.find((p) => p.classId === "ninja")!;
     ninja.level = 35;
     const combat = startCombat("test-room", [], ctx, false);
-    applySkillEffects(getSkill("shadow-strike"), ninja, [dummy()], combat, ctx, []);
     const log: LogEntry[] = [];
+    applySkillEffects(getSkill("shadow-strike"), ninja, [dummy()], combat, ctx, log);
     procPassiveClone(ctx, ninja, combat, log);
 
     const texts = log.map((l) => l.text);

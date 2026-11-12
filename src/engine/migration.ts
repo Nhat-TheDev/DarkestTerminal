@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { ActiveStatusEffect, CombatantSnapshot, CombatState, GameState, Id, LogSession, Monster, Summon } from "../types";
 import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
-import { Rng } from "./rng";
+import { Rng, derivedRng } from "./rng";
 import { getItem } from "../data/items";
 import { RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
 import { getClass, getSkill } from "../data/classes";
@@ -127,10 +127,19 @@ function migrateToV1_2_0(state: GameState): void {
   if (state.retiredCharacterClassId) state.retiredCharacterClassId = renamedClassId(state.retiredCharacterClassId);
 }
 
+/** Room names 1.2.1 renamed: a frozen record, never follows `data/room-names.json`. A room's backdrop is found by its name. */
+const V1_2_1_ROOM_RENAMES: Record<string, string> = { "Safe Resting Corner": "Dry Corner", "Throne of Darkness": "Bare Throne Room" };
+
+/** Saves before 1.2.1, which renamed two rooms. */
+function migrateToV1_2_1(state: GameState): void {
+  for (const room of state.floor.rooms) room.name = V1_2_1_ROOM_RENAMES[room.name] ?? room.name;
+}
+
 /** One step per release that changed what a saved value means, oldest first. */
 const VERSION_MIGRATIONS: { version: string; migrate: (state: GameState) => void }[] = [
   { version: "1.1.1", migrate: migrateToV1_1_1 },
   { version: "1.2.0", migrate: migrateToV1_2_0 },
+  { version: "1.2.1", migrate: migrateToV1_2_1 },
 ];
 
 /**
@@ -226,6 +235,7 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   }
 
   if (typeof state.runId !== "string") state.runId = randomUUID();
+  if (typeof state.runSeed !== "number") state.runSeed = derivedRng(0, state.runId).getState();
   if (typeof state.coins !== "number") state.coins = 0;
   if (typeof state.satiety !== "number") state.satiety = BALANCE.survival.initialSatiety;
   if (state.pendingArtifactDecision === undefined) state.pendingArtifactDecision = null;

@@ -1758,7 +1758,7 @@
         }
       ]
     },
-    "safe-resting-corner": {
+    "dry-corner": {
       "base": "dungeon-stone",
       "props": [
         {
@@ -1853,7 +1853,7 @@
         }
       ]
     },
-    "throne-of-darkness": {
+    "bare-throne-room": {
       "base": "hall",
       "props": [
         {

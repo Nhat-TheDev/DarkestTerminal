@@ -2,6 +2,7 @@ import type { KeyEvent } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { t } from "../../data/strings";
 import { CAMP_KIT_ITEM_ID } from "../../data/items";
+import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
 import { finishVictorySequence, type ScreenContext } from "./context";
 
@@ -19,7 +20,7 @@ export function handleKey(ctx: ScreenContext, _ui: CampUiState, key: KeyEvent, d
 
 export function renderMain(game: Game, _ui: CampUiState): string {
   const remaining = game.state.inventory[CAMP_KIT_ITEM_ID] ?? 0;
-  return [t("ui.campOption", { i: 1, remaining }), t("ui.campSkipOption")].join("\n");
+  return [t("ui.campOption", { i: 1, amount: BALANCE.survival.campSatietyRestore, remaining }), t("ui.campSkipOption")].join("\n");
 }
 
 export function renderFooter(_ui: CampUiState): string {

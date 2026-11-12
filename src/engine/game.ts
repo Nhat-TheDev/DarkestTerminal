@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CombatantRef, CommandOrder, DroppedJournal, GameState, SkillTarget, Id, LogEntry, Monster, Summon, ArtifactRarity, SlotJournal } from "../types";
+import type { CombatantRef, CombatState, CommandOrder, DroppedJournal, GameState, SkillTarget, Id, Monster, Summon, ArtifactRarity, SlotJournal } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -11,8 +11,8 @@ import {
 } from "../data/endings";
 import { FINAL_BOSS_ARCHETYPE, spawnMonster } from "../data/monsters";
 import { createCharacter, applyPartyExp, resolveArtifactEquip, discardPendingArtifact, grantArtifact, recomputeAllPartyStats, type PartyActionError } from "./party";
-import { restEatDrink, restEatDrinkSatiety, restChat, campAction, drainSatiety, SATIETY_DRAIN_COMBAT } from "./survival";
-import { Rng } from "./rng";
+import { restEatDrink, restEatDrinkSatiety, restChat, campAction, drainSatiety, addItem, SATIETY_DRAIN_COMBAT } from "./survival";
+import { Rng, derivedRng } from "./rng";
 import {
   type EngineContext,
   autoResolveTargets,
@@ -35,13 +35,13 @@ import {
   clearCombatResources,
 } from "./combat";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
-import { CAMP_KIT_ITEM_ID, getItem, rollItemDrop } from "../data/items";
+import { CAMP_KIT_ITEM_ID, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
 import { ABILITIES, rollAbility, getAbility } from "../data/abilities";
 import { rollCoinDrop } from "../data/currency";
 import { totalExpBoostPercent } from "./artifacts";
 import { loadProfile, saveProfile, unlockAbility, lockAbility, addRetiredCharacter, markRetiredCharacterEventShown } from "./profile";
-import { resolveSkillEffect, expireStatusEffect, isHelpfulStatusEffect } from "./resolver";
+import { expireStatusEffect, isHelpfulStatusEffect } from "./resolver";
 import { getStatusEffect } from "../data/statusEffects";
 import { getEvent, RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
 import { t } from "../data/strings";
@@ -61,7 +61,7 @@ import { hermitExchangeFortune, hermitLeave } from "./events/hermit";
 import { guardianFightEnter, guardianFightSkip } from "./events/guardianFight";
 import { collapsedFloorAttempt, collapsedFloorLeave, COLLAPSED_FLOOR_HP_PERCENT } from "./events/collapsedFloor";
 import { maybeTriggerReflection } from "./events/shared";
-import { applyMergeChoice, buildMergeSteps, drainAtFloorClear, driftDropped, endingEchoes, eventEcho, finishMerge, findOpensScene, grantFragments, lookAtFind, mergedHands, passFind, recordEcho, resolveDeduction, showsBaseText, tearOut } from "./journal";
+import { applyMergeChoice, buildMergeSteps, drainAtFloorClear, driftDropped, endingEchoes, eventEcho, finishMerge, findOpensScene, grantFragments, type JournalTrigger, lookAtFind, mergedHands, passFind, recordEcho, resolveDeduction, showsBaseText, tearOut } from "./journal";
 
 export { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
 
@@ -74,12 +74,14 @@ export class Game {
   public memoryIntroShown = false;
   /** The slot's journal, kept here and written back to the profile on every change; a run with no slot keeps it only in memory. */
   public journal: SlotJournal;
-  /** Set when a room copies a fragment without opening a scene; the UI logs it once. */
-  public journalNoticePending = false;
+  /** Fragments copied without opening a scene, with who noticed them; the UI shows them once. */
+  private journalNotice: { fragmentIds: Id[]; characterId: Id | null } | null = null;
   /** The slot's run count when this run began; journal entries and echoes are stamped with it. */
   readonly runNumber: number;
   /** The slot's dropped journal, kept in step with the profile so screens don't read the file to show it. */
   private dropped: DroppedJournal | null;
+  /** Archetypes the slot has fought, kept in step with the profile; the bestiary lists them. */
+  public seenMonsterIds: Id[];
   private readonly playTimeBaseSec: number;
   private readonly sessionStart = Date.now();
 
@@ -99,6 +101,7 @@ export class Game {
     this.memoryIntroShown = profile.memoryIntroShown;
     this.journal = profile.journal;
     this.dropped = profile.droppedJournal;
+    this.seenMonsterIds = profile.seenMonsterIds;
     this.runNumber = profile.runCount;
     this.playTimeBaseSec = restore?.playTimeSec ?? 0;
     const rng = new Rng(seed);
@@ -106,9 +109,11 @@ export class Game {
       rng.setState(restore.rngState);
       this.ctx = { party: restore.state.party, monsters: restore.monsters, summons: restore.summons, rng, inventory: restore.state.inventory };
       this.state = restore.state;
+      this.noteSeenMonsters();
       return;
     }
-    const { floor, monsters } = createFloor(rng);
+    const runSeed = seed >>> 0;
+    const { floor, monsters } = createFloor(derivedRng(runSeed, "floor", 1));
     const classes = classIds ? classIds.map((id) => getClass(id)) : CLASSES;
     // No two characters may share an Ability: the death flow relies on each one losing a distinct id.
     // A later duplicate enters the run with nothing equipped.
@@ -127,6 +132,7 @@ export class Game {
     const retiredCharacterEventEligible = retiredCharacter !== undefined && !profile.shownRetiredCharacterEvent;
     this.state = {
       runId: randomUUID(),
+      runSeed,
       party,
       floor,
       currentRoomId: floor.entryRoomId,
@@ -202,10 +208,25 @@ export class Game {
     let journalFind = false;
     if (room.cleared && room.rolledEventId && this.state.journalHandledRoomId !== room.id) {
       this.state.journalHandledRoomId = room.id;
-      grantFragments({ kind: "eventResolved", eventId: room.rolledEventId, outcome: this.state.eventOutcomes[room.rolledEventId], baseTextShown }, this.state);
-      journalFind = findOpensScene(this.journal, this.state);
+      journalFind = this.grantJournalFind({ kind: "eventResolved", eventId: room.rolledEventId, outcome: this.state.eventOutcomes[room.rolledEventId], baseTextShown });
     }
     maybeTriggerReflection(this.state, this.ctx, journalFind);
+  }
+
+  /** Runs an event room's action: whether its base text shows is read before it, the journal find and reflection come after. */
+  private eventAction<T>(run: () => T): T {
+    const baseTextShown = this.eventBaseTextShown();
+    const result = run();
+    this.afterEventAction(baseTextShown);
+    return result;
+  }
+
+  /** Holds the trigger's fragments as a find only when looking would open a scene; otherwise copies them straight in. */
+  private grantJournalFind(trigger: JournalTrigger): boolean {
+    grantFragments(trigger, this.state);
+    if (findOpensScene(this.journal, this.state)) return true;
+    this.resolveJournalFind(true);
+    return false;
   }
 
   /** Looks at the pending find, or moves on from it. Returns the fragments looked at that opened no scene. */
@@ -215,8 +236,11 @@ export class Game {
       passFind(this.state);
       return [];
     }
+    const characterId = this.state.pendingJournalFind.characterId;
     const unshown = lookAtFind(this.journal, this.state, this.runNumber);
-    if (unshown.length > 0) this.journalNoticePending = true;
+    if (unshown.length > 0) {
+      this.journalNotice = { fragmentIds: [...(this.journalNotice?.fragmentIds ?? []), ...unshown], characterId: this.journalNotice?.characterId ?? characterId };
+    }
     this.saveJournal();
     return unshown;
   }
@@ -249,15 +273,37 @@ export class Game {
     return Object.values(this.journal.lines).some((e) => e.directionId || e.split);
   }
 
+  /** Adds every monster of the current fight to the slot's bestiary; writes the profile only when one is new. */
+  noteSeenMonsters(): void {
+    const combat = this.state.combat;
+    if (!combat) return;
+    const fresh: Id[] = [];
+    for (const c of combat.combatants) {
+      if (c.ref.kind !== "monster") continue;
+      const monster = this.ctx.monsters.find((m) => m.id === c.ref.id);
+      if (monster && !this.seenMonsterIds.includes(monster.archetypeId) && !fresh.includes(monster.archetypeId)) fresh.push(monster.archetypeId);
+    }
+    if (fresh.length === 0) return;
+    this.seenMonsterIds = [...this.seenMonsterIds, ...fresh];
+    const profile = loadProfile(this.currentSaveSlot);
+    profile.seenMonsterIds = this.seenMonsterIds;
+    saveProfile(this.currentSaveSlot, profile);
+  }
+
   /** The torn-out readings still lying somewhere in the dungeon, for the viewer. */
   droppedJournal(): DroppedJournal | null {
     return this.dropped;
   }
 
-  takeJournalNotice(): boolean {
-    const pending = this.journalNoticePending;
-    this.journalNoticePending = false;
-    return pending;
+  journalNoticeView(): { fragmentIds: Id[]; characterId: Id | null } | null {
+    return this.journalNotice;
+  }
+
+  /** Closes the notice and returns the fragments it showed. */
+  dismissJournalNotice(): Id[] {
+    const ids = this.journalNotice?.fragmentIds ?? [];
+    this.journalNotice = null;
+    return ids;
   }
 
   playTimeSec(): number {
@@ -269,6 +315,7 @@ export class Game {
     const hasLiving = room.monsterIds.some((id) => (this.ctx.monsters.find((m) => m.id === id)?.hp ?? 0) > 0);
     if (hasLiving && !room.cleared) {
       this.state.combat = startCombat(room.id, room.monsterIds, this.ctx, room.type === "boss");
+      this.noteSeenMonsters();
       applyBlessing(this.state, this.ctx, room.id);
       this.state.message = t("dungeon.ambush", { room: room.name });
     }
@@ -299,6 +346,7 @@ export class Game {
       return;
     }
     moveToRoom(this.state, targetRoomId, this.ctx);
+    this.noteSeenMonsters();
     this.pickEventEcho();
     this.postMoveCheck();
   }
@@ -519,36 +567,6 @@ export class Game {
     return queueItemAction(this.state.combat, actorRef, itemId, targets, this.ctx);
   }
 
-  useItemOutOfCombat(itemId: Id, characterId?: Id): QueueActionError | null {
-    const item = getItem(itemId);
-    if ((this.state.inventory[itemId] ?? 0) <= 0) return { reason: t("errors.noItem") };
-    // Enemy-targeted items and status effects that count down in combat turns exist only for a fight; used beforehand they would be a free pre-buff.
-    if (item.target === "singleEnemy" || item.target === "allEnemies" || item.effects.some((e) => e.kind === "applyStatusEffect")) return { reason: t("errors.itemNotUsableOutOfCombat") };
-
-    const log: LogEntry[] = [];
-    // Satiety is party-wide, so apply it once rather than once per character.
-    const partyWideEffects = item.effects.filter((e) => e.kind === "modifyStat" && e.stat === "satiety");
-    const perCharacterEffects = item.effects.filter((e) => !(e.kind === "modifyStat" && e.stat === "satiety"));
-    const applyTo = (character: (typeof this.state.party)[number]) => {
-      for (const effect of perCharacterEffects) resolveSkillEffect(effect, character, character, { log, gameState: this.state });
-    };
-
-    if (item.target === "allAllies") {
-      for (const c of this.state.party) if (c.isAlive) applyTo(c);
-      const anyAlive = this.state.party.find((c) => c.isAlive);
-      if (anyAlive) for (const effect of partyWideEffects) resolveSkillEffect(effect, anyAlive, anyAlive, { log, gameState: this.state });
-    } else {
-      const character = this.state.party.find((c) => c.id === characterId && c.isAlive);
-      if (!character) return { reason: t("errors.needLivingCharacter") };
-      applyTo(character);
-      for (const effect of partyWideEffects) resolveSkillEffect(effect, character, character, { log, gameState: this.state });
-    }
-
-    this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) - 1;
-    this.state.message = log.length > 0 ? log.map((entry) => entry.text).join(" ") : t(item.effects.length === 0 ? "game.itemNoEffect" : "game.usedItem", { item: item.name });
-    return null;
-  }
-
   readyToResolve(): boolean {
     if (!this.state.combat) return false;
     return allLivingCharactersHaveQueuedActions(this.state.combat, this.ctx);
@@ -563,19 +581,16 @@ export class Game {
   }
 
   openChest(): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const eventId = getRoom(this.state.floor, this.state.currentRoomId).rolledEventId;
-    const err = openChest(this.state, this.ctx);
-    if (!err && eventId && getEvent(eventId).retiredCharacterEvent) markRetiredCharacterEventShown(this.currentSaveSlot);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => {
+      const eventId = getRoom(this.state.floor, this.state.currentRoomId).rolledEventId;
+      const err = openChest(this.state, this.ctx);
+      if (!err && eventId && getEvent(eventId).retiredCharacterEvent) markRetiredCharacterEventShown(this.currentSaveSlot);
+      return err;
+    });
   }
 
   merchantPurchase(offerIndex: number): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = merchantPurchase(this.state, offerIndex);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => merchantPurchase(this.state, offerIndex));
   }
 
   merchantRefresh(): PartyActionError | null {
@@ -583,36 +598,23 @@ export class Game {
   }
 
   merchantLeave(): void {
-    const baseTextShown = this.eventBaseTextShown();
-    merchantLeave(this.state);
-    this.afterEventAction(baseTextShown);
+    this.eventAction(() => merchantLeave(this.state));
   }
 
   bloodAltarPay(characterId: Id): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = bloodAltarPay(this.state, this.ctx, characterId);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => bloodAltarPay(this.state, this.ctx, characterId));
   }
 
   bloodAltarLeave(): void {
-    const baseTextShown = this.eventBaseTextShown();
-    bloodAltarLeave(this.state);
-    this.afterEventAction(baseTextShown);
+    this.eventAction(() => bloodAltarLeave(this.state));
   }
 
   cursedShrineDecide(accept: boolean): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = cursedShrineDecide(this.state, accept);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => cursedShrineDecide(this.state, accept));
   }
 
   twinAltarsChoose(offerIndex: 0 | 1): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = twinAltarsChoose(this.state, offerIndex);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => twinAltarsChoose(this.state, offerIndex));
   }
 
   sacrifice(sacrificeArtifactId: Id): PartyActionError | null {
@@ -620,73 +622,49 @@ export class Game {
   }
 
   sacrificeLeave(): void {
-    const baseTextShown = this.eventBaseTextShown();
-    sacrificeLeave(this.state);
-    this.afterEventAction(baseTextShown);
+    this.eventAction(() => sacrificeLeave(this.state));
   }
 
   gamblingDenEnter(): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = gamblingDenEnter(this.state, this.ctx);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => gamblingDenEnter(this.state, this.ctx));
   }
 
   gamblingDenContinue(): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = gamblingDenContinue(this.state, this.ctx);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => gamblingDenContinue(this.state, this.ctx));
   }
 
   gamblingDenStop(): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = gamblingDenStop(this.state);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => gamblingDenStop(this.state));
   }
 
   gamblingDenLeave(): void {
-    const baseTextShown = this.eventBaseTextShown();
-    gamblingDenLeave(this.state);
-    this.afterEventAction(baseTextShown);
+    this.eventAction(() => gamblingDenLeave(this.state));
   }
 
   hermitExchangeFortune(artifactId: Id): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = hermitExchangeFortune(this.state, this.ctx, artifactId);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => hermitExchangeFortune(this.state, this.ctx, artifactId));
   }
 
   hermitLeave(): void {
-    const baseTextShown = this.eventBaseTextShown();
-    hermitLeave(this.state);
-    this.afterEventAction(baseTextShown);
+    this.eventAction(() => hermitLeave(this.state));
   }
 
   collapsedFloorAttempt(characterId: Id): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = collapsedFloorAttempt(this.state, this.ctx, characterId);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => collapsedFloorAttempt(this.state, this.ctx, characterId));
   }
 
   collapsedFloorLeave(): void {
-    const baseTextShown = this.eventBaseTextShown();
-    collapsedFloorLeave(this.state);
-    this.afterEventAction(baseTextShown);
+    this.eventAction(() => collapsedFloorLeave(this.state));
   }
 
   enterGuardianFight(): PartyActionError | null {
-    return guardianFightEnter(this.state, this.ctx);
+    const error = guardianFightEnter(this.state, this.ctx);
+    this.noteSeenMonsters();
+    return error;
   }
 
   skipGuardianFight(): PartyActionError | null {
-    const baseTextShown = this.eventBaseTextShown();
-    const err = guardianFightSkip(this.state);
-    this.afterEventAction(baseTextShown);
-    return err;
+    return this.eventAction(() => guardianFightSkip(this.state));
   }
 
   pickReflectionStance(stance: "curious" | "wary" | "dismissive"): void {
@@ -707,97 +685,103 @@ export class Game {
 
   resolve(): void {
     if (!this.state.combat) return;
-    // Coins/EXP/satiety only change in the reward block below, so this is the reveal's baseline for the whole round.
+    // Coins/EXP/satiety only change in `grantVictoryRewards`, so this is the reveal's baseline for the whole round.
     this.state.combat.roundStartPartySnapshot = { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety };
     resolveRound(this.state.combat, this.ctx, this.state.floor.depth, this.state.satiety);
+    // A round can summon monsters the fight did not start with.
+    this.noteSeenMonsters();
     if (this.state.combat.phase === "over") {
       if (this.state.combat.outcome === "victory") {
-        const room = getRoom(this.state.floor, this.state.combat.roomId);
-        room.cleared = true;
-        const rewardBlockStart = this.state.combat.log.length;
-        // Buffs don't carry past a cleared room — debuffs do, and keep ticking down into the next fight.
-        for (const c of this.state.party) {
-          if (!c.isAlive) continue;
-          for (const active of [...c.activeStatusEffects]) {
-            if (isHelpfulStatusEffect(getStatusEffect(active.statusEffectId))) {
-              expireStatusEffect(c, active, { log: this.state.combat.log });
-            }
-          }
-        }
-        drainSatiety(this.state, SATIETY_DRAIN_COMBAT, this.state.combat.log);
-        recomputeAllPartyStats(this.state);
-        const baseExpGained = room.monsterIds.reduce((sum, id) => sum + (this.ctx.monsters.find((m) => m.id === id)?.expReward ?? 0), 0);
-        const expGained = Math.round(baseExpGained * (1 + totalExpBoostPercent(this.state.party) / 100));
-        const levelBefore = this.state.party[0]?.level ?? 1;
-        applyPartyExp(this.state, expGained);
-        this.state.combat.log.push({ text: t("game.expGained", { amount: expGained }), kind: "info" });
-        const levelAfter = this.state.party[0]?.level ?? levelBefore;
-        if (levelAfter > levelBefore) this.state.combat.log.push({ text: t("game.leveledUp", { level: levelAfter }), kind: "info" });
-        const droppedItemIds: Id[] = [];
-        const droppedArtifactIds: Id[] = [];
-        const droppedAbilityIds: Id[] = [];
-        let coinsGained = 0;
-        for (const id of room.monsterIds) {
-          const monster = this.ctx.monsters.find((m) => m.id === id);
-          if (!monster) continue;
-          coinsGained += rollCoinDrop(monster, this.ctx.rng);
-          const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng);
-          if (itemId) {
-            this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
-            droppedItemIds.push(itemId);
-          }
-          if (monster.tier === "elite" || monster.tier === "boss") {
-            // Only a real Boss kill may roll boss-restricted artifacts; Collapsed Floor rolls the same table without qualifying.
-            const artifactId = rollArtifact(monster.tier, this.ctx.rng, this.state.floor.depth, monster.tier === "boss" ? "boss" : undefined);
-            grantArtifact(this.state, artifactId);
-            droppedArtifactIds.push(artifactId);
-
-            const profile = loadProfile(this.currentSaveSlot);
-            const abilityId = rollAbility(monster.tier, this.state.floor.depth, this.ctx.rng, profile.unlockedAbilityIds);
-            if (abilityId) {
-              unlockAbility(profile, abilityId);
-              saveProfile(this.currentSaveSlot, profile);
-              droppedAbilityIds.push(abilityId);
-            }
-            if (monster.tier === "boss") {
-              this.state.runStardust += 1;
-              this.state.combat.log.push({ text: t("game.stardustGained"), kind: "info" });
-              this.unlockMemory();
-            }
-          }
-        }
-        if (coinsGained > 0) {
-          this.state.coins += coinsGained;
-          this.state.combat.log.push({ text: t("game.coinsEarned", { amount: coinsGained }), kind: "info" });
-        }
-        if (room.type === "event" && room.rolledEventId && getEvent(room.rolledEventId).kind === "combatReward") {
-          const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng, this.state.floor.depth);
-          grantArtifact(this.state, artifactId);
-          droppedArtifactIds.push(artifactId);
-          // This win path never reaches closeEvent(), so its outcome tag and lore count are written here.
-          this.state.eventOutcomes[room.rolledEventId] = "resolved";
-          this.state.loreExposureCount += 1;
-        }
-        // Deduped: some of these ids are onceLifetime and may have fired already.
-        if (room.monsterIds.some((id) => this.ctx.monsters.find((m) => m.id === id)?.archetypeId === FINAL_BOSS_ARCHETYPE.id)) {
-          for (const id of FOUNDER_VICTORY_REMOVED_EVENT_IDS) {
-            if (!this.state.firedOnceEventIds.includes(id)) this.state.firedOnceEventIds.push(id);
-          }
-        }
-        this.state.lastRoomDrops =
-          droppedItemIds.length > 0 || droppedArtifactIds.length > 0 || droppedAbilityIds.length > 0
-            ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds, abilityIds: droppedAbilityIds }
-            : null;
-        // Tag the reward block like resolveRound tags its actions, so the reveal shows these values when it reaches them.
-        tagLogRange(this.state.combat, rewardBlockStart, snapshotCombatants(this.state.combat, this.ctx));
-        tagPartySnapshotRange(this.state.combat, rewardBlockStart, { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety });
-        // A combat event's win path never calls closeEvent(), so this is its only reflection trigger.
-        this.afterEventAction(getRoom(this.state.floor, this.state.currentRoomId).chainVariant === undefined);
+        this.grantVictoryRewards(this.state.combat);
       } else if (this.state.combat.outcome === "defeat") {
         this.triggerDefeat();
       }
     }
     this.postMoveCheck();
+  }
+
+  /** A won fight's aftermath: buffs end, satiety drains, then EXP, drops, coins and the event or journal follow-ups, all logged as one block. */
+  private grantVictoryRewards(combat: CombatState): void {
+    const room = getRoom(this.state.floor, combat.roomId);
+    room.cleared = true;
+    // Its own stream, so what a room drops does not depend on how its fight was played.
+    const rewardRng = derivedRng(this.state.runSeed, "rewards", this.state.floor.depth, room.id);
+    const rewardBlockStart = combat.log.length;
+    // Buffs don't carry past a cleared room — debuffs do, and keep ticking down into the next fight.
+    for (const c of this.state.party) {
+      if (!c.isAlive) continue;
+      for (const active of [...c.activeStatusEffects]) {
+        if (isHelpfulStatusEffect(getStatusEffect(active.statusEffectId))) {
+          expireStatusEffect(c, active, { log: combat.log });
+        }
+      }
+    }
+    drainSatiety(this.state, SATIETY_DRAIN_COMBAT, combat.log);
+    recomputeAllPartyStats(this.state);
+    const baseExpGained = room.monsterIds.reduce((sum, id) => sum + (this.ctx.monsters.find((m) => m.id === id)?.expReward ?? 0), 0);
+    const expGained = Math.round(baseExpGained * (1 + totalExpBoostPercent(this.state.party) / 100));
+    const levelBefore = this.state.party[0]?.level ?? 1;
+    applyPartyExp(this.state, expGained);
+    combat.log.push({ text: t("game.expGained", { amount: expGained }), kind: "info" });
+    const levelAfter = this.state.party[0]?.level ?? levelBefore;
+    if (levelAfter > levelBefore) combat.log.push({ text: t("game.leveledUp", { level: levelAfter }), kind: "info" });
+    const droppedItemIds: Id[] = [];
+    const droppedArtifactIds: Id[] = [];
+    const droppedAbilityIds: Id[] = [];
+    let coinsGained = 0;
+    for (const id of room.monsterIds) {
+      const monster = this.ctx.monsters.find((m) => m.id === id);
+      if (!monster) continue;
+      coinsGained += rollCoinDrop(monster, rewardRng);
+      const itemId = rollItemDrop(monster.archetypeId, rewardRng);
+      if (itemId && addItem(this.state, itemId, 1) > 0) droppedItemIds.push(itemId);
+      if (monster.tier === "elite" || monster.tier === "boss") {
+        // Only a real Boss kill may roll boss-restricted artifacts; Collapsed Floor rolls the same table without qualifying.
+        const artifactId = rollArtifact(monster.tier, rewardRng, this.state.floor.depth, monster.tier === "boss" ? "boss" : undefined);
+        grantArtifact(this.state, artifactId);
+        droppedArtifactIds.push(artifactId);
+
+        const profile = loadProfile(this.currentSaveSlot);
+        const abilityId = rollAbility(monster.tier, this.state.floor.depth, rewardRng, profile.unlockedAbilityIds);
+        if (abilityId) {
+          unlockAbility(profile, abilityId);
+          saveProfile(this.currentSaveSlot, profile);
+          droppedAbilityIds.push(abilityId);
+        }
+        if (monster.tier === "boss") {
+          this.state.runStardust += 1;
+          combat.log.push({ text: t("game.stardustGained"), kind: "info" });
+          this.unlockMemory();
+        }
+      }
+    }
+    if (coinsGained > 0) {
+      this.state.coins += coinsGained;
+      combat.log.push({ text: t("game.coinsEarned", { amount: coinsGained }), kind: "info" });
+    }
+    if (room.type === "event" && room.rolledEventId && getEvent(room.rolledEventId).kind === "combatReward") {
+      const artifactId = rollArtifact("treasureOrEvent", rewardRng, this.state.floor.depth);
+      grantArtifact(this.state, artifactId);
+      droppedArtifactIds.push(artifactId);
+      // This win path never reaches closeEvent(), so its outcome tag and lore count are written here.
+      this.state.eventOutcomes[room.rolledEventId] = "resolved";
+      this.state.loreExposureCount += 1;
+    }
+    // Deduped: some of these ids are onceLifetime and may have fired already.
+    if (room.monsterIds.some((id) => this.ctx.monsters.find((m) => m.id === id)?.archetypeId === FINAL_BOSS_ARCHETYPE.id)) {
+      for (const id of FOUNDER_VICTORY_REMOVED_EVENT_IDS) {
+        if (!this.state.firedOnceEventIds.includes(id)) this.state.firedOnceEventIds.push(id);
+      }
+    }
+    this.state.lastRoomDrops =
+      droppedItemIds.length > 0 || droppedArtifactIds.length > 0 || droppedAbilityIds.length > 0
+        ? { itemIds: droppedItemIds, artifactIds: droppedArtifactIds, abilityIds: droppedAbilityIds }
+        : null;
+    // Tag the reward block like resolveRound tags its actions, so the reveal shows these values when it reaches them.
+    tagLogRange(combat, rewardBlockStart, snapshotCombatants(combat, this.ctx));
+    tagPartySnapshotRange(combat, rewardBlockStart, { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety });
+    // A combat event's win path never calls closeEvent(), so this is its only reflection trigger.
+    this.afterEventAction(getRoom(this.state.floor, this.state.currentRoomId).chainVariant === undefined);
   }
 
   advanceToNextFloor(): void {
@@ -810,7 +794,7 @@ export class Game {
     this.state.pendingBarterBuffs = []; // a buff bartered for this floor's elite/boss room is lost if the floor ends without it
     this.state.restRunner = null; // room ids repeat on every floor, so a leftover runner must not match a room on the next one
     this.state.journalHandledRoomId = null;
-    const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
+    const { floor, monsters } = createFloor(derivedRng(this.state.runSeed, "floor", nextDepth), nextDepth);
     this.ctx.monsters = monsters;
     this.state.floor = floor;
     this.state.currentRoomId = floor.entryRoomId;
@@ -864,6 +848,7 @@ export class Game {
     this.ctx.monsters.push(founder);
     room.monsterIds = [founder.id];
     this.state.combat = startCombat(room.id, room.monsterIds, this.ctx, true);
+    this.noteSeenMonsters();
     this.state.message = t("dungeon.ambush", { room: room.name });
   }
 
@@ -874,7 +859,7 @@ export class Game {
       const omen = pickFloorMilestoneOmen(this.state.floor.depth, this.state.shownFloorMilestoneIds, this.ctx.rng);
       this.state.shownFloorMilestoneIds.push(omen.id);
       this.state.pendingFloorMilestoneOmenId = omen.id;
-      grantFragments({ kind: "omen", omenId: omen.id }, this.state);
+      this.grantJournalFind({ kind: "omen", omenId: omen.id });
     }
     if (wasBossRoomVictory) {
       drainAtFloorClear(this.journal, this.state);

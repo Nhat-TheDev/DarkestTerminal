@@ -6,6 +6,7 @@ import { getEvent } from "../../data/events";
 import { getItem } from "../../data/items";
 import { t } from "../../data/strings";
 import { getRoom } from "../dungeon";
+import { addItem } from "../survival";
 import { closeEvent } from "./shared";
 
 export function openChest(state: GameState, ctx: EngineContext): PartyActionError | null {
@@ -18,9 +19,11 @@ export function openChest(state: GameState, ctx: EngineContext): PartyActionErro
     grantArtifact(state, artifactId);
   }
   if (event.guaranteedItems?.length) {
-    for (const { itemId, count } of event.guaranteedItems) state.inventory[itemId] = (state.inventory[itemId] ?? 0) + count;
-    const received = event.guaranteedItems.map(({ itemId, count }) => `${getItem(itemId).name} ×${count}`).join(", ");
-    state.message = t("game.receivedItems", { items: received });
+    const received = event.guaranteedItems
+      .map(({ itemId, count }) => ({ itemId, count: addItem(state, itemId, count) }))
+      .filter(({ count }) => count > 0)
+      .map(({ itemId, count }) => `${getItem(itemId).name} ×${count}`);
+    if (received.length > 0) state.message = t("game.receivedItems", { items: received.join(", ") });
   }
   closeEvent(state);
   return null;

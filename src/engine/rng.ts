@@ -45,3 +45,11 @@ export class Rng {
     return this.next() < p;
   }
 }
+
+/** A stream of its own for one purpose of a run: draws on any other stream never move it. */
+export function derivedRng(seed: number, ...parts: (string | number)[]): Rng {
+  // FNV-1a over the seed and labels.
+  let hash = 0x811c9dc5;
+  for (const ch of `${seed}|${parts.join("|")}`) hash = Math.imul(hash ^ ch.charCodeAt(0), 0x01000193);
+  return new Rng(hash);
+}

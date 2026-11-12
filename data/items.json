@@ -70,7 +70,7 @@
   {
     "id": "calming-draught",
     "name": "Calming Draught",
-    "description": "A herbal tea, brewed strong and drunk cold, that slows the pulse.",
+    "description": "Herbal tea, brewed strong and drunk cold. It slows the pulse.",
     "target": "self",
     "effects": [
       {
@@ -84,7 +84,7 @@
   {
     "id": "antidote",
     "name": "Antidote",
-    "description": "A bitter white pill that coats the tongue and leaves it numb.",
+    "description": "Bitter and white, the pill coats the tongue and leaves it numb.",
     "target": "singleAlly",
     "effects": [
       {
@@ -97,7 +97,7 @@
   {
     "id": "whetstone",
     "name": "Whetstone",
-    "description": "A flat grey stone, dished in the middle from use.",
+    "description": "Years of blades have worn this flat grey stone into a dish in the middle.",
     "target": "singleAlly",
     "effects": [
       {
@@ -125,7 +125,7 @@
   {
     "id": "cracker-string",
     "name": "Cracker String",
-    "description": "A string of paper-wrapped charges, each the size of a thumb. Pull the end and they go off in order.",
+    "description": "Paper-wrapped charges on a string, each the size of a thumb. Pull the end and they go off in order.",
     "target": "singleEnemy",
     "effects": [
       {
@@ -155,7 +155,7 @@
   {
     "id": "frost-flask",
     "name": "Frost Flask",
-    "description": "A flask of brine frozen solid, white with frost on the outside. It does not thaw in the hand.",
+    "description": "Brine frozen solid in a flask, white with frost on the outside. It does not thaw in the hand.",
     "target": "singleEnemy",
     "effects": [
       {
@@ -170,7 +170,7 @@
   {
     "id": "thunder-charge",
     "name": "Thunder Charge",
-    "description": "A copper tube sealed at both ends with wax, heavy for its size. It hums when nothing is touching it.",
+    "description": "Sealed at both ends with wax, the copper tube is heavy for its size. It hums when nothing is touching it.",
     "target": "singleEnemy",
     "effects": [
       {
@@ -215,7 +215,7 @@
   {
     "id": "honing-oil",
     "name": "Honing Oil",
-    "description": "A flask of thin oil that smells of hot iron. The smell stays on the cloth for days.",
+    "description": "Thin oil that smells of hot iron. The smell stays on the cloth for days.",
     "target": "singleAlly",
     "effects": [
       {
@@ -229,7 +229,7 @@
   {
     "id": "marrow-broth",
     "name": "Marrow Broth",
-    "description": "A flask of marrow boiled down until it sets cold. Warmed in the hands, it pours.",
+    "description": "Marrow boiled down in a flask until it sets cold. Warmed in the hands, it pours.",
     "target": "singleAlly",
     "effects": [
       {
@@ -272,7 +272,7 @@
   {
     "id": "smoke-pellet",
     "name": "Smoke Pellet",
-    "description": "A pinch of powder that goes to grey smoke when crushed.",
+    "description": "Crushed between the fingers, this pinch of powder goes to grey smoke.",
     "target": "singleEnemy",
     "effects": [
       {
@@ -356,7 +356,7 @@
   {
     "id": "fracture-charge",
     "name": "Fracture Charge",
-    "description": "A shaped charge in a brass cup, made to be set against a plate.",
+    "description": "Shaped in a brass cup, this charge is made to be set against a plate.",
     "target": "singleEnemy",
     "effects": [
       {
@@ -370,7 +370,7 @@
   {
     "id": "deafening-charge",
     "name": "Deafening Charge",
-    "description": "A charge packed for noise and not fire, wrapped in wet leather so it does not go off in the pack.",
+    "description": "Packed for noise and not fire, this charge is wrapped in wet leather so it does not go off in the pack.",
     "target": "singleEnemy",
     "effects": [
       {
@@ -384,7 +384,7 @@
   {
     "id": "rally-standard",
     "name": "Rally Standard",
-    "description": "A torn banner on a broken haft, the colours faded to the same brown as everything else.",
+    "description": "Torn banner, broken haft, the colours faded to the same brown as everything else.",
     "target": "allAllies",
     "effects": [
       {
@@ -412,7 +412,7 @@
   {
     "id": "field-tonic",
     "name": "Field Tonic",
-    "description": "A stoneware bottle meant to be split four ways, with four notches cut in the neck to show where.",
+    "description": "Four notches are cut in the neck of this stoneware bottle, to show where it splits four ways.",
     "target": "allAllies",
     "effects": [
       {
@@ -439,7 +439,7 @@
   {
     "id": "scholars-candle",
     "name": "Scholar's Candle",
-    "description": "A candle stub scored with fine lines at even intervals. Lit, it gives a steady light that does not move in a draught.",
+    "description": "Fine lines score this candle stub at even intervals. Lit, it gives a steady light that does not move in a draught.",
     "target": "singleAlly",
     "effects": [
       {
@@ -453,7 +453,7 @@
   {
     "id": "hushed-bell",
     "name": "Hushed Bell",
-    "description": "A small brass bell with the clapper bound in felt. Shaken, it makes no sound, and the room goes quiet around it.",
+    "description": "A small brass bell with the clapper bound in felt. Shaken, it makes no sound, and the felt is worn through on one side.",
     "target": "allAllies",
     "effects": [
       {
@@ -481,7 +481,7 @@
   {
     "id": "pitch-pipe",
     "name": "Pitch Pipe",
-    "description": "A short reed pipe that gives one note and no other. Blown once in a room, everyone in it begins to hum the same pitch.",
+    "description": "A short reed pipe that gives one note and no other. The mouthpiece is chewed flat where someone held it between their teeth.",
     "target": "allAllies",
     "effects": [
       {
@@ -521,7 +521,7 @@
   {
     "id": "eyewash",
     "name": "Eyewash",
-    "description": "A small bottle of boiled fennel and salt water, with a dropper made from a quill.",
+    "description": "Boiled fennel and salt water, in a small bottle with a dropper made from a quill.",
     "target": "singleAlly",
     "effects": [
       {
@@ -560,7 +560,7 @@
   {
     "id": "smelling-salts",
     "name": "Smelling Salts",
-    "description": "Pale crystals in a brass case. One sniff and the eyes water, and whoever was down gets up.",
+    "description": "Pale crystals in a brass case. One sniff and the eyes stream, and the head jerks back from it.",
     "target": "singleAlly",
     "effects": [
       {
@@ -590,7 +590,7 @@
   {
     "id": "purge-draught",
     "name": "Purge Draught",
-    "description": "A cloudy draught that tastes of ash and river water. Whoever drinks it is sick within the minute, and better after.",
+    "description": "Cloudy, and it tastes of ash and river water. Whoever drinks it is sick within the minute, on their knees.",
     "target": "allAllies",
     "effects": [
       {
@@ -615,7 +615,7 @@
   {
     "id": "greater-mana-potion",
     "name": "Greater Mana Potion",
-    "description": "A blue so deep it is nearly black in the flask. The glass is cold to hold.",
+    "description": "Blue so deep it is nearly black in the flask. The glass is cold to hold.",
     "target": "self",
     "effects": [
       {
@@ -628,7 +628,7 @@
   {
     "id": "vermin-hide",
     "name": "Vermin Hide",
-    "description": "Strips of hide peeled from the small things that live under the floors. Some of it is fur, some of it is skin, and it has all dried to the same grey.",
+    "description": "Strips of hide peeled from the small things that live under the floors. Fur or bare skin, it has all dried to the same grey.",
     "target": "self",
     "effects": [],
     "tier": "uncommon",
@@ -643,7 +643,7 @@
   {
     "id": "predator-sinew",
     "name": "Predator Sinew",
-    "description": "A length of sinew as long as a forearm, still pulled tight by whatever it was cut from. It will not lie flat on any surface.",
+    "description": "A length of sinew as long as a forearm, still pulled tight by whatever it was cut from. It will not lie flat.",
     "target": "self",
     "effects": [],
     "tier": "unique",
@@ -656,7 +656,7 @@
   {
     "id": "chitin-shard",
     "name": "Chitin Shard",
-    "description": "A curved shard of scale or plate; it is hard to say which. One edge is a seam that came apart clean, the other was broken off.",
+    "description": "Scale or plate, it is hard to say. One edge is a seam that came apart clean; the other was broken off.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -671,7 +671,7 @@
   {
     "id": "cult-rag",
     "name": "Cult Rag",
-    "description": "A strip of coarse robe cloth, dyed a dark red-brown that may not be the original colour. The hem has been cut off all the way round.",
+    "description": "Coarse robe cloth, dyed a dark red-brown that may not be the original colour. The hem has been cut off all the way round.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -684,7 +684,7 @@
   {
     "id": "grave-cloth",
     "name": "Grave Cloth",
-    "description": "Burial linen, brown at the folds and stiff where it was wet. It has been wrapped round something and unwrapped since, and the creases have not given.",
+    "description": "Burial linen, brown at the folds and stiff where it was wet. It was unwrapped from something, and the creases have not given.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -697,7 +697,7 @@
   {
     "id": "old-bone",
     "name": "Old Bone",
-    "description": "A short bone polished on two faces where it slid against the next one. The third face is still rough.",
+    "description": "Polished on two faces where it slid against the next one, this short bone is still rough on the third.",
     "target": "self",
     "effects": [],
     "tier": "unique",
@@ -727,7 +727,7 @@
   {
     "id": "warband-trophy",
     "name": "Warband Trophy",
-    "description": "A cord hung with teeth, a brass ring and a few small bones, knotted by someone who wanted them counted. It hangs heavier at one end.",
+    "description": "A cord hung with teeth, a brass ring and a few small bones, knotted by someone who counted them. It hangs heavier at one end.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -741,7 +741,7 @@
   {
     "id": "elemental-core",
     "name": "Elemental Core",
-    "description": "A fist-sized stone that is a different temperature every time it is picked up. Wherever it is set down it leaves a ring, damp or scorched, never the same twice.",
+    "description": "A fist-sized stone, a different temperature each time it is picked up. Set down, it leaves a ring, damp or scorched, never the same twice.",
     "target": "self",
     "effects": [],
     "tier": "unique",
@@ -767,7 +767,7 @@
   {
     "id": "stone-core",
     "name": "Stone Core",
-    "description": "A rough grey lump with one flat face, cut level by something that does not draw a straight line by eye. Tapped, it answers a little late.",
+    "description": "A rough grey lump with one flat face, cut level by something that does not draw by eye. Tapped, it answers a little late.",
     "target": "self",
     "effects": [],
     "tier": "epic",
@@ -781,7 +781,7 @@
   {
     "id": "bat-blood",
     "name": "Bat Blood",
-    "description": "A stoppered vial of dark, thin blood that took several bats to fill. It smells of copper.",
+    "description": "Dark, thin blood, stoppered in a vial that took several bats to fill. It smells of copper.",
     "target": "self",
     "effects": [],
     "tier": "common",
@@ -792,7 +792,7 @@
   {
     "id": "bear-claw",
     "name": "Bear Claw",
-    "description": "A claw as long as a hand, blunted at the tip from years of being dragged along stone. Three grooves run down the flat side, deep as a thumbnail.",
+    "description": "A claw as long as a hand, blunted at the tip from being dragged along stone. Three grooves run down the flat side.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -803,7 +803,7 @@
   {
     "id": "silk-gland",
     "name": "Silk Gland",
-    "description": "A dried sac no bigger than a thumbnail, one end still trailing a fine thread. Pulled gently, it comes out a hand's length and stops.",
+    "description": "Dried, no bigger than a thumbnail, the sac still trails a fine thread. Pulled gently, it comes out a hand's length and stops.",
     "target": "self",
     "effects": [],
     "tier": "uncommon",
@@ -836,7 +836,7 @@
   {
     "id": "bone-shield-fragment",
     "name": "Bone Shield Fragment",
-    "description": "A curved slice of bone from a rim. Two small holes run through the inside, worn oval by the strap that used to pass through them.",
+    "description": "A curved slice of bone from a shield rim. Two small holes run through it, worn oval by the strap that used to pass through.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -858,7 +858,7 @@
   {
     "id": "knuckle-guard",
     "name": "Knuckle Guard",
-    "description": "A bar of iron bent to fit a fist, the finger hollows worn deeper on one side. The hand it was made for was larger than yours.",
+    "description": "A bar of iron bent to fit a fist, the finger hollows worn deeper on one side. The hand it fitted was larger than yours.",
     "target": "self",
     "effects": [],
     "tier": "rare",
@@ -880,7 +880,7 @@
   {
     "id": "hollow-plate",
     "name": "Hollow Plate",
-    "description": "A shoulder plate, rusted through on the inside and bright on the outside.",
+    "description": "This shoulder plate is rusted through on the inside and bright on the outside.",
     "target": "self",
     "effects": [],
     "tier": "unique",
@@ -891,7 +891,7 @@
   {
     "id": "core-fragment",
     "name": "Core Fragment",
-    "description": "A chip of dressed stone with one groove across it, ruled as straight as any mason could. The groove goes on past the edge, where the rest of the stone was.",
+    "description": "A chip of dressed stone with one groove, ruled mason-straight. The groove runs on past the broken edge, where the rest of the stone was.",
     "target": "self",
     "effects": [],
     "tier": "unique",
@@ -902,7 +902,7 @@
   {
     "id": "venom-thorn",
     "name": "Venom Thorn",
-    "description": "A thorn as thick as a finger, the tip stained yellow-green. The stain is wet.",
+    "description": "Thick as a finger, the thorn is stained yellow-green at the tip. The stain is wet.",
     "target": "self",
     "effects": [],
     "tier": "epic",
@@ -913,7 +913,7 @@
   {
     "id": "warped-vambrace",
     "name": "Warped Vambrace",
-    "description": "A forearm guard bent inward along one side, as though what wore it swelled. The buckles are fastened and the leather is whole. It was never taken off.",
+    "description": "A forearm guard bent inward along one side, as though what wore it swelled. The buckles are still fastened. It was never taken off.",
     "target": "self",
     "effects": [],
     "tier": "epic",
@@ -924,7 +924,7 @@
   {
     "id": "broken-oath-sigil",
     "name": "Broken Oath Sigil",
-    "description": "A badge cut in half through a device that can no longer be read. The cut is clean, and its edges are worn as smooth as the face.",
+    "description": "A badge cut in half through a device that can no longer be read. The cut is clean, and worn as smooth as the face.",
     "target": "self",
     "effects": [],
     "tier": "epic",
@@ -935,7 +935,7 @@
   {
     "id": "warlords-trophy-chain",
     "name": "Warlord's Trophy Chain",
-    "description": "A length of chain hung with pieces of other people's armour: a buckle, a hinge, a spur, part of a rank badge. Each link was forged for weight.",
+    "description": "A chain hung with pieces of other people's armour: a buckle, a hinge, a spur, half a rank badge. Each link was forged for weight.",
     "target": "self",
     "effects": [],
     "tier": "epic",
@@ -968,7 +968,7 @@
   {
     "id": "unraveled-fragment",
     "name": "Unraveled Fragment",
-    "description": "A thumb of grey matter with a hinge at one end and a row of small teeth at the other. Set on a table, the hinge closes slowly on nothing.",
+    "description": "A thumb of grey matter, hinged at one end, small teeth at the other. Set on a table, the hinge closes slowly on nothing.",
     "target": "self",
     "effects": [],
     "tier": "legendary",
@@ -979,7 +979,7 @@
   {
     "id": "weathered-keystone",
     "name": "Weathered Keystone",
-    "description": "A wedge of stone that once locked an arch in place. The curve of the arch is still cut into both faces, though nothing has curved above it for a long time.",
+    "description": "A keystone from an arch. The curve is still cut into both faces, and nothing has rested on it for a long time.",
     "target": "self",
     "effects": [],
     "tier": "legendary",
@@ -990,7 +990,7 @@
   {
     "id": "phylactery-shard",
     "name": "Phylactery Shard",
-    "description": "A curved sliver of black glass, thin as a fingernail. Held to the light, it shows the room with the door still shut.",
+    "description": "A curved sliver of black glass, thin as a fingernail. One face is smooth; the other is scratched with fine, even lines.",
     "target": "self",
     "effects": [],
     "tier": "legendary",
@@ -1001,7 +1001,7 @@
   {
     "id": "grave-dust",
     "name": "Grave Dust",
-    "description": "Bone ground to a fine grey dust and folded into a scrap of cloth. It clings to the fingers and takes more than one washing to leave.",
+    "description": "Bone ground to grey dust and folded into a scrap of cloth. It clings to the fingers and takes more than one washing to leave.",
     "target": "self",
     "effects": [],
     "tier": "common",
@@ -1014,7 +1014,7 @@
   {
     "id": "rotten-flesh",
     "name": "Rotten Flesh",
-    "description": "A palm-sized piece of flesh gone soft and dark, wrapped in a leaf that has stopped helping.",
+    "description": "Flesh gone soft and dark, a palm's width of it, wrapped in a leaf that has stopped helping.",
     "target": "self",
     "effects": [],
     "tier": "common",
@@ -1026,7 +1026,7 @@
   {
     "id": "broken-blade-fragment",
     "name": "Broken Blade Fragment",
-    "description": "A length of broken blade, snapped clean across with the edge still keen. The maker's mark is on the part that is missing.",
+    "description": "Snapped clean across, the edge still keen. The maker's mark is on the part that is missing.",
     "target": "self",
     "effects": [],
     "tier": "uncommon",
@@ -1039,7 +1039,7 @@
   {
     "id": "rat-tail",
     "name": "Rat Tail",
-    "description": "A rat's tail dried hard as cord, still curled the way it dried.",
+    "description": "Dried hard as cord, the rat's tail is still curled the way it dried.",
     "target": "self",
     "effects": [],
     "tier": "uncommon",
@@ -1050,7 +1050,7 @@
   {
     "id": "venom-gland",
     "name": "Venom Gland",
-    "description": "A venom gland the size of a bean, taut as a grape and yellow at the stalk.",
+    "description": "The size of a bean, the venom gland is taut as a grape and yellow at the stalk.",
     "target": "self",
     "effects": [],
     "tier": "rare",

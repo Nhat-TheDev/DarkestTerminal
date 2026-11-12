@@ -1,10 +1,13 @@
 import { describe, test, expect } from "bun:test";
-import { formatPassiveEffect, renderMain } from "../src/ui/screens/characterInfo";
+import { formatPassiveEffect, renderMain, renderFooter, handleKey } from "../src/ui/screens/characterInfo";
 import { CLASSES } from "../src/data/classes";
 import { formatStatusEffectMechanics, getStatusEffect } from "../src/data/statusEffects";
 import { Game } from "../src/engine/game";
 import type { UiState } from "../src/ui/state";
-import type { Character, LogEntry, SkillEffect } from "../src/types";
+import type { Character, LogEntry, SkillEffect, Summon } from "../src/types";
+import { SUMMON_ARCHETYPES, getSummonSkill } from "../src/data/summons";
+import { t } from "../src/data/strings";
+import type { ScreenContext } from "../src/ui/screens/context";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { ABILITIES } from "../src/data/abilities";
 import { createCharacter, recomputeCharacterStats, characterStatBreakdown } from "../src/engine/party";
@@ -55,6 +58,54 @@ describe("renderMain: active statuses", () => {
     const out = renderMain(game, { kind: "characterInfo", characterIndex: 0, previousUi: { kind: "room" } as UiState });
     const text = typeof out === "string" ? out : out.chunks.map((c) => c.text).join("\n");
     expect(text).toContain("+8 attack");
+  });
+});
+
+describe("minion pages", () => {
+  const archetype = SUMMON_ARCHETYPES.find((a) => (a.signatureSkillIds ?? []).length > 0)!;
+  const textOf = (out: ReturnType<typeof renderMain>) => (typeof out === "string" ? out : out.chunks.map((c) => c.text).join(""));
+
+  function setup() {
+    const game = new Game(7);
+    game.state.party.splice(4);
+    const owner = game.state.party[1]!;
+    const minion: Summon = {
+      id: "m1", ownerId: owner.id, archetypeId: archetype.id, name: archetype.name,
+      hp: 30, maxHp: 40, attack: 20, defense: 9, magicPower: 0, aggro: 1, speed: archetype.speed,
+      activeStatusEffects: [], actionsTaken: 0, maxActions: 1,
+    };
+    game.ctx.summons.push(minion, { ...minion, id: "dead", name: "Gone", hp: 0 });
+    const ui = { kind: "characterInfo" as const, characterIndex: 0, previousUi: { kind: "room" } as UiState };
+    const ctx = { game, setUi: () => {} } as unknown as ScreenContext;
+    return { game, owner, minion, ui, ctx };
+  }
+
+  test("a living minion is numbered after the party and its digit opens its page", () => {
+    const { game, owner, minion, ui, ctx } = setup();
+    expect(renderFooter(ui, game)).toContain("[1-5]");
+    const picker = textOf(renderMain(game, ui));
+    expect(picker).toContain(`${t("ui.characterInfoMinionsLabel")}${t("ui.characterInfoPartyPickerEntry", { index: 5, name: minion.name })}`);
+    expect(picker).not.toContain("Gone");
+
+    handleKey(ctx, ui, { name: "5" } as never, 5);
+    expect(ui.characterIndex).toBe(4);
+    const page = textOf(renderMain(game, ui));
+    expect(page).toContain(t("ui.characterInfoMinionHeading", { name: minion.name, owner: owner.name }));
+    expect(page).toContain(t("ui.characterInfoStatLine", { stat: t("ui.characterInfoStatAttack").padEnd(12), total: 20 }).trim());
+    expect(page).toContain(getSummonSkill(archetype.signatureSkillIds![0]!).name);
+
+    handleKey(ctx, ui, { name: "6" } as never, 6);
+    expect(ui.characterIndex).toBe(4);
+  });
+
+  test("a minion's page falls back to the first character once it dies", () => {
+    const { game, minion, ui } = setup();
+    ui.characterIndex = 4;
+    minion.hp = 0;
+    const page = textOf(renderMain(game, ui));
+    expect(page).not.toContain(t("ui.characterInfoMinionsLabel"));
+    expect(page).toContain(t("ui.characterInfoStatMaxHp"));
+    expect(renderFooter(ui, game)).toContain("[1-4]");
   });
 });
 

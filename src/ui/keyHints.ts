@@ -24,6 +24,32 @@ const PARTY_INFO_KINDS: readonly UiState["kind"][] = [
   "roomReward",
   "campPrompt",
 ];
+const COMBAT_KINDS: readonly UiState["kind"][] = [
+  "pickAction",
+  "pickSkill",
+  "skillDetail",
+  "pickCommandMinion",
+  "pickCommandSkill",
+  "pickItemInCombat",
+  "pickTarget",
+  "roundResolved",
+  "combatOver",
+];
+/**
+ * Left off any screen whose fullest footer would no longer fit the smallest terminal: `roomReward` for both, and `room` and the
+ * paged `pickItemInCombat` for `[v]` (the bestiary is one step away through the map, the fight's monsters through `[Esc]`).
+ */
+const MAP_KINDS: readonly UiState["kind"][] = ["room", "rest", "campPrompt", ...COMBAT_KINDS, "monsterInfo", "bestiary"];
+const MONSTER_KINDS: readonly UiState["kind"][] = ["rest", "campPrompt", ...COMBAT_KINDS.filter((k) => k !== "pickItemInCombat"), "floorMap"];
+
+export function canOpenMap(kind: UiState["kind"]): boolean {
+  return MAP_KINDS.includes(kind);
+}
+
+export function canOpenMonsters(kind: UiState["kind"]): boolean {
+  return MONSTER_KINDS.includes(kind);
+}
+
 const NO_SAVE_KINDS: readonly UiState["kind"][] = ["gameover", "journalLastPage", "abilityBuyback", "saveMenu", "fullLog", "gatekeeper"];
 const NO_QUICKSAVE_KINDS: readonly UiState["kind"][] = ["gameover", "journalLastPage", "abilityBuyback", "fullLog", "gatekeeper"];
 const NO_LOG_KINDS: readonly UiState["kind"][] = ["fullLog"];
@@ -49,11 +75,20 @@ export function joinHints(...parts: (string | null | false | undefined)[]): stri
   return parts.filter((p): p is string => typeof p === "string" && p.length > 0).join(HINT_GAP);
 }
 
-export function globalHints(kind: UiState["kind"], allowPartyInfo: boolean = true, allowMemory: boolean = false, allowJournal: boolean = false): string {
+/** `allowPartyInfo` is false while the combat reveal swallows keys, which also covers `[p]` and `[v]`; `allowMonsters` says there is a fight or a bestiary entry to show. */
+export function globalHints(
+  kind: UiState["kind"],
+  allowPartyInfo: boolean = true,
+  allowMemory: boolean = false,
+  allowJournal: boolean = false,
+  allowMonsters: boolean = false
+): string {
   return joinHints(
     allowPartyInfo && PARTY_INFO_KINDS.includes(kind) ? t("ui.hintParty") : null,
     allowMemory && canOpenMemory(kind) ? t("ui.hintMemory") : null,
     allowJournal && canOpenJournal(kind) ? t("ui.hintJournal") : null,
+    allowPartyInfo && canOpenMap(kind) ? t("ui.hintMap") : null,
+    allowPartyInfo && allowMonsters && canOpenMonsters(kind) ? t("ui.hintMonsters") : null,
     NO_LOG_KINDS.includes(kind) ? null : t("ui.hintLog"),
     NO_SAVE_KINDS.includes(kind) ? null : t("ui.hintSave"),
     NO_QUICKSAVE_KINDS.includes(kind) ? null : t("ui.hintQuicksave"),
@@ -88,9 +123,10 @@ export function composeFooter(
   paginated: boolean,
   allowPartyInfo: boolean = true,
   allowMemory: boolean = false,
-  allowJournal: boolean = false
+  allowJournal: boolean = false,
+  allowMonsters: boolean = false
 ): string {
   const left = withPageHint(contextual, paginated);
-  const right = globalHints(kind, allowPartyInfo, allowMemory, allowJournal);
+  const right = globalHints(kind, allowPartyInfo, allowMemory, allowJournal, allowMonsters);
   return left.length > 0 ? left + GROUP_SEP + right : right;
 }

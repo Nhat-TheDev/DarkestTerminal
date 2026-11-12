@@ -85,7 +85,7 @@ describe("Rest room runner bookkeeping", () => {
 });
 
 describe("shop stock", () => {
-  test("offers are 5 distinct items and never Legendary trophies or the Exploration Kit", () => {
+  test("offers are 5 distinct items and never Legendary trophies or, unless passed in, the Exploration Kit", () => {
     for (let seed = 1; seed <= 300; seed++) {
       for (const depth of [1, 30, 75, 120]) {
         const offers = rollShopOffers(new Rng(seed), depth);
@@ -98,6 +98,15 @@ describe("shop stock", () => {
           if (!item.archetypeIds?.length) expect(["common", "uncommon", "rare"]).toContain(item.tier);
         }
       }
+    }
+  });
+
+  test("a kit offer passed in takes one of the offers as it is", () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const kit = { itemId: "exploration-kit", lot: false, sold: true };
+      const offers = rollShopOffers(new Rng(seed), 30, kit);
+      expect(offers.length).toBe(BALANCE.runner.offerCount);
+      expect(offers.filter((o) => o.itemId === "exploration-kit")).toEqual([kit]);
     }
   });
 
@@ -192,6 +201,69 @@ describe("runner trade", () => {
     withRunner(broke.game, []);
     broke.game.state.coins = BALANCE.events.merchantRefreshCostCoins - 1;
     expect(broke.game.runnerRefresh()).not.toBeNull();
+  });
+
+  test("the runner lays out a single Exploration Kit on about campKitOfferChance of his visits", () => {
+    const { game, room } = restGame(14);
+    let visits = 0;
+    let withKit = 0;
+    for (let i = 0; i < 6000; i++) {
+      game.state.restRunner = null;
+      rollRestRunner(game.state, room, game.ctx);
+      const offers = (game.state.restRunner as GameState["restRunner"])?.offers;
+      if (!offers) continue;
+      visits++;
+      const kits = offers.filter((o) => o.itemId === "exploration-kit");
+      expect(kits.length).toBeLessThanOrEqual(1);
+      if (kits[0]) {
+        withKit++;
+        expect(kits[0].lot).toBe(false);
+      }
+    }
+    expect(withKit / visits).toBeGreaterThan(BALANCE.runner.campKitOfferChance - 0.04);
+    expect(withKit / visits).toBeLessThan(BALANCE.runner.campKitOfferChance + 0.04);
+  });
+
+  test("a refresh never rolls the kit again: unsold it stays, sold it stays sold, absent it stays absent", () => {
+    const kitsIn = (game: Game) => game.state.restRunner!.offers.filter((o) => o.itemId === "exploration-kit");
+
+    const unsold = restGame(15).game;
+    withRunner(unsold, rollShopOffers(new Rng(1), 1, { itemId: "exploration-kit", lot: false }));
+    unsold.state.coins = 1000;
+    for (let i = 0; i < BALANCE.events.merchantMaxRefreshes; i++) {
+      expect(unsold.runnerRefresh()).toBeNull();
+      expect(kitsIn(unsold)).toEqual([{ itemId: "exploration-kit", lot: false }]);
+    }
+
+    const sold = restGame(16).game;
+    withRunner(sold, rollShopOffers(new Rng(1), 1, { itemId: "exploration-kit", lot: false }));
+    sold.state.coins = 1000;
+    const kitIndex = sold.state.restRunner!.offers.findIndex((o) => o.itemId === "exploration-kit");
+    expect(sold.runnerBuy(kitIndex)).toBeNull();
+    for (let i = 0; i < BALANCE.events.merchantMaxRefreshes; i++) {
+      expect(sold.runnerRefresh()).toBeNull();
+      expect(kitsIn(sold)).toEqual([{ itemId: "exploration-kit", lot: false, sold: true }]);
+    }
+
+    const absent = restGame(17).game;
+    withRunner(absent, rollShopOffers(new Rng(1), 1));
+    absent.state.coins = 1000;
+    for (let i = 0; i < BALANCE.events.merchantMaxRefreshes; i++) {
+      expect(absent.runnerRefresh()).toBeNull();
+      expect(kitsIn(absent)).toEqual([]);
+    }
+  });
+
+  test("the runner sells no kit to a party already holding maxExplorationKits", () => {
+    const { game } = restGame(18);
+    withRunner(game, [{ itemId: "exploration-kit", lot: false }]);
+    game.state.coins = 500;
+    game.state.inventory["exploration-kit"] = BALANCE.party.maxExplorationKits;
+    expect(game.runnerBuy(0)).not.toBeNull();
+    expect(game.state.coins).toBe(500);
+    game.state.inventory["exploration-kit"] = BALANCE.party.maxExplorationKits - 1;
+    expect(game.runnerBuy(0)).toBeNull();
+    expect(game.state.inventory["exploration-kit"]).toBe(BALANCE.party.maxExplorationKits);
   });
 
   test("selling pays the buyback price; Legendary trophies and the Exploration Kit are refused", () => {

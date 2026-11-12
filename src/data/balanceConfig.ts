@@ -64,7 +64,9 @@ interface BalanceConfig {
     exhaustedThreshold: number;
     exhaustedStatMultiplier: number;
     dyingThreshold: number;
+    /** Flat part of the Dying tick; `dyingDamageMaxHpFraction` of max HP is added to it. */
     dyingDamagePerRound: number;
+    dyingDamageMaxHpFraction: number;
     campSatietyRestore: number;
     eatDrinkRestoreFraction: number;
     eatDrinkSatietyRestore: number;
@@ -94,6 +96,8 @@ interface BalanceConfig {
     size: number;
     maxEquippedArtifacts: number;
     startingExplorationKits: number;
+    /** The most camp kits the inventory holds; a kit gained past it is lost. */
+    maxExplorationKits: number;
     /** Item id to count, added to every new run's inventory. */
     startingItems: Record<string, number>;
     startingCoins: number;
@@ -185,6 +189,8 @@ interface BalanceConfig {
     trophyDropShare: number;
     /** Applied to a group trophy's drop weight. */
     groupDropMultiplier: number;
+    /** General pool: a tier is rolled by these shares, then its items split it evenly. */
+    generalTierShare: Partial<Record<ItemTier, number>>;
     tierWeights: Record<ItemTier, number>;
   };
   /** Odds by floor depth; see `tierWeightsByDepth`. */
@@ -201,6 +207,8 @@ interface BalanceConfig {
     offerCount: number;
     singleChance: number;
     trophyOfferChance: number;
+    /** Rolled once per visit; a refresh keeps the visit's kit offer as it is. */
+    campKitOfferChance: number;
     lotSize: number;
     /** Buyback pays the single price divided by this. */
     buybackDivisor: number;
@@ -222,24 +230,42 @@ interface BalanceConfig {
     anchorWeights: { consumable: Partial<Record<ItemTier, number>>; trophy: Partial<Record<ItemTier, number>> };
   };
   abilities: {
-    dropChance: number;
+    dropChance: Record<"elite" | "boss", number>;
+    dropMinDepth: Record<"elite" | "boss", number>;
     depthCap: number;
     rarityWeightsByDepth: Record<"elite" | "boss", { atDepth1: Record<ArtifactRarity, number>; atDepthCap: Record<ArtifactRarity, number> }>;
     stardustCostByRarity: Record<Exclude<ArtifactRarity, "common">, number>;
   };
   floorGeneration: {
-    minPathRooms: number;
-    maxPathRooms: number;
-    maxBranches: number;
-    minBranchStartStage: number;
-    minBranchSpacing: number;
-    maxEventRoomsPerPath: number;
-    minEventRoomsPerFloor: number;
-    minStandaloneEventRooms: number;
-    maxStandaloneEventRooms: number;
-    minStandaloneEventStage: number;
-    minRestRoomsPerPath: number;
-    maxRestRoomsPerPath: number;
+    minRouteRooms: number;
+    maxRouteRooms: number;
+    minRestRoomsPerRoute: number;
+    maxRestRoomsPerRoute: number;
+    minEventRoomsPerRoute: number;
+    /** The event cap on most floors; a floor rolls `manyEventsFloorChance` to raise it to `maxEventRoomsPerRoute`. */
+    commonMaxEventRoomsPerRoute: number;
+    maxEventRoomsPerRoute: number;
+    manyEventsFloorChance: number;
+    maxParallelLanes: number;
+    /** The most lanes a single split opens; a lane can still split again inside up to `maxParallelLanes`. */
+    maxLanesPerSplit: number;
+    /** Chance a split with spare width gets a branch that leaves one lane and merges into the lane below it. */
+    crossMergeChance: number;
+    /** A cross branch holds `minLaneRooms` to this many rooms. */
+    maxCrossBranchRooms: number;
+    minLaneRooms: number;
+    splitChance: number;
+    nestedSplitChance: number;
+    eventRoomWeight: number;
+    restRoomWeight: number;
+    generationAttempts: number;
+    /** Room-type draws tried on one shape before a new shape is drawn. */
+    typeAttemptsPerShape: number;
+    unknownRoomsMeanAtFirstFloor: number;
+    unknownRoomsMeanGrowthPerFloor: number;
+    /** Depth past which the unknown-room mean stops growing. */
+    unknownRoomsMeanCapDepth: number;
+    unknownRoomsSpread: number;
     /** Each template is one possible combat room's monster tiers. */
     roomCompositionTemplates: ("weak" | "medium" | "strong")[][];
   };

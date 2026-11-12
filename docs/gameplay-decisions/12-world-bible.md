@@ -249,9 +249,11 @@ applied to whatever else it happens to fit.
 the dream. A transaction is one of the most rigid shapes a mind can carry — a price, a good, a
 bow — and everything else about him may have eroded around that one shape long before anyone
 noticed. Whether there's still someone "in there" running the transaction, or only the shape
-itself still executing, isn't answered here. `"The same hooded figure — or one just like it"`
-(§8.3) can be read literally: whatever holds this position may already have outlasted whoever
-first held it.
+itself still executing, isn't answered here. The return text (§8.3),
+"A hooded figure bows over a cloth of new wares, its hands folded at the same height, the bow
+dipping to the same depth.", never says it is the same figure; only the bow repeats, exactly. It
+can be read literally: whatever holds this position may already have outlasted whoever first held
+it.
 
 **The Hermit and the hooded figure are two people who went far down §12.7's line, in very
 different directions. The Stranger went somewhere else entirely.** The party's own repeated
@@ -369,9 +371,11 @@ reason it was, the setting has quietly drifted.
 The rules above say what the text may reveal; these say how a line of it reads. They apply to every
 event description, reflection, Camp Reflection prompt and option, and outcome line.
 
-- **Length.** An event description runs to about 30 words at most, a reflection prompt about 20,
-  each option about 15. A repeat-visit or escalation variant adds one sentence at most.
-- **One observable detail per scene**, and never a second sentence explaining the first.
+- **Length.** An event description runs to 45–60 words, a reflection prompt about 20, each option
+  about 15. A repeat-visit or escalation variant adds one sentence at most.
+- **Set the scene, then one thing is wrong.** Two or three sensory beats (light, sound, smell,
+  temperature, texture) let the reader picture the room; then one detail is wrong, and no sentence
+  explains it.
 - **Never name the player's feelings.** Describe what is seen, heard or touched, and let the player
   supply the reaction.
 - **Show drift (§12.5) through physical evidence of repetition** — scars in the same place, worn

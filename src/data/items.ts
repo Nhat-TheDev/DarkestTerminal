@@ -72,13 +72,17 @@ const TARGET_NOTE: Record<string, string> = {
   allEnemies: t("item.targetNoteAllEnemies"),
 };
 
+function noEffectText(item: ItemDefinition): string {
+  return t(item.archetypeIds?.length ? "item.trophyHint" : "item.effectNone");
+}
+
 export function describeItemEffects(item: ItemDefinition): string {
-  if (item.effects.length === 0) return t("item.effectNone");
+  if (item.effects.length === 0) return noEffectText(item);
   return item.effects.map(itemEffectSummary).join(". ") + ".";
 }
 
 export function formatItemEffect(item: ItemDefinition): string {
-  if (item.effects.length === 0) return t("item.effectNone");
+  if (item.effects.length === 0) return noEffectText(item);
   return describeItemEffects(item) + (TARGET_NOTE[item.target] ?? "");
 }
 
@@ -96,14 +100,26 @@ const GENERAL_ITEMS = ITEMS.filter((i) => !i.archetypeIds?.length);
 const ITEM_DROP_CHANCE = BALANCE.items.itemDropChance;
 const TROPHY_DROP_SHARE = BALANCE.items.trophyDropShare;
 
+const GENERAL_TIER_SHARE = BALANCE.items.generalTierShare;
+const GENERAL_TIERS = [...new Set(GENERAL_ITEMS.map((i) => i.tier))];
+
+for (const tier of GENERAL_TIERS) {
+  if (!(GENERAL_TIER_SHARE[tier]! > 0)) throw new Error(`data/balance-config.json: items.generalTierShare has no share for "${tier}", a tier general-pool items use`);
+}
+
 function dropWeight(item: ItemDefinition): number {
   return TIER_WEIGHTS[item.tier] * (item.groupItem ? BALANCE.items.groupDropMultiplier : 1);
+}
+
+function rollGeneralItem(rng: Rng): ItemDefinition {
+  const tier = rng.weightedPick(GENERAL_TIERS, (candidate) => GENERAL_TIER_SHARE[candidate]!);
+  return rng.pick(GENERAL_ITEMS.filter((i) => i.tier === tier));
 }
 
 export function rollItemDrop(archetypeId: Id, rng: Rng): Id | null {
   if (!rng.chance(ITEM_DROP_CHANCE)) return null;
 
   const trophies = TROPHIES.filter((i) => i.archetypeIds?.includes(archetypeId));
-  const pool = trophies.length > 0 && rng.chance(TROPHY_DROP_SHARE) ? trophies : GENERAL_ITEMS;
-  return rng.weightedPick(pool, dropWeight).id;
+  if (trophies.length > 0 && rng.chance(TROPHY_DROP_SHARE)) return rng.weightedPick(trophies, dropWeight).id;
+  return rollGeneralItem(rng).id;
 }

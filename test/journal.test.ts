@@ -12,8 +12,9 @@ import { JOURNAL_PAGES, validateJournal, type JournalData } from "../src/data/jo
 import { maybeTriggerReflection } from "../src/engine/events/shared";
 import { migrateGameState } from "../src/engine/migration";
 import { availableDirections, deductionOptions, faceOf, drainAtFloorClear, endingEchoes, eventEcho, grantFragments, isChoosable, recordEcho, resolveDeduction } from "../src/engine/journal";
-import { getJournalLine } from "../src/data/journal";
-import { journalPages, renderDeduction } from "../src/ui/screens/journal";
+import { getJournalFragment, getJournalLine } from "../src/data/journal";
+import { CLASSES, getClass } from "../src/data/classes";
+import { journalPages, renderDeduction, renderDeductionFooter } from "../src/ui/screens/journal";
 import journalJson from "../data/journal.json";
 import type { Character } from "../src/types";
 
@@ -144,7 +145,7 @@ describe("journal scene at room clear", () => {
     forceEventRoom(game, "old-count");
     game.state.journalHandledRoomId = null;
     expect(game.openChest()).toBeNull();
-    expect(game.state.pendingJournalFind?.fragmentIds).toEqual(["tally-row"]);
+    expect(game.state.journalFragmentsSeen).toContain("tally-row");
   });
 
   test("a line queued behind another scene opens at the floor clear", () => {
@@ -186,6 +187,43 @@ describe("journal find", () => {
     expect(game.journal.fragments).toEqual([]);
     const who = game.state.party.find((c) => c.id === game.state.pendingJournalFind?.characterId);
     expect(who).toBeDefined();
+  });
+
+  test("when no living member would argue the fragment, nobody is named as the one who noticed it", () => {
+    const game = slotGame();
+    forceEventRoom(game, "old-count");
+    game.state.journalHandledRoomId = null;
+    const fragmentId = grantFragments({ kind: "eventResolved", eventId: "old-count", outcome: undefined, baseTextShown: true }, { ...game.state, pendingJournalFind: null })[0]!;
+    const voiced = new Set(
+      getJournalFragment(fragmentId)!.lineIds.flatMap((id) => getJournalLine(id)!.directions.flatMap((d) => Object.keys(d.personalities ?? {})))
+    );
+    const silent = CLASSES.find((c) => !voiced.has(c.personalityId));
+    expect(silent).toBeDefined();
+    for (const c of game.state.party.slice(1)) c.isAlive = false;
+    game.state.party[0]!.classId = silent!.id;
+    expect(game.openChest()).toBeNull();
+    expect(game.journalNoticeView()?.characterId).toBeNull();
+    expect(renderDeduction(game)).toContain("Something here is worth a closer look.");
+  });
+
+  test("a find that would open no scene is copied straight in and shown once, with nothing to choose", () => {
+    const game = slotGame();
+    forceEventRoom(game, "doubled-back");
+    game.state.journalHandledRoomId = null;
+    expect(game.openChest()).toBeNull();
+    expect(game.state.pendingJournalFind).toBeNull();
+    expect(game.state.pendingJournal).toBeNull();
+    expect(game.journal.fragments.map((f) => f.id)).toEqual(["prints-stop"]);
+    const notice = game.journalNoticeView()!;
+    expect(notice.fragmentIds).toEqual(["prints-stop"]);
+    const who = game.state.party.find((c) => c.id === notice.characterId)!;
+    const screen = renderDeduction(game);
+    expect(screen).toContain(`${getClass(who.classId).name} has stopped to look at something.`);
+    expect(screen).toContain("Copied into the journal. It doesn't match anything yet.");
+    expect(screen).not.toContain("[1]");
+    expect(renderDeductionFooter(game)).toBe("[Enter] Continue");
+    expect(game.dismissJournalNotice()).toEqual(["prints-stop"]);
+    expect(game.journalNoticeView()).toBeNull();
   });
 
   test("moving on writes nothing, and the fragment isn't found again this run", () => {
@@ -391,6 +429,33 @@ describe("journal UI", () => {
     await Bun.sleep(50);
     await renderOnce();
     expect(app.debugUiState.kind).toBe("room");
+    renderer.destroy();
+  });
+
+  test("a fragment that opens no scene shows a notice that only [Enter] closes", async () => {
+    const { renderer, mockInput, renderOnce, captureCharFrame } = await createTestRenderer({ width: 150, height: 45 });
+    const game = slotGame(4, null);
+    forceEventRoom(game, "doubled-back");
+    const app = new App(renderer, game);
+    await renderOnce();
+    mockInput.pressKey("1");
+    await renderOnce();
+    if (app.debugUiState.kind === "artifactDecision") {
+      mockInput.pressKey("2");
+      await renderOnce();
+    }
+    expect(app.debugUiState.kind).toBe("eventReflection");
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("journalDeduction");
+    expect(captureCharFrame()).toContain("Copied into the journal. It doesn't match anything yet.");
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("journalDeduction");
+    mockInput.pressEnter();
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("room");
+    expect(game.journalNoticeView()).toBeNull();
     renderer.destroy();
   });
 

@@ -119,10 +119,11 @@
     "exhaustedThreshold": 30,
     "exhaustedStatMultiplier": 0.667,
     "dyingThreshold": 10,
-    "dyingDamagePerRound": 6,
+    "dyingDamagePerRound": 10,
+    "dyingDamageMaxHpFraction": 0.05,
     "campSatietyRestore": 30,
     "eatDrinkRestoreFraction": 0.3,
-    "eatDrinkSatietyRestore": 30,
+    "eatDrinkSatietyRestore": 40,
     "chatRestoreFraction": 0.1,
     "chatFearRelief": 20,
     "campReflectionTier1Threshold": 3,
@@ -147,7 +148,8 @@
   "party": {
     "size": 4,
     "maxEquippedArtifacts": 3,
-    "startingExplorationKits": 4,
+    "startingExplorationKits": 6,
+    "maxExplorationKits": 10,
     "startingItems": {
       "small-health-potion": 4,
       "small-mana-potion": 4
@@ -267,6 +269,12 @@
     "itemDropChance": 0.9,
     "trophyDropShare": 0.4,
     "groupDropMultiplier": 0.6,
+    "generalTierShare": {
+      "common": 50,
+      "uncommon": 30,
+      "rare": 15,
+      "unique": 5
+    },
     "tierWeights": {
       "common": 1,
       "uncommon": 0.8,
@@ -282,6 +290,7 @@
     "offerCount": 5,
     "singleChance": 0.3,
     "trophyOfferChance": 0.05,
+    "campKitOfferChance": 0.3,
     "lotSize": 3,
     "buybackDivisor": 5,
     "priceByTier": {
@@ -372,7 +381,8 @@
     }
   },
   "abilities": {
-    "dropChance": 0.35,
+    "dropChance": { "elite": 0.35, "boss": 1 },
+    "dropMinDepth": { "elite": 5, "boss": 1 },
     "depthCap": 30,
     "rarityWeightsByDepth": {
       "elite": {
@@ -411,18 +421,29 @@
     }
   },
   "floorGeneration": {
-    "minPathRooms": 7,
-    "maxPathRooms": 12,
-    "maxBranches": 3,
-    "minBranchStartStage": 2,
-    "minBranchSpacing": 3,
-    "maxEventRoomsPerPath": 4,
-    "minEventRoomsPerFloor": 1,
-    "minStandaloneEventRooms": 0,
-    "maxStandaloneEventRooms": 1,
-    "minStandaloneEventStage": 2,
-    "minRestRoomsPerPath": 1,
-    "maxRestRoomsPerPath": 2,
+    "minRouteRooms": 10,
+    "maxRouteRooms": 15,
+    "minRestRoomsPerRoute": 1,
+    "maxRestRoomsPerRoute": 3,
+    "minEventRoomsPerRoute": 2,
+    "commonMaxEventRoomsPerRoute": 4,
+    "maxEventRoomsPerRoute": 6,
+    "manyEventsFloorChance": 0.15,
+    "maxParallelLanes": 4,
+    "maxLanesPerSplit": 3,
+    "crossMergeChance": 0.35,
+    "maxCrossBranchRooms": 3,
+    "minLaneRooms": 2,
+    "splitChance": 0.4,
+    "nestedSplitChance": 0.25,
+    "eventRoomWeight": 0.25,
+    "restRoomWeight": 0.15,
+    "generationAttempts": 400,
+    "typeAttemptsPerShape": 20,
+    "unknownRoomsMeanAtFirstFloor": 0.5,
+    "unknownRoomsMeanGrowthPerFloor": 0.116,
+    "unknownRoomsMeanCapDepth": 100,
+    "unknownRoomsSpread": 1.5,
     "roomCompositionTemplates": [
       [
         "weak",

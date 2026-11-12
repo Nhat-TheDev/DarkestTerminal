@@ -1,5 +1,6 @@
 import type { CharacterClass, Id, SkillDefinition, SkillRankDefinition, PassiveSkillDefinition, PassiveRankDefinition } from "../types";
 import classesJson from "../../data/classes.json";
+import abilitiesJson from "../../data/abilities.json";
 import { STATUS_EFFECTS, assertRankWeights } from "./statusEffects";
 import { SUMMON_CASTS } from "./summons";
 import { ATTACK_RANGES } from "./balanceConfig";
@@ -40,6 +41,10 @@ for (const cls of CLASSES) {
   if (cls.skills.length !== SKILLS_PER_CLASS) {
     throw new Error(`data/classes.json: class "${cls.id}" must have exactly ${SKILLS_PER_CLASS} skills (has ${cls.skills.length})`);
   }
+  for (const id of cls.recommendedAbilityIds ?? []) {
+    if (!abilitiesJson.some((a) => a.id === id)) throw new Error(`data/classes.json: class "${cls.id}" recommends an unknown ability "${id}"`);
+  }
+  cls.recommendedAbilityIds ??= [];
   if (!ATTACK_RANGES.includes(cls.attackRange)) {
     throw new Error(`data/classes.json: class "${cls.id}" needs an "attackRange" of ${ATTACK_RANGES.join(" or ")}`);
   }

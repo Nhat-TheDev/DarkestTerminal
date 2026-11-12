@@ -201,7 +201,7 @@ function enqueue(state: GameState, journal: SlotJournal, lineId: Id, fragmentId:
 function noticer(fragmentIds: Id[], state: GameState): Id | null {
   const directions = fragmentIds.flatMap((id) => getJournalFragment(id)?.lineIds ?? []).flatMap((lineId) => getJournalLine(lineId)?.directions ?? []);
   const living = state.party.filter((c) => c.isAlive);
-  const speaker = living.find((c) => directions.some((d) => d.personalities?.[personalityIdOf(c)] !== undefined)) ?? living[0];
+  const speaker = living.find((c) => directions.some((d) => d.personalities?.[personalityIdOf(c)] !== undefined));
   return speaker?.id ?? null;
 }
 

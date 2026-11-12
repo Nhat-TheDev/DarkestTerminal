@@ -12,74 +12,165 @@ every time balance is retuned is exactly what this convention avoids.
 
 ---
 
-## 1. Room/floor generation: a rule-fixed runtime generator
+## 1. Room/floor generation: a rule-checked runtime generator
 
-Floor structure is generated directly by a runtime algorithm
-(`generateFloorLayout(rng)`, `src/data/floorPatterns.ts`) — it does not read
-from a hand-written pattern file. Core invariant: **no dead ends, every
-branch converges on the boss**, guaranteed by exactly one connection rule
-(below), with no need for a separate validation algorithm.
+Floor structure is generated at runtime (`generateFloorLayout(rng, depth)`,
+`src/data/floorPatterns.ts`), never read from a hand-written pattern file. A
+floor is a directed graph from one entrance room to one guard room (elite or
+boss), with no dead ends and no way back. Routes through it differ: in
+length, and in how many fights, events and rests they hold. The player reads
+the whole floor on the map (`src/ui/floorMap.ts`) and plans across it; the
+game never suggests a route.
 
-### Internal representation
-The structure uses the concept of a **stage** (column) — `RoomToken[][]` —
-each room has `{ stage, roomId, tag }`, where `tag` is one of:
-- `""` — a normal combat room
-- `"free"` — a rest room
-- `"event"` — an event room (`gameplay-decisions/08-events.md` §8)
-- `"boss"` — the boss room, required to be the sole room of the final stage
+A *route* is any walk from the entrance to the guard room. Every rule below
+holds for every route of every floor.
 
-### Connection rule
-**Every room in stage N connects to ALL rooms in stage N+1**, with no other
-edges allowed — no connecting backward, no shortcutting across stages. This
-automatically implies: dead ends are impossible, and every branch naturally
-converges once the next stage has only 1 room; going back to a previous room
-is never allowed.
+### Shape: lanes, splits and joins
+A floor is a sequence of rooms and *splits*. A split sends the route into 2 to
+`floorGeneration.maxLanesPerSplit` *lanes* that join again further on:
+- A lane holds at least `floorGeneration.minLaneRooms` rooms before it joins
+  or merges.
+- A lane may split again inside itself. Its first and last items are always
+  rooms, so its sub-lanes join before the lane itself does, and its own split
+  and join never merge with the outer ones.
+- A *cross branch* leaves a lane and merges into the lane below it instead of
+  rejoining its own. A split whose lanes leave a lane of width unused rolls
+  `crossMergeChance` for one; the lanes it links hold only rooms, and the branch leaves each of them
+  at least `minLaneRooms` rooms of their own. Where it leaves, how long it is
+  (`minLaneRooms` to `maxCrossBranchRooms` rooms) and where it merges are
+  random.
+- At any point along the floor, at most `floorGeneration.maxParallelLanes`
+  lanes run side by side, nested lanes and cross branches included.
+- A join may also be a split: lanes meet and part again at the same point,
+  with no shared room between. In the graph, every last room of the joining
+  lanes links to every first room of the next split.
+- The entrance and the guard room are single rooms on every floor.
 
-### Generation rules (`generateFloorLayout`)
-Every bound below is measured **along a single path** from start to boss —
-since every stage connects fully to the next, path length = number of stages,
-fixed regardless of which branch is chosen. All bounds are read from
-`data/balance-config.json` field `floorGeneration`, re-exported as named
-constants in `src/data/floorPatterns.ts`:
-- Stage 0 (start) is exactly 1 room, tag `""` (normal room).
-- The final stage is exactly 1 room, tag `boss`.
-- Path length (total rooms, including start + boss): bounded by `MIN_PATH_ROOMS`/`MAX_PATH_ROOMS` (`floorGeneration.minPathRooms`/`maxPathRooms`), randomized on each generation.
-- **Branch points** (branch = a stage with >1 room) can only be placed starting from `MIN_BRANCH_START_STAGE` (`floorGeneration.minBranchStartStage`, 0-indexed).
-- At most `MAX_BRANCHES` branch points (`floorGeneration.maxBranches`); 2 consecutive branch points must be at least `MIN_BRANCH_SPACING` rooms apart (`floorGeneration.minBranchSpacing`) — so a short path can only fit a couple of branch points at most.
-- Each branch point = exactly 2 rooms: 1 normal room + 1 event room (the player picks one of the two when passing through that stage).
-- **Standalone event rooms** (a stage holding only 1 event room, so every path passes through it): `MIN_STANDALONE_EVENT_ROOMS`–`MAX_STANDALONE_EVENT_ROOMS` per floor (`floorGeneration.minStandaloneEventRooms`/`maxStandaloneEventRooms`), rolled after the branch points on every floor, whether or not the floor has any branch points. They are placed from `MIN_STANDALONE_EVENT_STAGE` onward (`floorGeneration.minStandaloneEventStage`, 0-indexed, separate from `minBranchStartStage`), never on the boss stage, never next to a branch point or to another standalone event. The pick count can fall short of the roll when that filter empties the candidate pool, and is capped so branch points + standalone events stay within `MAX_EVENT_ROOMS_PER_PATH`.
-- Every floor has at least `MIN_EVENT_ROOMS_PER_FLOOR` event rooms (`floorGeneration.minEventRoomsPerFloor`): when the branch points alone fall short, the standalone count is raised to make up the difference. With the current config only a floor with no branch point ever needs this, and its candidate pool is never empty. The generator doesn't call `validateGeneratedStages` at runtime, so a config that can't reach this minimum on a short path under-delivers instead of throwing; the property test in `test/floorPatterns.test.ts` reads the live config and fails on such a change.
-- No 2 event rooms are ever adjacent on the same path: branch points are spaced at least `MIN_BRANCH_SPACING` apart, and standalone events keep a stage between themselves and every other event stage.
-- At most `MAX_EVENT_ROOMS_PER_PATH` event rooms per path (`floorGeneration.maxEventRoomsPerPath`).
-- `MIN_REST_ROOMS_PER_PATH`–`MAX_REST_ROOMS_PER_PATH` rest rooms per path (`floorGeneration.minRestRoomsPerPath`/`maxRestRoomsPerPath`) — chosen randomly among stages that aren't start/boss/branch points/standalone events; `pickRestStages` removes a picked stage's immediate neighbors from the candidate pool before the next pick, so no 2 rest rooms are ever adjacent either. The pick count can fall short of the random target when neighbor-filtering exhausts the candidate pool, rather than force an adjacent pair in — with the current `minRestRoomsPerPath: 1` this never drops below the configured minimum, but raising that minimum isn't guaranteed to be satisfiable by this function and would need re-checking.
-- `roomId` is unique across the whole layout.
+How many splits a floor has, how many lanes each holds and how long each lane
+is are random (`splitChance`, `nestedSplitChance`); the generator builds no
+"combat lane" or "event lane" on purpose.
 
-`validateGeneratedStages(stages)` re-checks all of the rules above — used as
-a safety net for tests and for future changes to the generator (the generator
-is correct by construction and doesn't rely on validation to be correct).
+### Route rules
+All bounds come from `floorGeneration` in `data/balance-config.json`:
+- Rooms on a route, entrance and guard included: `minRouteRooms`–`maxRouteRooms`.
+- Rest rooms on a route: `minRestRoomsPerRoute`–`maxRestRoomsPerRoute`. Every
+  route has at least one rest.
+- Event rooms on a route: from `minEventRoomsPerRoute` up to a cap rolled per
+  floor: `commonMaxEventRoomsPerRoute` on most floors, `maxEventRoomsPerRoute`
+  on a floor that rolls `manyEventsFloorChance`. Routes with more events than
+  the common cap are therefore rare.
+- Never two event rooms in a row, never two rest rooms in a row.
+
+### How the generator meets the rules
+Generate and check, not build by construction:
+1. Draw the longest route length, then a random shape of rooms and splits
+   that fills it (`shapeSeq`), within the lane rules above.
+2. Draw each room's type in walking order (`eventRoomWeight`,
+   `restRoomWeight`, the rest combat); a room can't be an event or a rest when
+   a room leading into it already is one, which keeps the "in a row" rules.
+3. Check the route rules over the graph, and redraw the types up to
+   `typeAttemptsPerShape` times per shape, then the shape itself up to
+   `generationAttempts` times.
+4. If nothing passes, `fallbackLayout()` is used: a single lane of
+   `minRouteRooms` rooms with the fewest events and rests, spaced out. It is
+   valid for any config the property test accepts; with the current config it
+   is never reached.
+
+Route checks never list routes, since nested splits multiply them.
+`FloorGraph.routeBounds` (`src/engine/floorGraph.ts`) walks the graph once and
+keeps, per room, the minimum and maximum number of rooms, events and rests on
+the routes from there to the guard. The "in a row" rules are checked per edge.
+
+`validateFloorLayout(rooms)` re-checks every rule on the graph alone, so it
+holds for cross branches too: route bounds, edges, at most `maxLanesPerSplit`
+next rooms per room, lanes side by side per column (its rooms, plus the rooms
+whose lines run across it), at least `minLaneRooms` rooms on every lane a
+split opens before it reaches a room more than one route leads into,
+reachability, no dead ends, unique ids, a visible entrance and guard. The property test runs it over many seeds and depths.
+
+### Unknown rooms
+Some rooms show as `[?]` until the party enters them. A room's real type is
+fixed at generation and counts toward every route rule by that type; only
+the display hides it (`Room.hidden`).
+- The count is drawn around a mean that rises with depth:
+  `unknownRoomsMeanAtFirstFloor` plus `unknownRoomsMeanGrowthPerFloor` per
+  floor, held at its `unknownRoomsMeanCapDepth` level past that depth, then
+  moved up or down by up to `unknownRoomsSpread` and rounded, never below 0.
+  Two floors at the same depth differ.
+- Each unknown room goes to the column holding the fewest unknown rooms so
+  far, never beside another unknown room on any route, never on the entrance
+  or the guard. When no room is left that keeps those rules, the generator
+  places fewer. On narrow floors this caps the deep-floor count below the
+  drawn mean.
+- The Paths list names an unknown room `??? (unknown)`, since room names are
+  drawn per room type. Entering the room drops the flag (`moveToRoom`), so its
+  type and name show for the rest of the floor.
+- A player can sometimes deduce an unknown room's type from the rules (an
+  unknown room right after an event is not an event). This is accepted.
+
+### The floor map
+While the party chooses its next room (the `room` screen, with no Gatekeeper
+pending), the Battlefield shows the whole floor instead of the sprites, on
+the plain panel background. Every other screen keeps the normal Battlefield.
+- The map is drawn from the room graph alone (`connectedRoomIds`), never from
+  stored coordinates, so a floor from an older save still draws. Rooms are
+  laid out in *tracks*, one per row segment: a room joins the track of the
+  room it is the first choice of; when several lead into it, the track that
+  started furthest left wins, which is what ends a cross branch at the lane it
+  merges into.
+- A room's column is its longest walk from the entrance, so a lane shorter
+  than its neighbours keeps its rooms in the first columns of the split and
+  runs its line on to the join. Cells are 5 characters wide and 7 apart; a
+  route of `maxRouteRooms` rooms fits the Battlefield at the smallest
+  supported terminal.
+- The first lane of a split continues on the row it came from; every other
+  track takes the first free row below its parent, one blank connector row
+  apart. Tracks that end sooner are placed first and each track's own
+  branches go right under it, so nested lanes and cross branches sit between
+  their lane and the next, pushing later lanes down.
+- Every connection is drawn the same way: along the source's row to the gap
+  before the target, up or down there, then into the target. Junction glyphs
+  are built from the directions that meet in a cell, so a join that is also a
+  split merges into `┣` or `┫`, and a cross branch turns down with `┓` into
+  `┻`. Generated maps never cross two lines.
+- Above the map, only the floor number; below it, a legend. The map counts
+  nothing for the player: route lengths are read off the map itself.
+- Passed rooms and the lines into them are dimmed; the rooms the party can
+  move to carry their key, matching the Paths list.
 
 ### Storage & runtime
-`createFloor(rng, depth)` (`src/data/floor.ts`) calls `generateFloorLayout(rng)`
-then `buildFloorFromStages(stages, rng, depth)`: it builds `Room[]` with
-`connectedRoomIds` = every room in the next stage; assigns random room names
-(a pool per room type, avoiding duplicate names within the same floor) and
-randomly places a small number of monsters per combat room (the regular
-combat archetypes from `data/monsters.json`, `gameplay-decisions/02-monster.md`
-§2), 1 elite or boss monster (a guard-room archetype, randomly picked —
-`gameplay-decisions/02-monster.md` §2, `gameplay-decisions/06-level-system.md` §6.11)
-for the `boss` room. `Game.advanceToNextFloor()` (`src/engine/game.ts`) calls
-`createFloor` again with `depth + 1` every time the guard-room is cleared
+`createFloor(rng, depth)` (`src/data/floor.ts`) calls `generateFloorLayout(rng,
+depth)` then `buildFloorFromLayout(layout, rng, depth)`: it builds `Room[]`
+with `connectedRoomIds` from the layout and `hidden` on unknown rooms; assigns
+random room names (a pool per room type, avoiding duplicate names within the
+same floor) and randomly places a small number of monsters per combat room
+(the regular combat archetypes from `data/monsters.json`,
+`gameplay-decisions/02-monster.md` §2), 1 elite or boss monster (a guard-room
+archetype, randomly picked — `gameplay-decisions/02-monster.md` §2,
+`gameplay-decisions/06-level-system.md` §6.11) for the `boss` room. A floor is
+generated whole when the party reaches it, deterministically for the run
+seed. `Game.advanceToNextFloor()` (`src/engine/game.ts`) calls `createFloor`
+again with `depth + 1` every time the guard room is cleared
 (`gameplay-decisions/06-level-system.md` §6.9).
 
-`test/floorPatterns.test.ts`: a property-based test that runs `generateFloorLayout`
-across many random seeds, verifying all the rules above plus reachability/no-dead-end (BFS),
-plus a separate test for `validateGeneratedStages` (invalid input must throw).
+A run draws from 3 streams, so a draw spent on one never moves another.
+The main stream (`ctx.rng`, saved as `rngState`) serves combat and events.
+Floor generation and a won fight's rewards each take a stream derived from
+`GameState.runSeed` and a label (`derivedRng`, `src/engine/rng.ts`):
+`"floor"` with the depth, and `"rewards"` with the depth and the room id.
+A floor's layout and a room's drops are the same for a run however its
+fights were played. A save from before `runSeed` gets one from its `runId`
+(`migrateGameState`).
+
+`test/floorPatterns.test.ts` is the property test for the generator;
+`test/floorMap.test.ts` checks the map against the approved mockup, column
+alignment, the width bound and an old-save floor.
 
 ---
 
 ## 2. Turn cycle: command phase + speed-ordered execution phase
 
-Each round splits into 2 distinct phases, matching `CombatState.phase` (`"command" | "resolution"`).
+Each round splits into 2 distinct phases, matching `CombatState.phase` (`"command" | "resolution" | "over"`); `"over"` is set once the fight has ended.
 
 ### Phase 1 — Command (`phase: "command"`)
 - The player picks an action (skill or item) + target for every living character up front, without seeing what the monsters will do this round. Monsters do **not** act in this phase.
@@ -95,7 +186,7 @@ Each round splits into 2 distinct phases, matching `CombatState.phase` (`"comman
   2. If it's a **character**: fetch its `QueuedAction`, apply the dead-before-turn targeting rule (below), then call the resolver (§3).
   3. If it's a **monster**: AI picks an action + target right at this moment (no pre-commit) based on the current state — targeting by `aggro` (`gameplay-decisions/02-monster.md` §2).
 - **Dead-before-turn targeting**: if a `QueuedAction`'s original target has died by the time the actor's turn comes up:
-  - `target: "singleEnemy"` → redirect randomly to any living monster; if none are left → the action fizzles (MP/item is still lost from the command phase).
+  - `target: "singleEnemy"` → redirect randomly to any living monster; if none are left → the action fizzles. A fizzle costs nothing: a queued item is refunded (`refundQueuedAction`), and a skill's MP, uses and cooldown are never committed, since that happens only after the fizzle check (§3).
   - `target: "singleAlly"` → **no** redirect, the action just fizzles (redirecting to someone else would go against the player's original choice).
 - When `turnQueue` is exhausted → `roundNumber += 1`, `queuedActions` resets empty, `phase` goes back to `"command"` for the next round.
 - Combat ends when all `monster`s in `combatants` are dead (victory) or all `character`s are dead (full-party permadeath).
@@ -111,10 +202,10 @@ buffs/debuffs via skills (`modifyCombatStat`), not from underlying RNG.
 A single pure function, shared by both skills and items:
 
 ```
-resolveSkillEffect(effect: SkillEffect, source: Combatant, targets: Combatant[], ctx: GameState): void
+resolveSkillEffect(effect: SkillEffect, source: Actor, target: Actor, ctx: ResolveContext): number
 ```
 
-`source`/`target` are either `Character` or `Monster` — both types share flat
+It applies one effect to one target and returns the damage dealt or HP healed (0 for other kinds). `source`/`target` are a `Character`, `Monster` or `Summon` — both types share flat
 fields `attack`/`defense`/`hp`/`maxHp` under the same names, so most effects
 share the same code path regardless of whether the source/target is which;
 `mp`/`maxMp`/`aggro`/`survival` only exist on `Character`.
@@ -125,11 +216,16 @@ share the same code path regardless of whether the source/target is which;
   The next step after `mitigatedOffense` in the multiplication chain (`resolveSkillEffect`'s `"damage"` case) is `raceMultiplierFor(target, effect.damageType ?? "physical")`: `(1 - resist/100) * (1 + weak/100)`, where `resist`/`weak` come from the target's resolved race/subRace/trait profile (a no-op, `1`, when `target` isn't a `Monster`) — `gameplay-decisions/02-monster.md`'s "Race, subRace & traits" section. This is also where the usual `max(1, ...)` floor gets an exception: when the race multiplier is exactly `0` (100% resist), `finalDamage` is `0`, not `1`.
   The last factor in that chain is a variance: every direct hit, rolled separately, is multiplied by a uniform random factor within ±`combat.damageVariancePercent` (3)% (`ResolveContext.rollDamage`, the rng draw that every direct-hit call site passes: `combat.ts`, `monsterAI.ts`, `combatHooks.ts`). The product is then rounded at random with the odds of its fraction instead of to the nearest integer, so a hit of 10 reads 10 or 11 at +3% and 10 or 9 at −3% rather than always 10; the average stays exact. A damage-over-time tick and an artifact's flat auto-damage are never varied, and a field of 0 turns the variance off and spends no rng draw.
   Before the variance, the hit rolls its crit: every direct hit and every direct heal has `combat.baseCritChancePercent` (1)% to crit, on top of the skill's own `critChance` and the Archer's passive, and a crit multiplies by `combat.defaultCritMultiplierPercent` (150)% unless the effect sets its own (`critRolled`, `resolver.ts`; skills roll in `resolveOneDamageEffect`, `combat.ts`, which any caller of `resolveSkillEffect` that leaves `isCrit` unset gets for free through `rollDamage`). Each hit of a multi-hit skill and each target of an area skill rolls its own crit and its own variance. A hit of a multi-hit cast that comes after the target has fallen still rolls them but is not dealt (`ResolveContext.unapplied`): no HP change, hook or lifesteal; its log line reads `Overkill on <target>: <amount> from <source>.` (`resolver.overkill*`) and its entry carries the battlefield's number. Its execute bonus is tested against the share of max HP the target had just before the hit that felled it (`ResolveContext.executeHpFraction`), not against the 0 HP it has now, so it reads like that hit. Nothing crits for a caller that passes no `rollDamage`: a damage- or heal-over-time tick. An item's damage and heal never crit (`SkillDefinition.fromItem`, which also keeps the Archer's passive off them and a stealth break from making one a guaranteed crit), and neither does an artifact's or an ability's `autoDamage` (`isCrit: false`).
-  If `source` is a character, its current fear tier (`getFearTier`, `src/engine/resolver.ts`) can add an accuracy roll and a damage multiplier before HP is deducted (see `getFearAccuracyPenalty`/`getFearDamagePenalty` in the same file), and the top fear tier additionally has a chance to skip the turn entirely, rolled at the action-selection step (command phase, `rollLosesControl`) before the resolver is ever called — details + the fear-tier table: `gameplay-decisions/04-fear-combat.md` §4. **Exception when `source === target`** (a status effect's own periodic tick on the actor carrying it, e.g. the "Poisoned" DoT — `tickStatusEffects` calls `resolveSkillEffect` again with `source`/`target` being the same actor): this isn't "an attack", so attack (or magicPower)/defense are **not** added/subtracted and the fear multiplier isn't applied — the damage is a fixed `effect.amount`.
-- **`heal`**: `target.hp = min(target.maxHp, target.hp + effect.amount + healPower)`, where `healPower = source.magicPower` if the skill has `isMagic: true` and `source` is a `Character`, otherwise `healPower = 0`. A direct heal rolls the same base crit as a hit (the sum is multiplied by the crit multiplier and the line reads `resolver.healCrit`); a heal-over-time tick does not, and a heal has no variance.
+  If `source` is a character, its current fear tier (`getFearTier`, `src/engine/resolver.ts`) can add an accuracy roll and a damage multiplier before HP is deducted (see `getFearAccuracyPenalty`/`getFearDamagePenalty` in the same file), and the top fear tier additionally has a chance to skip the turn entirely, rolled at execution, at the start of the character's own turn in `runCharacterTurn` (`rollLosesControl`), before the resolver is ever called; a lost turn refunds a queued item and commits no MP or cooldown — details + the fear-tier table: `gameplay-decisions/04-fear-combat.md` §4. **Exception when `source === target`** (a status effect's own periodic tick on the actor carrying it, e.g. the "Poisoned" DoT — `tickDotEffects`, through `tickCategoryUnconditionally`, calls `resolveSkillEffect` again with `source`/`target` being the same actor): this isn't "an attack", so attack (or magicPower) is **not** added, the fear multiplier isn't applied, and nothing crits or varies. The tick computes its amount before calling the resolver: `effect.amount` plus `maxHpPercent` of the bearer's max HP, scaled by stacks for a stackable status, then reduced by the bearer's defense (`statusDamageAfterDefense`) and raised by any vulnerability.
+- **`heal`**: `target.hp = min(target.maxHp, target.hp + round((baseHeal + healPower) × passiveHealBoost × lowHpBoost × highFearBoost × crit))`, where:
+  - `baseHeal = max(effect.amount, target.maxHp × effect.maxHpPercent / 100) + source.maxHp × effect.casterMaxHpPercent / 100`;
+  - `healPower = source.magicPower × (effect.offenseMultiplierPercent ?? 100) / 100` if the skill has `isMagic: true` and `source` is a `Character` or a `Summon`, otherwise `0`;
+  - `passiveHealBoost = 1 + healBoostPercent / 100` from the caster's own passive rank, only when the heal comes from one of the caster's own class skills (`ResolveContext.castByOwnClassSkill`), otherwise `1`;
+  - `lowHpBoost` / `highFearBoost` = `1 + bonus / 100` when the effect sets `lowHpHealBonus` / `highFearHealBonus`: the bonus rises evenly from 0 to `maxBonusPercent` as the target's HP falls toward `fullBonusBelowHpPercent` or its fear rises toward `fullBonusAtFear` (`lowHpHealBonusPercent` / `highFearHealBonusPercent`);
+  - `crit` is the crit multiplier on a crit, otherwise `1`. A direct heal rolls the same base crit as a hit and its line reads `resolver.healCrit`; a heal-over-time tick does not crit (it is called without `rollDamage`), and a heal has no variance.
 - **`restoreMp`**: same as `heal` but on `target.mp`/`target.maxMp` (only applies to `Character`).
 - **`applyStatusEffect`** / **`removeStatusEffect`**: adds/removes an entry `{ statusEffectId, turnsRemaining }` from `target.activeStatusEffects` (a list unique by `statusEffectId` — reapplying an already-active status always refreshes `turnsRemaining` back to `durationTurns`; for a status with `stackable: true` it also adds 1 stack up to `maxStacks`, scaling that status's own `perTurnEffects` — see `gameplay-decisions/01-class-skill.md` §1.7.4 for the mechanic and `bleeding`'s concrete numbers). A stack gain logs `resolver.statusStack` instead of the plain `resolver.statusRefresh`, and the current stack count (once >1) is shown next to the effect in the party/monster status listings.
-- **`modifyStat`**: for `effect.stat === "fear"`, the amount goes through `adjustFear` (`Character` only, one decimal place), a positive amount first reduced by the target's `fearResist` (`resistedFearGain`); for `effect.stat === "satiety"`, `ctx.gameState.satiety += effect.amount` instead — satiety is party-wide (`GameState`, not `Character`), so this branch needs a `gameState` reference in `ResolveContext` (only set by call sites that have one, e.g. `Game.useItemOutOfCombat`). Either way, clamped to the survival-stat range (`gameplay-decisions/03-survival-stats.md` §3).
+- **`modifyStat`**: for `effect.stat === "fear"`, the amount goes through `adjustFear` (`Character` only, one decimal place), a positive amount first reduced by the target's `fearResist` (`resistedFearGain`); for `effect.stat === "satiety"`, `ctx.gameState.satiety += effect.amount` instead — satiety is party-wide (`GameState`, not `Character`), so this branch needs a `gameState` reference in `ResolveContext` (only set by call sites that have one; none in the engine passes it today, since the one satiety item, the Exploration Kit, is spent by Camp rather than used). Either way, clamped to the survival-stat range (`gameplay-decisions/03-survival-stats.md` §3).
 - **`modifyCombatStat`**: `target[effect.combatStat] += effect.amount` (`attack`/`defense`/`aggro`/`speed`/`magicPower`; `aggro` and `magicPower` only exist on `Character` and `Summon`, and a `Monster` is left untouched by them). This effect kind only ever appears inside `StatusEffectDefinition.perTurnEffects`, so a buff/debuff's lifetime is tied to the status effect that contains it; when the status expires, the resolver applies the effect with an inverted sign once to undo it (ensuring buffs never leak permanently).
 
 ### Ordering & responsibility boundaries
@@ -159,14 +255,14 @@ Used for Poison Coat (Rogue): a self-buff that doesn't deal damage on its own, b
 Used for the "stunned" effect (Mage's Lightning Bolt/Lightning Storm).
 - An optional field on `StatusEffectDefinition`: `stuns?: boolean`.
 - At the start of `runCharacterTurn` and `runMonsterTurn`, before fetching the `QueuedAction`/picking an AI action: if `actor.activeStatusEffects` has any status with `stuns: true` currently active → log a skipped turn, `return`, without executing any action — this applies to **monsters too**.
-- The status isn't automatically removed just because it caused a skipped turn — `tickStatusEffects` at the end of the round still processes `turnsRemaining` as normal.
+- The status isn't automatically removed just because it caused a skipped turn. A stun status has no `perTurnEffects`, so it is a "special" status (`statusCategory`) and `tickSpecialEffects` counts its `turnsRemaining` down right after the bearer's own turn, the skipped one included.
 
 ### 4.4 Dual-side skills and per-effect targets (`SkillEffect.appliesToRelation`, `SkillEffect.target`, the two-sided `SkillTarget` values)
 Used for Acolyte's Purify (choose one of two sides), Divine Descent (both sides at once), and Plague Doctor's Total Plague (both sides at once); also used more broadly by any skill that needs one effect to land somewhere other than the skill's own `target`.
 - 2 `SkillTarget` values cover the "both/either side" shape: `"singleAllyOrEnemy"` (Purify — the player picks a single target, which can be an ally or an enemy) and `"allAlliesAndEnemies"` (Divine Descent, Total Plague — automatically targets everyone on both sides).
 - `SkillEffect.appliesToRelation?: "ally" | "enemy"` narrows one effect to only the side of the population already resolved by the skill's own `target` — e.g. Purify's `removeStatusEffect` effect has `appliesToRelation: "ally"` and its `damage` effect has `appliesToRelation: "enemy"`, both still resolved against whatever `target` picked out. This is a *filter within* an already-resolved population, not a separate resolution — the only shape that correctly expresses Purify, whose `singleAllyOrEnemy` target is exactly 1 player-picked actor whose side decides which effect fires.
 - `SkillEffect.target?: SkillTarget` instead *overrides* the skill's own `target` for one effect, resolving it against a wholly separate population — e.g. a `summon` effect always lands on the caster (`target: "self"`) even when the skill's own `target` is `allEnemies`. Only self/all-* targets are supported (a `single*` override is skipped — there's no UI to pick a 2nd target mid-cast).
-- `applySkillEffects` (`src/engine/combat.ts`): `isOverrideEffect(e)` is `e.kind === "summon" || (e.target !== undefined && e.target !== skill.target)`. Override effects are resolved once each, against their own `effect.target ?? "self"` (for `summon`) or `effect.target` population, before the main per-target loop runs. Every other effect goes through the normal per-target loop (1 accuracy roll per target, shared by every effect on that target); an effect with `appliesToRelation` set is skipped there for any target on the wrong side.
+- `applySkillEffects` (`src/engine/combat.ts`) runs a cast in 3 steps that share one `Cast` object: `castOwnPopulationEffects`, `castOnTarget` per target, then `finishCast`. `hasOwnPopulation(e, skill)` is true for a `summon`, `summonMonster`, `commandSummons` or `throwDice` effect and for any effect whose `target` differs from the skill's. Those are resolved once each by `castOwnPopulationEffects`, against their own `effect.target ?? "self"` (for `summon`) or `effect.target` population, before the main per-target loop runs. Every other effect goes through the normal per-target loop (1 accuracy roll per target, shared by every effect on that target); an effect with `appliesToRelation` set is skipped there for any target on the wrong side.
 - `autoResolveTargets`: for `"allAlliesAndEnemies"` → returns the union of all living characters + monsters; for `"singleAllyOrEnemy"` → returns `null` just like `singleEnemy`/`singleAlly` (forcing the UI to prompt).
 - `resolveExecutionTargets`: for `"singleAllyOrEnemy"` — if the original target died, redirect according to the original target's type (if it was a monster → redirect like `singleEnemy`; if it was a character → fizzle like `singleAlly`). For `"allAlliesAndEnemies"` — filter dead entries out of the combined list.
 - The AoE accuracy roll (`gameplay-decisions/04-fear-combat.md` §4.1) applies to the `enemy`-facing effects of these skills; `ally`-facing effects don't roll.
@@ -182,14 +278,14 @@ No skill in `data/classes.json` uses `usesPerCombat` — every skill (including 
 - A field on `Character` (mirroring `usesRemainingThisCombat`): `cooldownsRemaining: Record<Id, number>` — initialized to `{}` in `createCharacter`, reset to `{}` in `startCombat` — doesn't carry over between combats.
 - `queueAction`: blocks if `(actor.cooldownsRemaining[skillId] ?? 0) > 0`. `cooldownsRemaining[skillId]` is set at execution time (`runCharacterTurn`, alongside MP deduction — §3), to `Math.max(0, skill.cooldownTurns - totalCooldownReduction(actor))` — `totalCooldownReduction` (`src/engine/artifacts.ts`) sums any cooldown-reduction granted by the actor's equipped artifacts, so the stored cooldown can be lower than the skill's own `cooldownTurns`.
 - Decrementing: at the end of every round, every entry `> 0` in `cooldownsRemaining` for every living actor → subtract 1 (floored at 0).
-- Convention for assigning `cooldownTurns` (`gameplay-decisions/01-class-skill.md` §1.8): for skills with `isBuff: true` (Interpose, Rally, Poison Coat) → `cooldownTurns = the skill's own applyStatusEffect effect's durationTurns + 1`; damage/utility skills are assigned by hand; ultimates share a fixed value across every class (see `data/classes.json`).
+- Convention for assigning `cooldownTurns` (`gameplay-decisions/01-class-skill.md` §1.8): for skills with `isBuff: true` (the full list is in `gameplay-decisions/01-class-skill.md` §1.8) → `cooldownTurns = the skill's own applyStatusEffect effect's durationTurns + 1`; damage/utility skills are assigned by hand; ultimates share a fixed value across every class (see `data/classes.json`).
 
 ### 4.7 Buffs always act first in the round — `SkillDefinition.isBuff` + a temporary speed bonus for turn-order calculation
-Used for Interpose, Rally (Knight), Poison Coat (Rogue) — the skills marked `isBuff: true`.
+Used by every skill marked `isBuff: true` in `data/classes.json` (self-buffs, party buffs, taunts and summons; the list is in `gameplay-decisions/01-class-skill.md` §1.8).
 
 - An optional field on `SkillDefinition`: `isBuff?: boolean`.
 - `buildTurnQueue`: when computing the sort key for a character combatant (`turnOrderSortKey`, `src/engine/combat.ts`), checks `combat.queuedActions` to see if that actor has a `QueuedAction` pointing at a skill with `isBuff: true` → if so, uses `actor.speed` plus `combat.buffTurnOrderSpeedBonus` (`data/balance-config.json`) as its sort key. This does **not** overwrite the actor's real `speed` — it's only a temporary value used for sorting, discarded as soon as `turnQueue` is built.
-- **Exception: a skill with a `summon` effect never gets this boost, even if it's also `isBuff: true`** (Summon Goblin/Spirit/Golem, Totem Recall) — `turnOrderSortKey` checks `isSummonSkill` (any effect with `kind: "summon"`) and skips the bonus when true, so these resolve in plain speed order alongside every other attack/utility skill. `isBuff: true` is kept on them only for the unrelated cooldown convention (§4.6) and to keep them out of Blood Fury's damage bonus (`gameplay-decisions/01-class-skill.md` §1.5 — `applySkillEffects` only calls `syncVikingBloodFury` for a non-`isBuff` skill) — not for turn order.
+- **Exception: a skill with a `summon` effect never gets this boost, even if it's also `isBuff: true`** (Summon Goblin/Spirit/Golem, Totem Recall) — `turnOrderSortKey` checks `isSummonSkill` (any effect with `kind: "summon"`) and skips the bonus when true, so these resolve in plain speed order alongside every other attack/utility skill. `isBuff: true` is kept on them only for the unrelated cooldown convention (§4.6) and to keep them out of Blood Fury's damage bonus (`gameplay-decisions/01-class-skill.md` §1.5 — `applySkillEffects` only calls `syncPassiveThresholdStatus` for a non-`isBuff` skill) — not for turn order.
 - Has no effect on monsters (monsters don't pre-queue).
 - If several characters use an `isBuff: true` skill (with no summon effect) in the same round, all get the same boost — ties are broken by the usual rule (equal `speed` → characters before monsters, then original order within `combatants`).
 
@@ -234,7 +330,7 @@ The monster AI is filter → score → pick → target, with every rule declared
 | `initialCooldownTurns` | monster skill | `spawnMonster` seeds `Monster.skillCooldowns` for elite/boss tier; a normal-tier monster never gets one. |
 | `aiCondition` | monster skill | `skillReady`: the skill is a candidate only while the predicate holds. |
 | `aiRules` | monster skill | `scoreWeight`, multiplying the skill's weight in `pickMonsterAction`. |
-| `targetRules`, `targeting: "random"` | monster skill, archetype | `pickTargets`: the aggro weight (`aggroWeight`) times each matching rule, or a uniform pick for `random`. |
+| `targetRules`, `targeting: "random"` | monster skill, archetype | `pickTargets`: the targeting weight (`targetingWeight`) times each matching rule, or a uniform pick for `random`. |
 | `targetCount` | monster skill | `pickTargets` rolls the count and picks distinct targets one at a time, each removed before the next; `applySkillEffects` rolls accuracy per target as for an area skill. |
 | `bossTelegraph` (`skillId`, `meterLength`), bar-level override | archetype, bar | `fillTelegraphMeter` (`monsterAI.ts`) adds one icon to `Monster.telegraphMeter` at the start of each of the boss's own turns, called from `combat.ts` before the stun and Overwatch checks so a lost turn still fills; `takeMonsterTurn` releases the telegraph through `releaseTelegraph` once the meter is full and the boss is not silenced. A stun, an interrupt or silence only delay the release; the meter stays full. |
 | `telegraph`, `chargeEffects` | monster skill | `telegraph` marks the skill a `bossTelegraph` may name; the loader rejects a telegraph in any weight table. `chargeEffects` resolve on the caster in `fillTelegraphMeter` when the icon before the last fills. |

@@ -102,6 +102,19 @@ describe("artifacts", () => {
     expect(c.equippedArtifactIds).toEqual(["iron-gauntlet", "ancient-sword", "heart-of-stone"]);
   });
 
+  test("a fallen character can't take an artifact; it stays pending for a living one", () => {
+    const game = new Game(1);
+    const [fallen, living] = game.state.party;
+    fallen!.isAlive = false;
+    fallen!.hp = 0;
+    game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: true };
+    expect(game.resolveArtifactEquip(fallen!.id)).toEqual({ reason: t("errors.needLivingCharacter") });
+    expect(fallen!.equippedArtifactIds).toEqual([]);
+    expect(game.state.pendingArtifactDecision).not.toBeNull();
+    expect(game.resolveArtifactEquip(living!.id)).toBeNull();
+    expect(living!.equippedArtifactIds).toEqual(["iron-gauntlet"]);
+  });
+
   test("discarding a pending ordinary artifact leaves no trace; a forceEquip one can't be discarded", () => {
     const game = new Game(1);
     game.state.pendingArtifactDecision = { artifactId: "iron-gauntlet", forceEquip: false };
@@ -332,10 +345,14 @@ describe("artifacts", () => {
     expect(isPartyDying(state.satiety)).toBe(false);
 
     state.satiety = 30;
+    expect(isPartyExhausted(state.satiety)).toBe(false);
+    state.satiety = 29;
     expect(isPartyExhausted(state.satiety)).toBe(true);
     expect(isPartyDying(state.satiety)).toBe(false);
 
     state.satiety = 10;
+    expect(isPartyDying(state.satiety)).toBe(false);
+    state.satiety = 9;
     expect(isPartyExhausted(state.satiety)).toBe(true);
     expect(isPartyDying(state.satiety)).toBe(true);
   });
@@ -349,7 +366,7 @@ describe("artifacts", () => {
     recomputeCharacterStats(c, 100);
     expect(c.attack).toBe(baseAttack + 3);
 
-    recomputeCharacterStats(c, 30); // Exhausted threshold
+    recomputeCharacterStats(c, 29); // Exhausted threshold
     expect(c.attack).toBe(Math.round(baseAttack * (2 / 3)) + 3);
     expect(c.maxHp).toBe(statsForLevel(getClass(c.classId), c.level).maxHp);
   });
@@ -385,8 +402,8 @@ describe("artifacts", () => {
     const enemyRef = livingMonsterRefs(combat, ctx)[0]!;
     queueAction(combat, { kind: "character", id: knight.id }, attackSkill.id, [enemyRef], ctx);
     resolveRound(combat, ctx);
-    expect(combat.log.some((l) => l.text.includes("upon defeating an enemy"))).toBe(true);
-    expect(combat.log.some((l) => l.text.includes("recovers") && l.text.includes("thanks to an artifact") && !l.text.includes("upon defeating"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("from an artifact after a kill"))).toBe(true);
+    expect(combat.log.some((l) => l.text.includes("recovers") && l.text.includes("thanks to an artifact") && !l.text.includes("after a kill"))).toBe(true);
   });
 
   test("lifesteal heals off the full damage of a multi-hit skill, not just its last hit", () => {
@@ -499,7 +516,7 @@ describe("artifacts", () => {
     expect(c.magicPower).toBe(baseMagic + 8);
     expect(c.speed).toBe(cls.baseSpeed + 2);
 
-    recomputeCharacterStats(c, 30);
+    recomputeCharacterStats(c, 29);
     expect(c.magicPower).toBe(Math.round(baseMagic * (2 / 3)) + 8);
     expect(c.speed).toBe(Math.round(cls.baseSpeed * (2 / 3)) + 2);
   });

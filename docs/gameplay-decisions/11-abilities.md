@@ -220,6 +220,11 @@ Abilities, not shown above.
   slot then starts over from nothing.
 - A slot that has never held a run has no profile file → treated as
   `{ version: 1, unlockedAbilityIds: [] }` (only commons available).
+- A profile file that can't be parsed is renamed to
+  `slotN.profile.corrupt.json` and the slot reads as a fresh profile, so
+  the next write doesn't destroy what the file held. Profiles and saves
+  are written to a `.tmp` file and renamed into place
+  (`writeFileAtomic`, `src/engine/paths.ts`).
 - A legacy `profile.json`, shared by every slot, is copied at startup by
   `migrateLegacyProfile()` (`src/engine/save.ts`) into each slot that holds
   a loadable run and has no profile of its own yet, then renamed to
@@ -235,14 +240,18 @@ run's first floor generates and `Game`'s constructor runs
 straight to that recruit's ability, before the next class is browsed:
 
 1. List every `common` ability, plus every non-common ability currently in
-   `unlockedAbilityIds` — tagged with its rarity.
+   `unlockedAbilityIds` — tagged with its rarity. Abilities the class lists
+   in `recommendedAbilityIds` (`data/classes.json`) carry a `*`, explained
+   under the list; a class that lists none shows neither.
 2. Player picks exactly 1 (number key), or explicitly skips (dedicated
    key, `0`) — a character can enter the run with no ability equipped.
 3. **No 2 characters in the party may end the screen with the same
    ability id equipped** (commons included — a party can't stack 4 copies
-   of `battle-instinct` either). Once a character locks in an id, it drops
-   out of every later character's list for this screen. Backing out of a
-   recruit (`Esc`) gives its ability back to the list. This applies only
+   of `battle-instinct` either). Once a character locks in an id, every
+   later character's list still shows it in the same place, dimmed and
+   marked taken, and its number does nothing, so the numbering never shifts
+   between recruits. Backing out of a recruit (`Esc`) frees its ability
+   again. This applies only
    to *this run's* equip choices — it has no effect on `unlockedAbilityIds`
    itself, which stays a plain set with no notion of "who owns what."
 
@@ -265,7 +274,7 @@ of the Artifact drop on the same kill.
   *current* run — equipped abilities are still locked in for the run,
   §11.1 "Character-select flow"). Revealed the same way an Artifact drop
   is — an entry in the room-clear reward screen (`GameState.lastRoomDrops`
-  → `buildRewardEntries`, `src/ui/screens/rewards.ts`), viewable for its
+  → `buildRewardEntries`, `src/ui/state.ts`), viewable for its
   name/rarity/effect/description exactly like an Artifact entry — not a
   combat-log line the way a passive Item pickup is. A permanent catalog
   unlock earns the same popup weight as an Artifact, since it changes the
@@ -276,7 +285,7 @@ of the Artifact drop on the same kill.
   the roll simply missed.
 - **Boss kills additionally, unconditionally, grant exactly 1 Stardust**,
   `GameState.runStardust: number += 1`, regardless of whether the ability
-  roll above hit or missed. Since a real Boss only appears every
+  roll above found anything left to unlock. Since a real Boss only appears every
   `bossFloorInterval` floors (5, `data/level-growth.json`), this works out to
   1 Stardust every 5 floors. Stardust has exactly one use: buying back a lost
   ability at this run's death flow (below) — it plays no role in mid-run
@@ -285,10 +294,17 @@ of the Artifact drop on the same kill.
 The ability roll shares the same drop-chance/rarity mechanics for both
 sources:
 
-- **Drop chance**: `abilities.dropChance` (0.35) per eligible kill —
-  deliberately below `items.itemDropChance` (0.9) since an Ability
-  affects the permanent profile, a much higher-stakes reward than a
-  consumable.
+- **Drop chance, per source**: a Boss kill always rolls an ability
+  (`abilities.dropChance.boss` (1)), so a Boss never leaves empty-handed
+  while the catalog still has something to give. An Elite kill rolls
+  `abilities.dropChance.elite` (0.35), and only from floor depth
+  `abilities.dropMinDepth.elite` (5) on; Elites on shallower floors drop
+  no ability at all (`abilities.dropMinDepth.boss` (1) leaves Bosses
+  ungated). The Elite chance sits deliberately below
+  `items.itemDropChance` (0.9) since an Ability affects the permanent
+  profile, a much higher-stakes reward than a consumable. With the depth
+  gate, a slot's first ability comes from its first Boss, the same kill
+  that unlocks Memory.
 - **The roll excludes any ability id already in `unlockedAbilityIds`**, so
   a hit always surfaces something the player doesn't already have.
   - **Catalog-exhaustion fallback**: if every ability in the rolled
@@ -307,7 +323,8 @@ sources:
 ```
 // data/balance-config.json, "abilities" block
 "abilities": {
-  "dropChance": 0.35,
+  "dropChance": { "elite": 0.35, "boss": 1 },
+  "dropMinDepth": { "elite": 5, "boss": 1 },
   "depthCap": 30,
   "rarityWeightsByDepth": {
     "elite": {
@@ -339,7 +356,9 @@ The slot's first kill of a boss-tier monster (the guard of the first boss floor;
 of the floors before it are elites) unlocks Memory, a read-only list of the non-common
 abilities the slot holds. It is unlocked where the boss kill grants Stardust
 (`Game.unlockMemory`), and the flag is `memoryUnlocked` in the slot profile, so it belongs
-to the slot and survives permadeath; `clearSlot` resets it.
+to the slot and survives permadeath; `clearSlot` resets it. Since a Boss kill always rolls
+an ability, Memory opens holding at least the one that kill dropped, unless the slot already
+holds every non-common ability.
 
 A one-time intro screen follows (`Game.memoryIntroPending`, shown by
 `App.syncUiToGameState` after the floor milestone check; `proceedAfterVictory` routes
@@ -418,7 +437,7 @@ shallow, lower-investment runs.
 
 - **One profile per save slot, not per run and not shared.** Each of the
   5 slots keeps its own unlocks; an ability earned in slot 1 never shows
-  up at slot 2's character select. The game over screen's `[1] New run`
+  up at slot 2's character select. The game over screen's `[n] New Run`
   starts the next run in the same slot, so its pool carries straight
   over. A character's
   `equippedAbilityId` is locked in once, at that run's creation
@@ -573,7 +592,7 @@ specific abilities are actually worth to the character holding them.
 | `bulwark-stance` | Bulwark Stance | Feet set, weight behind the shield. Blows arrive at something already braced for them. | +8 defense, or 10% of base defense if higher. |
 | `second-wind` | Second Wind | Past the point where the body should have quit, there turns out to be a little more. | +50 max HP, or 10% of base max HP if higher. |
 | `bloodletting` | Bloodletting | Every wound it opens gives a little back. | Heals 8% of damage dealt. |
-| `featherstep-training` | Featherstep Training | Footwork most fighters never bother to learn, until it's the only reason they're still standing. | 6% chance to fully dodge an attack. |
+| `featherstep-training` | Featherstep Training | Footwork most fighters never bother to learn: weight on the balls of the feet, never both heels down at once. | 6% chance to fully dodge an attack. |
 | `restless-vigor` | Restless Vigor | Never quite at rest, even in camp, and first to move whenever anything starts. | +5 speed. |
 | `deepened-channel` | Deepened Channel | The spell leaves with more behind it than the caster meant to give. | +10 magic power, or 10% of base magic power if higher. |
 | `wellspring` | Wellspring | A deeper reserve than the caster remembers building. | +20 max MP, or 10% of base max MP if higher. |
@@ -626,7 +645,7 @@ own. The Unique-tier `quickened-pulse` continues the same ladder at `+8`.
 | id | Name | Description | Effect |
 |---|---|---|---|
 | `executioners-instinct` | Executioner's Instinct | Knows exactly where the killing blow lands, and how to recover from delivering it. | Heals 20 HP on defeating a target, or 3% of base max HP if higher. |
-| `thunderous-aura` | Thunderous Aura | Lightning gathers on its own and strikes something every round, no weapon raised. | Deals 20 + 40% base magic power damage to 1 random enemy at the start of each round. |
+| `thunderous-aura` | Thunderous Aura | The hair on their arms never lies flat, and something near them is always taking the spark, no weapon raised. | Deals 20 + 40% base magic power damage to 1 random enemy at the start of each round. |
 | `vampiric-discipline` | Vampiric Discipline | Drinks deep from every wound it deals. | Heals 12% of damage dealt. |
 | `phantom-reflexes` | Phantom Reflexes | The body moves before the mind's finished deciding to. | 12% chance to fully dodge an attack. |
 | `battle-scholar` | Battle Scholar | Writes down what nearly killed it after every fight, and reads it back before the next. | +15% EXP gained for the party. |
@@ -659,8 +678,8 @@ the same ladders. `quickened-pulse` (`speed +8`) continues Rare's
 | `reapers-instinct` | Reaper's Instinct | Every kill closes a little of what the fight opened, and every wound it deals feeds it a little more. | Heals 25 HP on defeating a target, or 5% of base max HP if higher. Heals 8% of damage dealt. |
 | `lodestone` | Lodestone | Every enemy in the room keeps looking at it, and every round something near it takes a hit no one saw thrown. | Deals 22 + 50% base attack damage to 1 random enemy at the start of each round. +15 aggro. |
 | `grandmasters-focus` | Grandmaster's Focus | Waits less between strikes and takes more from every fight. | -1 turn skill cooldown. +20% EXP gained for the party. |
-| `unerring-will` | Unerring Will | Fear stays outside the hands. Some strikes, and some curses, land because they were never going to miss. | 20% chance to bypass a hit or debuff-chance roll entirely. -12% fear accumulated. |
-| `arcane-font` | Arcane Font | Somewhere past the hundredth cast the caster stopped drawing on the magic and became where it comes from. The spells land harder, and the supply barely thins. | +14 magic power, or 10% of base magic power if higher. +28 max MP, or 10% of base max MP if higher. |
+| `unerring-will` | Unerring Will | Fear stays outside the hands. The arm finishes every swing it starts, and some strikes and curses land before a guard can close. | 20% chance to bypass a hit or debuff-chance roll entirely. -12% fear accumulated. |
+| `arcane-font` | Arcane Font | Somewhere past the hundredth cast the caster stopped counting what was left. The spells land harder, and the reserve is slow to thin. | +14 magic power, or 10% of base magic power if higher. +28 max MP, or 10% of base max MP if higher. |
 | `sealed-bulwark` | Sealed Bulwark | Plate and ward set into the same frame — blows slow to land, and curses slower to stay. | Harmful statuses enemies apply are 32% less likely to land. +12 defense, or 10% of base defense if higher. |
 <!-- docs:end -->
 
@@ -727,9 +746,11 @@ already causes.
   rate or the catalog size may need adjusting before the Stardust-side
   numbers do.
 - **Save-scumming the ability roll**: the roll shares the Artifact drop's
-  hook and draws from the run's live RNG stream. A save stores the RNG state
-  (`rngState`, `src/engine/save.ts`), so reloading and replaying the same
-  actions reproduces the same roll — but a player who quicksaves before or
-  during an Elite/Boss fight and then acts differently consumes a different
-  number of draws and gets a fresh roll. Seeding the roll off the room's own
-  seed would close this; that is an RNG-architecture change.
+  hook, and a won fight's rewards draw from a stream of their own, seeded
+  by the run and the room (`derivedRng(runSeed, "rewards", depth, roomId)`,
+  `Game.grantVictoryRewards`). What an Elite or Boss drops is therefore
+  fixed before the fight starts: restoring a copied save and playing the
+  fight another way gives the same Artifact and the same Ability. Which
+  event a room holds and how an event's own rolls land still come from
+  the run's main stream, so those can differ after an earlier fight is
+  replayed differently.

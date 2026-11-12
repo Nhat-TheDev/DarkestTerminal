@@ -104,7 +104,8 @@ export function availableAbilitiesOfRarity(rarity: ArtifactRarity, unlockedAbili
 
 /** Common abilities are always unlocked, so a `common` roll keeps its weight but yields null (no drop). */
 export function rollAbility(source: AbilitySource, depth: number, rng: Rng, unlockedAbilityIds: Id[]): Id | null {
-  if (!rng.chance(BALANCE.abilities.dropChance)) return null;
+  if (depth < BALANCE.abilities.dropMinDepth[source]) return null;
+  if (!rng.chance(BALANCE.abilities.dropChance[source])) return null;
   const weights = weightsAtDepth(source, depth);
   const entries = RARITIES.filter((rarity) => rarity === "common" || availableAbilitiesOfRarity(rarity, unlockedAbilityIds).length > 0)
     .map((rarity) => [rarity, weights[rarity]] as const)

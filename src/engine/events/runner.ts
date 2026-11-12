@@ -2,9 +2,10 @@ import type { GameState, ItemDefinition, ItemTier, Room } from "../../types";
 import type { PartyActionError } from "../party";
 import type { EngineContext } from "../combat";
 import { BALANCE } from "../../data/balanceConfig";
-import { getItem } from "../../data/items";
+import { CAMP_KIT_ITEM_ID, getItem } from "../../data/items";
 import { rollBarterOffers, rollShopOffers } from "../../data/shopStock";
 import { t } from "../../data/strings";
+import { addItem, campKitRoom } from "../survival";
 
 export function rollRestRunner(state: GameState, room: Room, ctx: EngineContext): void {
   if (state.restRunner?.roomId === room.id) return;
@@ -16,7 +17,7 @@ export function rollRestRunner(state: GameState, room: Room, ctx: EngineContext)
     roomId: room.id,
     noticeShown: false,
     noticeVariant: ctx.rng.int(0, BALANCE.runner.noticeVariantCount - 1),
-    offers: rollShopOffers(ctx.rng, state.floor.depth),
+    offers: rollShopOffers(ctx.rng, state.floor.depth, ctx.rng.chance(BALANCE.runner.campKitOfferChance) ? { itemId: CAMP_KIT_ITEM_ID, lot: false } : null),
     refreshCount: 0,
     barterOffers: state.barterUsedDepth === state.floor.depth ? [] : rollBarterOffers(ctx.rng, state.floor.depth),
   };
@@ -28,7 +29,7 @@ export function shopPrice(tier: ItemTier, lot: boolean): number {
   return lot ? price.lot : price.single;
 }
 
-/** null when refused: he doesn't buy what he never sells. */
+/** null when refused: Legendary trophies, and general-pool items above the tiers his stock rolls. */
 export function buybackPrice(item: ItemDefinition): number | null {
   const neverSold = item.tier === "legendary" || (!item.archetypeIds?.length && (item.tier === "unique" || item.tier === "epic"));
   if (neverSold) return null;
@@ -44,8 +45,9 @@ export function runnerBuy(state: GameState, offerIndex: number): PartyActionErro
   const cost = shopPrice(item.tier, offer.lot);
   if (state.coins < cost) return { reason: t("errors.notEnoughCoins") };
   const count = offer.lot ? BALANCE.runner.lotSize : 1;
+  if (item.campKit && campKitRoom(state) < count) return { reason: t("errors.explorationKitsFull") };
   state.coins -= cost;
-  state.inventory[item.id] = (state.inventory[item.id] ?? 0) + count;
+  addItem(state, item.id, count);
   offer.sold = true;
   state.message = t("game.runnerBought", { cost, item: count > 1 ? `${item.name} ×${count}` : item.name });
   return null;
@@ -57,7 +59,7 @@ export function runnerRefresh(state: GameState, ctx: EngineContext): PartyAction
   if (runner.refreshCount >= BALANCE.events.merchantMaxRefreshes) return { reason: t("errors.merchantMaxRefreshesReached") };
   if (state.coins < BALANCE.events.merchantRefreshCostCoins) return { reason: t("errors.notEnoughCoins") };
   state.coins -= BALANCE.events.merchantRefreshCostCoins;
-  runner.offers = rollShopOffers(ctx.rng, state.floor.depth);
+  runner.offers = rollShopOffers(ctx.rng, state.floor.depth, runner.offers.find((o) => o.itemId === CAMP_KIT_ITEM_ID) ?? null);
   runner.refreshCount += 1;
   state.message = t("game.runnerRefreshed");
   return null;
