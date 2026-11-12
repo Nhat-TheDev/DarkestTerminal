@@ -84,7 +84,7 @@ jobs:
 
       - name: Build standalone binary
         shell: bash
-        run: bun build ./src/main.ts --compile --outfile "${{ matrix.outfile }}"
+        run: bun build ./src/main.ts --compile --define __DEV__=false --outfile "${{ matrix.outfile }}"
 
       - name: Smoke test binary (macOS/Linux)
         if: runner.os != 'Windows'

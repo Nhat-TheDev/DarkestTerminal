@@ -746,11 +746,11 @@ already causes.
   rate or the catalog size may need adjusting before the Stardust-side
   numbers do.
 - **Save-scumming the ability roll**: the roll shares the Artifact drop's
-  hook and draws from the run's live RNG stream. A save stores the RNG state
-  (`rngState`, `src/engine/save.ts`), so reloading and replaying the same
-  actions reproduces the same roll. The run is written to its slot after
-  every key that changes it, so quitting never returns to a point before
-  the roll; what remains is copying the save file aside by hand before an
-  Elite/Boss fight and acting differently after restoring it. Seeding the
-  roll off the room's own seed would close this; that is an
-  RNG-architecture change.
+  hook, and a won fight's rewards draw from a stream of their own, seeded
+  by the run and the room (`derivedRng(runSeed, "rewards", depth, roomId)`,
+  `Game.grantVictoryRewards`). What an Elite or Boss drops is therefore
+  fixed before the fight starts: restoring a copied save and playing the
+  fight another way gives the same Artifact and the same Ability. Which
+  event a room holds and how an event's own rolls land still come from
+  the run's main stream, so those can differ after an earlier fight is
+  replayed differently.

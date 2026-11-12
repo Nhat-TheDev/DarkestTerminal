@@ -12,7 +12,7 @@ import {
 import { FINAL_BOSS_ARCHETYPE, spawnMonster } from "../data/monsters";
 import { createCharacter, applyPartyExp, resolveArtifactEquip, discardPendingArtifact, grantArtifact, recomputeAllPartyStats, type PartyActionError } from "./party";
 import { restEatDrink, restEatDrinkSatiety, restChat, campAction, drainSatiety, SATIETY_DRAIN_COMBAT } from "./survival";
-import { Rng } from "./rng";
+import { Rng, derivedRng } from "./rng";
 import {
   type EngineContext,
   autoResolveTargets,
@@ -112,7 +112,8 @@ export class Game {
       this.noteSeenMonsters();
       return;
     }
-    const { floor, monsters } = createFloor(rng);
+    const runSeed = seed >>> 0;
+    const { floor, monsters } = createFloor(derivedRng(runSeed, "floor", 1));
     const classes = classIds ? classIds.map((id) => getClass(id)) : CLASSES;
     // No two characters may share an Ability: the death flow relies on each one losing a distinct id.
     // A later duplicate enters the run with nothing equipped.
@@ -131,6 +132,7 @@ export class Game {
     const retiredCharacterEventEligible = retiredCharacter !== undefined && !profile.shownRetiredCharacterEvent;
     this.state = {
       runId: randomUUID(),
+      runSeed,
       party,
       floor,
       currentRoomId: floor.entryRoomId,
@@ -702,6 +704,8 @@ export class Game {
   private grantVictoryRewards(combat: CombatState): void {
     const room = getRoom(this.state.floor, combat.roomId);
     room.cleared = true;
+    // Its own stream, so what a room drops does not depend on how its fight was played.
+    const rewardRng = derivedRng(this.state.runSeed, "rewards", this.state.floor.depth, room.id);
     const rewardBlockStart = combat.log.length;
     // Buffs don't carry past a cleared room — debuffs do, and keep ticking down into the next fight.
     for (const c of this.state.party) {
@@ -728,20 +732,20 @@ export class Game {
     for (const id of room.monsterIds) {
       const monster = this.ctx.monsters.find((m) => m.id === id);
       if (!monster) continue;
-      coinsGained += rollCoinDrop(monster, this.ctx.rng);
-      const itemId = rollItemDrop(monster.archetypeId, this.ctx.rng);
+      coinsGained += rollCoinDrop(monster, rewardRng);
+      const itemId = rollItemDrop(monster.archetypeId, rewardRng);
       if (itemId) {
         this.state.inventory[itemId] = (this.state.inventory[itemId] ?? 0) + 1;
         droppedItemIds.push(itemId);
       }
       if (monster.tier === "elite" || monster.tier === "boss") {
         // Only a real Boss kill may roll boss-restricted artifacts; Collapsed Floor rolls the same table without qualifying.
-        const artifactId = rollArtifact(monster.tier, this.ctx.rng, this.state.floor.depth, monster.tier === "boss" ? "boss" : undefined);
+        const artifactId = rollArtifact(monster.tier, rewardRng, this.state.floor.depth, monster.tier === "boss" ? "boss" : undefined);
         grantArtifact(this.state, artifactId);
         droppedArtifactIds.push(artifactId);
 
         const profile = loadProfile(this.currentSaveSlot);
-        const abilityId = rollAbility(monster.tier, this.state.floor.depth, this.ctx.rng, profile.unlockedAbilityIds);
+        const abilityId = rollAbility(monster.tier, this.state.floor.depth, rewardRng, profile.unlockedAbilityIds);
         if (abilityId) {
           unlockAbility(profile, abilityId);
           saveProfile(this.currentSaveSlot, profile);
@@ -759,7 +763,7 @@ export class Game {
       combat.log.push({ text: t("game.coinsEarned", { amount: coinsGained }), kind: "info" });
     }
     if (room.type === "event" && room.rolledEventId && getEvent(room.rolledEventId).kind === "combatReward") {
-      const artifactId = rollArtifact("treasureOrEvent", this.ctx.rng, this.state.floor.depth);
+      const artifactId = rollArtifact("treasureOrEvent", rewardRng, this.state.floor.depth);
       grantArtifact(this.state, artifactId);
       droppedArtifactIds.push(artifactId);
       // This win path never reaches closeEvent(), so its outcome tag and lore count are written here.
@@ -793,7 +797,7 @@ export class Game {
     this.state.pendingBarterBuffs = []; // a buff bartered for this floor's elite/boss room is lost if the floor ends without it
     this.state.restRunner = null; // room ids repeat on every floor, so a leftover runner must not match a room on the next one
     this.state.journalHandledRoomId = null;
-    const { floor, monsters } = createFloor(this.ctx.rng, nextDepth);
+    const { floor, monsters } = createFloor(derivedRng(this.state.runSeed, "floor", nextDepth), nextDepth);
     this.ctx.monsters = monsters;
     this.state.floor = floor;
     this.state.currentRoomId = floor.entryRoomId;

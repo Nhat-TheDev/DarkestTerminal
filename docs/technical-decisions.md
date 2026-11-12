@@ -153,6 +153,15 @@ seed. `Game.advanceToNextFloor()` (`src/engine/game.ts`) calls `createFloor`
 again with `depth + 1` every time the guard room is cleared
 (`gameplay-decisions/06-level-system.md` §6.9).
 
+A run draws from 3 streams, so a draw spent on one never moves another.
+The main stream (`ctx.rng`, saved as `rngState`) serves combat and events.
+Floor generation and a won fight's rewards each take a stream derived from
+`GameState.runSeed` and a label (`derivedRng`, `src/engine/rng.ts`):
+`"floor"` with the depth, and `"rewards"` with the depth and the room id.
+A floor's layout and a room's drops are the same for a run however its
+fights were played. A save from before `runSeed` gets one from its `runId`
+(`migrateGameState`).
+
 `test/floorPatterns.test.ts` is the property test for the generator;
 `test/floorMap.test.ts` checks the map against the approved mockup, column
 alignment, the width bound and an old-save floor.

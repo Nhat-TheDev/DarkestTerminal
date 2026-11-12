@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { ActiveStatusEffect, CombatantSnapshot, CombatState, GameState, Id, LogSession, Monster, Summon } from "../types";
 import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
-import { Rng } from "./rng";
+import { Rng, derivedRng } from "./rng";
 import { getItem } from "../data/items";
 import { RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
 import { getClass, getSkill } from "../data/classes";
@@ -235,6 +235,7 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   }
 
   if (typeof state.runId !== "string") state.runId = randomUUID();
+  if (typeof state.runSeed !== "number") state.runSeed = derivedRng(0, state.runId).getState();
   if (typeof state.coins !== "number") state.coins = 0;
   if (typeof state.satiety !== "number") state.satiety = BALANCE.survival.initialSatiety;
   if (state.pendingArtifactDecision === undefined) state.pendingArtifactDecision = null;
