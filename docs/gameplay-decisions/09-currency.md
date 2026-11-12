@@ -59,6 +59,6 @@ An offer/action is locked (not just hidden) if the party can't afford it — coi
 The Rest room's Runner (`03-survival-stats.md`, "The Merchant's Runner") adds a fourth place coins are spent and a way to earn them. Every other sink has a flat price, and the Rest room, which every path crosses at least once, otherwise offers nothing to spend coins on. His prices are flat per tier too, but the tier of what he stocks climbs with floor depth, so the coin he can absorb grows with the run:
 
 - **Shop** — 5 items per visit, singly or as a lot of 3 at a price set by the item's tier (`runner.priceByTier`, `data/balance-config.json`); Refresh uses the Merchant's cost and limit. Trophies appear as a rare offer.
-- **Buyback** — he pays one fifth of the single price for consumables and trophies (`runner.buybackDivisor`), and refuses what he never sells (Legendary trophies, Exploration Kit). Selling is a coin source, small enough that buying and reselling never profits.
+- **Buyback** — he pays one fifth of the single price for consumables and trophies (`runner.buybackDivisor`), and refuses Legendary trophies and the Exploration Kit, which he sells but does not take back. Selling is a coin source, small enough that buying and reselling never profits.
 
 The "exactly 3 event rooms accept coins" rule in 9.2 counts rooms only; the Gatekeeper stands outside any room, and the Runner is not an event room.

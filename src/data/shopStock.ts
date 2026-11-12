@@ -33,14 +33,14 @@ export function rollBarterOffers(rng: Rng, depth: number): BarterOffer[] {
   return offers;
 }
 
-/** The tier lists keep Exploration Kit (Unique) and Legendary trophies out of the stock. */
-export function rollShopOffers(rng: Rng, depth: number): ShopOffer[] {
+/** The tier lists keep Legendary trophies out of the stock; the camp kit is on it only as `kitOffer`, which takes one of the offers. */
+export function rollShopOffers(rng: Rng, depth: number, kitOffer: ShopOffer | null = null): ShopOffer[] {
   const { offerCount, trophyOfferChance, singleChance } = BALANCE.runner;
   const consumables = ITEMS.filter((i) => !i.archetypeIds?.length && CONSUMABLE_TIERS.includes(i.tier));
   const trophies = ITEMS.filter((i) => i.archetypeIds?.length && TROPHY_TIERS.includes(i.tier) && trophyAvailableAt(i, depth));
-  const offers: ShopOffer[] = [];
-  const taken = new Set<string>();
-  for (let n = 0; n < offerCount; n++) {
+  const offers: ShopOffer[] = kitOffer ? [kitOffer] : [];
+  const taken = new Set<string>(offers.map((o) => o.itemId));
+  while (offers.length < offerCount) {
     const fresh = (pool: ItemDefinition[]) => pool.filter((i) => !taken.has(i.id));
     const wantTrophy = rng.chance(trophyOfferChance);
     const item =

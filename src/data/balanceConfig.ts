@@ -64,7 +64,9 @@ interface BalanceConfig {
     exhaustedThreshold: number;
     exhaustedStatMultiplier: number;
     dyingThreshold: number;
+    /** Flat part of the Dying tick; `dyingDamageMaxHpFraction` of max HP is added to it. */
     dyingDamagePerRound: number;
+    dyingDamageMaxHpFraction: number;
     campSatietyRestore: number;
     eatDrinkRestoreFraction: number;
     eatDrinkSatietyRestore: number;
@@ -94,6 +96,8 @@ interface BalanceConfig {
     size: number;
     maxEquippedArtifacts: number;
     startingExplorationKits: number;
+    /** The most camp kits the inventory holds; a kit gained past it is lost. */
+    maxExplorationKits: number;
     /** Item id to count, added to every new run's inventory. */
     startingItems: Record<string, number>;
     startingCoins: number;
@@ -185,6 +189,8 @@ interface BalanceConfig {
     trophyDropShare: number;
     /** Applied to a group trophy's drop weight. */
     groupDropMultiplier: number;
+    /** General pool: a tier is rolled by these shares, then its items split it evenly. */
+    generalTierShare: Partial<Record<ItemTier, number>>;
     tierWeights: Record<ItemTier, number>;
   };
   /** Odds by floor depth; see `tierWeightsByDepth`. */
@@ -201,6 +207,8 @@ interface BalanceConfig {
     offerCount: number;
     singleChance: number;
     trophyOfferChance: number;
+    /** Rolled once per visit; a refresh keeps the visit's kit offer as it is. */
+    campKitOfferChance: number;
     lotSize: number;
     /** Buyback pays the single price divided by this. */
     buybackDivisor: number;

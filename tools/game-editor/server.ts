@@ -64,14 +64,14 @@ const MONSTER_BASE_FIELDS = ["baseHp", "baseAttack", "baseDefense", "baseSpeed",
 const BALANCE_COMBAT_FIELDS = ["defenseMitigationX", "defenseMitigationY", "defensiveLowHpSkillChance"] as const;
 const BALANCE_SURVIVAL_FIELDS = [
   "initialFear", "initialSatiety", "satietyDrainCombat", "satietyDrainEvent", "exhaustedThreshold",
-  "exhaustedStatMultiplier", "dyingThreshold", "dyingDamagePerRound", "campSatietyRestore",
+  "exhaustedStatMultiplier", "dyingThreshold", "dyingDamagePerRound", "dyingDamageMaxHpFraction", "campSatietyRestore",
   "eatDrinkRestoreFraction", "eatDrinkSatietyRestore", "chatRestoreFraction", "chatFearRelief",
   "fearPerRoundBase", "fearPerRoundLowHp", "fearPerRoundBaseCap", "fearPerRoundLowHpCap",
   "fearPerRoundDepthGrowth", "fearLowHpThresholdFraction", "fearPerHitTaken", "fearPerHitTakenCap", "fearVictoryRelief", "fearVictoryReliefQuick",
   "fearQuickVictoryRoundThreshold", "fearEliteOrBossVictoryRelief", "fearEliteOrBossVictoryReliefQuick",
   "fearEliteOrBossQuickVictoryRoundThreshold",
 ] as const;
-const BALANCE_PARTY_FIELDS = ["maxEquippedArtifacts", "startingExplorationKits"] as const;
+const BALANCE_PARTY_FIELDS = ["maxEquippedArtifacts", "startingExplorationKits", "maxExplorationKits"] as const;
 const BALANCE_ITEMS_FIELDS = ["itemDropChance", "trophyDropShare", "groupDropMultiplier"] as const;
 const BALANCE_FLOOR_GENERATION_FIELDS = ["minRouteRooms", "maxRouteRooms", "minRestRoomsPerRoute", "maxRestRoomsPerRoute", "minEventRoomsPerRoute", "commonMaxEventRoomsPerRoute", "maxEventRoomsPerRoute", "manyEventsFloorChance", "maxParallelLanes", "maxLanesPerSplit", "crossMergeChance", "maxCrossBranchRooms", "minLaneRooms", "splitChance", "nestedSplitChance", "eventRoomWeight", "restRoomWeight", "generationAttempts", "typeAttemptsPerShape", "unknownRoomsMeanAtFirstFloor", "unknownRoomsMeanGrowthPerFloor", "unknownRoomsMeanCapDepth", "unknownRoomsSpread"] as const;
 const BALANCE_EVENTS_FIELDS = ["commonTierWeight", "rareTierWeight", "merchantOfferCount", "merchantRefreshCostCoins", "merchantMaxRefreshes", "bloodAltarHpPercent", "collapsedFloorHpPercent", "collapsedFloorSuccessChance", "eventGuardianStatMultiplier", "wanderingHermitExchangeCostCoins"] as const;

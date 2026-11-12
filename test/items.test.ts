@@ -78,6 +78,33 @@ describe("items", () => {
     expect((counts["warped-vambrace"] ?? 0) / totalDrops).toBeLessThan(0.05);
   });
 
+  test("the general pool rolls a tier by generalTierShare, then splits it evenly among that tier's items", () => {
+    const rng = new Rng(9);
+    const byTier: Record<string, number> = {};
+    const byItem: Record<string, number> = {};
+    const total = 30000;
+    let drops = 0;
+    for (let i = 0; i < total; i++) {
+      const id = rollItemDrop("lesser-vampire", rng);
+      if (!id) continue;
+      drops++;
+      byTier[getItem(id).tier] = (byTier[getItem(id).tier] ?? 0) + 1;
+      byItem[id] = (byItem[id] ?? 0) + 1;
+    }
+    const share = BALANCE.items.generalTierShare;
+    const shareTotal = Object.values(share).reduce((sum, n) => sum + n, 0);
+    for (const [tier, weight] of Object.entries(share)) {
+      expect(byTier[tier]! / drops).toBeGreaterThan(weight / shareTotal - 0.02);
+      expect(byTier[tier]! / drops).toBeLessThan(weight / shareTotal + 0.02);
+    }
+    const commons = ITEMS.filter((i) => !i.archetypeIds?.length && i.tier === "common");
+    for (const item of commons) {
+      const expected = share.common! / shareTotal / commons.length;
+      expect(byItem[item.id]! / drops).toBeGreaterThan(expected * 0.75);
+      expect(byItem[item.id]! / drops).toBeLessThan(expected * 1.25);
+    }
+  });
+
   test("a monster with no trophy (Lesser Vampire) only drops general-pool items, Exploration Kit included", () => {
     const rng = new Rng(5);
     let sawKit = false;

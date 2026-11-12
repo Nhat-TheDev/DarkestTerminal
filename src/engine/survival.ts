@@ -1,4 +1,4 @@
-import type { Character, GameState, LogEntry } from "../types";
+import type { Character, GameState, Id, LogEntry } from "../types";
 import { fearResistMultiplier } from "./artifacts";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
@@ -11,6 +11,7 @@ const EXHAUSTED_THRESHOLD = BALANCE.survival.exhaustedThreshold;
 const EXHAUSTED_STAT_MULTIPLIER = BALANCE.survival.exhaustedStatMultiplier;
 const DYING_THRESHOLD = BALANCE.survival.dyingThreshold;
 const DYING_DAMAGE_PER_ROUND = BALANCE.survival.dyingDamagePerRound;
+const DYING_DAMAGE_MAX_HP_FRACTION = BALANCE.survival.dyingDamageMaxHpFraction;
 const EAT_DRINK_RESTORE_FRACTION = BALANCE.survival.eatDrinkRestoreFraction;
 const EAT_DRINK_SATIETY_RESTORE = BALANCE.survival.eatDrinkSatietyRestore;
 const CAMP_SATIETY_RESTORE = BALANCE.survival.campSatietyRestore;
@@ -37,11 +38,11 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export function isPartyExhausted(satiety: number): boolean {
-  return satiety <= EXHAUSTED_THRESHOLD;
+  return satiety < EXHAUSTED_THRESHOLD;
 }
 
 export function isPartyDying(satiety: number): boolean {
-  return satiety <= DYING_THRESHOLD;
+  return satiety < DYING_THRESHOLD;
 }
 
 export function applyExhaustedMultiplier(baseStat: number, satiety: number): number {
@@ -57,8 +58,9 @@ export function drainSatiety(state: GameState, amount: number, log: LogEntry[]):
 export function applyDyingDamage(party: Character[], log: LogEntry[]): void {
   for (const c of party) {
     if (!c.isAlive) continue;
-    c.hp = Math.max(0, c.hp - DYING_DAMAGE_PER_ROUND);
-    log.push({ text: t("survival.dyingTick", { name: c.name, damage: DYING_DAMAGE_PER_ROUND }), kind: "debuff" });
+    const damage = DYING_DAMAGE_PER_ROUND + Math.round(c.maxHp * DYING_DAMAGE_MAX_HP_FRACTION);
+    c.hp = Math.max(0, c.hp - damage);
+    log.push({ text: t("survival.dyingTick", { name: c.name, damage }), kind: "debuff" });
     if (c.hp <= 0) {
       c.isAlive = false;
       log.push({ text: t("survival.collapsed", { name: c.name }), kind: "death" });
@@ -143,6 +145,17 @@ export function restChat(character: Character): void {
   character.hp = clamp(character.hp + Math.round(character.maxHp * CHAT_RESTORE_FRACTION), 0, character.maxHp);
   character.mp = clamp(character.mp + Math.round(character.maxMp * CHAT_RESTORE_FRACTION), 0, character.maxMp);
   adjustFear(character, -CHAT_FEAR_RELIEF);
+}
+
+export function campKitRoom(state: GameState): number {
+  return Math.max(0, BALANCE.party.maxExplorationKits - (state.inventory[CAMP_KIT_ITEM_ID] ?? 0));
+}
+
+/** Adds to the inventory, holding camp kits to `party.maxExplorationKits`. Returns how many were added. */
+export function addItem(state: GameState, itemId: Id, count: number): number {
+  const added = itemId === CAMP_KIT_ITEM_ID ? Math.min(count, campKitRoom(state)) : count;
+  if (added > 0) state.inventory[itemId] = (state.inventory[itemId] ?? 0) + added;
+  return added;
 }
 
 export function campAction(state: GameState): { reason: string } | null {
