@@ -22,6 +22,9 @@
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm--Noncommercial--1.0.0-blue.svg)](./LICENSE)
 ![Runtime: Bun](https://img.shields.io/badge/runtime-Bun-fbf0df?logo=bun&logoColor=000)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+[![Random Play](https://github.com/Nhat-TheDev/DarkestTerminal/actions/workflows/random-play.yml/badge.svg)](https://github.com/Nhat-TheDev/DarkestTerminal/actions/workflows/random-play.yml)
+[![npm downloads](https://img.shields.io/npm/dm/darkest-terminal.svg?color=cb3837&logo=npm)](https://www.npmjs.com/package/darkest-terminal)
+![Platform: macOS | Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)
 
 ## 📖 Introduction
 
@@ -39,7 +42,7 @@ Artifacts, spend the coin you loot on gambles and favors from strange
 wanderers, and see how far down you can get.
 
 ![Title screen — the menu with Start and Continue](./docs/images/title-screen.svg)
-![Battlefield mid-combat: header, path, party, monsters, and the log beside the battlefield](./docs/images/battlefield-combat.svg)
+![Battlefield in a guard fight — the party facing an Elite, with the header, party panel, monster list, and the log beside the battlefield](./docs/images/battlefield-combat.svg)
 
 ## 🚀 Installation
 
@@ -81,7 +84,8 @@ these carry over between runs, unlike anything else tied to a save.
 ![Ability select — choosing a permanent ability for a recruit right after picking the class](./docs/images/ability-select.svg)
 
 **The way in.** Once the party is set, the run opens at the mouth of the cave,
-where a Gatekeeper asks for a toll before floor 1.
+where a Gatekeeper asks for a toll before floor 1 and hands you a map of the
+ways ahead.
 
 ![The Gatekeeper — the opening scene at the cave mouth, with a choice to leave the toll or keep the coins](./docs/images/gatekeeper.svg)
 
@@ -102,10 +106,15 @@ also saves itself after every action, so quitting never loses progress.
 ![Room cleared — coins/satiety in the header, satiety drain and coins earned in the log](./docs/images/room-cleared.svg)
 
 **The loop.** Move from room to room, fight whatever's guarding the way,
-collect coins/items/Artifacts, and keep your party's Fear and Satiety in
-check between fights. Clear the guarded room at the end of a floor and the
-next floor generates immediately. The dungeon keeps going; how deep you push
-before your party doesn't make it back is up to you.
+collect coins/items/Artifacts, rest at a campfire when you find one, and keep
+your party's Fear and Satiety in check between fights. Clear the guarded room
+at the end of a floor and the next floor generates immediately. The dungeon
+keeps going; how deep you push before your party doesn't make it back is up
+to you.
+
+![Floor map — the floor's branching paths drawn on the Battlefield while choosing the next room](./docs/images/floor-map.svg)
+
+![Rest room — the party at a campfire, choosing to eat, talk, trade, or press on](./docs/images/rest-room.svg)
 
 ## ✨ Features
 
@@ -121,7 +130,8 @@ before your party doesn't make it back is up to you.
   your save has fought: its weaknesses, its skills, what it is doing now.
 - **Fear & Satiety** — two survival stats running alongside HP/MP, and they
   will turn on you if you're not careful.
-- **True permadeath.** No mid-run resurrections.
+- **True permadeath.** The dead stay dead, and when the party falls the run
+  is over.
 - **Leveling 1-100** — grow your party as you descend.
 - **Items & permanent Artifacts** — gear up, and make some hard calls about
   what to keep.
@@ -131,6 +141,9 @@ before your party doesn't make it back is up to you.
 - **Cursed Coins** — a currency to spend, gamble, or trade away.
 - **Event rooms with real narrative** — random encounters, some of them tied
   to faces you'll see again.
+
+  ![Event room — a Cursed Shrine holding out a cursed Artifact, to accept or decline](./docs/images/event-room.svg)
+
 - **A journal that outlives the party** — piece together what the dungeon
   shows you, run after run, in the party's own words.
 - **Save & continue** — pick up a run later from a list of your saves.
