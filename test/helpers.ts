@@ -12,7 +12,7 @@ export function makeCtx(seed = 1) {
   const rng = new Rng(seed);
   const { floor, monsters } = createFloor(rng);
   const party = CLASSES.map((cls, i) => createCharacter(`p${i + 1}`, cls.name, cls));
-  const ctx: EngineContext = { party, monsters, summons: [], rng, inventory: {} };
+  const ctx: EngineContext = { party, monsters, summons: [], rng, inventory: {}, faith: BALANCE.faith.initial };
   return { ctx, floor, monsters, party };
 }
 
@@ -91,3 +91,6 @@ export function withFixture(skills: any[], archetypeOver: any, body: () => void)
     MONSTER_ARCHETYPES.splice(MONSTER_ARCHETYPES.findIndex((a) => a.id === "fixture-boss"), 1);
   }
 }
+
+/** The Faith at which `faithFearMultiplier` is 1, so fear numbers read as the base config. */
+export const NEUTRAL_FAITH = (100 * (BALANCE.faith.fearGainMultiplierAtZero - 1)) / (BALANCE.faith.fearGainMultiplierAtZero - BALANCE.faith.fearGainMultiplierAtFull);

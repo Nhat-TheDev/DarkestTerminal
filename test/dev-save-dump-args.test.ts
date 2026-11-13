@@ -25,6 +25,7 @@ function floor(): Floor {
       { id: "r1", name: "Entry", type: "combat", connectedRoomIds: ["r2"], monsterIds: [], cleared: false },
       { id: "r2", name: "Rest Stop", type: "rest", connectedRoomIds: ["r3"], monsterIds: [], cleared: false },
       { id: "r3", name: "Throne", type: "boss", connectedRoomIds: [], monsterIds: [], cleared: false },
+      { id: "r4", name: "Shrine", type: "temple", connectedRoomIds: [], monsterIds: [], cleared: false },
     ],
   };
 }
@@ -41,6 +42,7 @@ describe("dev-save-dump resolveRoomId", () => {
   test("a room type resolves to the first room of that type", () => {
     expect(resolveRoomId(floor(), "boss")).toBe("r3");
     expect(resolveRoomId(floor(), "rest")).toBe("r2");
+    expect(resolveRoomId(floor(), "temple")).toBe("r4");
   });
 
   test("a room type absent from this floor throws, naming the floor's actual rooms", () => {

@@ -7,6 +7,7 @@ import type { FearTier } from "../../src/engine/resolver";
 import { parseBackdrops, type BackdropsFile } from "../../src/data/backdrops";
 import { parseRoomNames, type RoomNameEntry } from "../../src/data/roomNames";
 import { propBoundsError } from "../../src/ui/backdrop";
+import { DIVIDER_WIDTH } from "../../src/ui/layout";
 import type { EventDefinition } from "../../src/types";
 import { previewScene, type PreviewOptions } from "./backdropPreview";
 import { targetingConfigError, type TargetingConfig } from "../../src/data/balanceConfig";
@@ -58,6 +59,28 @@ function applyNumericPatch(target: Record<string, unknown>, patch: Record<string
   return null;
 }
 
+/** Sets the numbers `patch` names, each of which must already exist in `target` as a number; nested objects are followed, arrays and new keys are refused. */
+function applyNestedNumericPatch(target: Record<string, unknown>, patch: Record<string, unknown>, trail = ""): string | null {
+  for (const [key, value] of Object.entries(patch)) {
+    const path = trail + key;
+    const current = target[key];
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      if (typeof current !== "object" || current === null || Array.isArray(current)) return `Field "${path}" is not editable.`;
+      const err = applyNestedNumericPatch(current as Record<string, unknown>, value as Record<string, unknown>, `${path}.`);
+      if (err) return err;
+    } else if (typeof current !== "number") {
+      return `Field "${path}" is not editable.`;
+    } else if (typeof value !== "number" || !Number.isFinite(value)) {
+      return `Field "${path}" must be a finite number.`;
+    } else {
+      target[key] = value;
+    }
+  }
+  return null;
+}
+
+const NESTED_BALANCE_SECTIONS = ["faith", "temple", "rest", "reflection"] as const;
+
 const CLASS_BASE_FIELDS = ["baseAttack", "baseDefense", "baseMaxHp", "baseMaxMp", "baseMagicPower", "baseAggro", "baseSpeed"] as const;
 const CLASS_GROWTH_FIELDS = ["attack", "defense", "maxHp", "maxMp", "magicPower"] as const;
 const MONSTER_BASE_FIELDS = ["baseHp", "baseAttack", "baseDefense", "baseSpeed", "expReward"] as const;
@@ -105,17 +128,19 @@ interface SpritesFile {
   events: Record<string, SpriteData>;
   rest: Record<string, SpriteData>;
   treasure: Record<string, SpriteData>;
+  temple: Record<string, SpriteData>;
+  torch: Record<string, SpriteData>;
 }
 
-type Category = "classes" | "monsters" | "elites" | "bosses" | "events" | "rest" | "treasure";
-const CATEGORIES: Category[] = ["classes", "monsters", "elites", "bosses", "events", "rest", "treasure"];
+type Category = "classes" | "monsters" | "elites" | "bosses" | "events" | "rest" | "treasure" | "temple" | "torch";
+const CATEGORIES: Category[] = ["classes", "monsters", "elites", "bosses", "events", "rest", "treasure", "temple", "torch"];
 
 function isCategory(value: unknown): value is Category {
   return typeof value === "string" && (CATEGORIES as string[]).includes(value);
 }
 
-const MAX_HEIGHT: Record<Category, number> = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
-const MAX_WIDTH: Partial<Record<Category, number>> = { events: 30, rest: 30, treasure: 30 };
+const MAX_HEIGHT: Record<Category, number> = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15, temple: 15, torch: 15 };
+const MAX_WIDTH: Partial<Record<Category, number>> = { events: 30, rest: 30, treasure: 30, temple: 30, torch: DIVIDER_WIDTH };
 
 function validateSprite(sprite: unknown, category: Category): string | null {
   if (typeof sprite !== "object" || sprite === null) return "Missing sprite data.";
@@ -427,7 +452,7 @@ Bun.serve({
     }
 
     if (req.method === "POST" && url.pathname === "/api/edit/class") {
-      let body: { classId?: unknown; base?: unknown; growthWeights?: unknown };
+      let body: { classId?: unknown; base?: unknown; growthWeights?: unknown; religionId?: unknown };
       try { body = (await req.json()) as typeof body; } catch { return badRequest("Body is not valid JSON."); }
       if (typeof body.classId !== "string") return badRequest("classId is required.");
       const classes = (await readJsonFile("classes.json")) as Record<string, unknown>[];
@@ -437,6 +462,11 @@ Bun.serve({
         if (typeof body.base !== "object" || body.base === null) return badRequest("base must be an object.");
         const err = applyNumericPatch(cls, body.base as Record<string, unknown>, CLASS_BASE_FIELDS);
         if (err) return badRequest(err);
+      }
+      if (body.religionId !== undefined) {
+        const religions = (await readJsonFile("religions.json")) as { id: string }[];
+        if (typeof body.religionId !== "string" || !religions.some((r) => r.id === body.religionId)) return badRequest(`Unknown religion id "${String(body.religionId)}".`);
+        cls.religionId = body.religionId;
       }
       if (body.growthWeights !== undefined) {
         if (typeof body.growthWeights !== "object" || body.growthWeights === null) return badRequest("growthWeights must be an object.");
@@ -481,7 +511,7 @@ Bun.serve({
     }
 
     if (req.method === "POST" && url.pathname === "/api/edit/balance") {
-      let body: { combat?: unknown; survival?: unknown; party?: unknown; items?: unknown; floorGeneration?: unknown; events?: unknown; currency?: unknown; targeting?: unknown };
+      let body: { combat?: unknown; survival?: unknown; party?: unknown; items?: unknown; floorGeneration?: unknown; events?: unknown; currency?: unknown; targeting?: unknown; faith?: unknown; temple?: unknown; rest?: unknown; reflection?: unknown };
       try { body = (await req.json()) as typeof body; } catch { return badRequest("Body is not valid JSON."); }
       const balance = (await readJsonFile("balance-config.json")) as Record<string, unknown>;
       const flatSections: [string, readonly string[]][] = [
@@ -497,6 +527,13 @@ Bun.serve({
         if (patch === undefined) continue;
         if (typeof patch !== "object" || patch === null) return badRequest(`${key} must be an object.`);
         const err = applyNumericPatch(balance[key] as Record<string, unknown>, patch as Record<string, unknown>, allowed);
+        if (err) return badRequest(err);
+      }
+      for (const key of NESTED_BALANCE_SECTIONS) {
+        const patch = body[key];
+        if (patch === undefined) continue;
+        if (typeof patch !== "object" || patch === null) return badRequest(`${key} must be an object.`);
+        const err = applyNestedNumericPatch(balance[key] as Record<string, unknown>, patch as Record<string, unknown>, `${key}.`);
         if (err) return badRequest(err);
       }
       if (body.currency !== undefined) {
@@ -561,6 +598,14 @@ Bun.serve({
 
     if (req.method === "GET" && url.pathname === "/api/monster-races") {
       return new Response(await readFile(path.join(DATA_DIR, "monster-races.json"), "utf8"), { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/classes") {
+      return new Response(await readFile(path.join(DATA_DIR, "classes.json"), "utf8"), { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/religions") {
+      return new Response(await readFile(path.join(DATA_DIR, "religions.json"), "utf8"), { headers: { "content-type": "application/json" } });
     }
 
     if (req.method === "GET" && url.pathname === "/api/events") {

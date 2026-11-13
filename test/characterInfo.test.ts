@@ -118,7 +118,7 @@ describe("stat breakdown always adds up to the character's real stat", () => {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId, durationTurns: 3, ...override }, c, c, { log });
 
   function expectSums(c: Character, satiety: number, label: string) {
-    const stats = characterStatBreakdown(c, satiety);
+    const stats = characterStatBreakdown(c, satiety, null);
     for (const stat of STATS) {
       const s = stats[stat];
       expect(s.base + s.artifact + s.ability + s.passive + s.status, `${label} ${stat} parts`).toBe(s.total);
@@ -133,7 +133,7 @@ describe("stat breakdown always adds up to the character's real stat", () => {
           const c = createCharacter("p1", cls.name, cls, level);
           c.equippedArtifactIds.push(...STAT_ARTIFACTS.slice(0, 3));
           c.equippedAbilityId = STAT_ABILITY;
-          recomputeCharacterStats(c, satiety);
+          recomputeCharacterStats(c, satiety, null);
           expectSums(c, satiety, "equipped");
 
           applyStatus(c, "rallied-iii");
@@ -145,12 +145,12 @@ describe("stat breakdown always adds up to the character's real stat", () => {
           applyStatus(c, "stone-skin");
           expectSums(c, satiety, "buffed");
 
-          recomputeCharacterStats(c, satiety);
+          recomputeCharacterStats(c, satiety, null);
           expectSums(c, satiety, "recomputed");
 
           for (const active of [...c.activeStatusEffects]) expireStatusEffect(c, active, { log });
           expectSums(c, satiety, "expired");
-          recomputeCharacterStats(c, satiety);
+          recomputeCharacterStats(c, satiety, null);
           expectSums(c, satiety, "expired+recomputed");
         });
       }
@@ -162,8 +162,8 @@ describe("stat breakdown always adds up to the character's real stat", () => {
     const knight = game.state.party.find((p) => p.classId === "knight") ?? game.state.party[0]!;
     knight.classId = "knight";
     knight.level = 35;
-    recomputeCharacterStats(knight, game.state.satiety);
-    const passive = characterStatBreakdown(knight, game.state.satiety).defense.passive;
+    recomputeCharacterStats(knight, game.state.satiety, null);
+    const passive = characterStatBreakdown(knight, game.state.satiety, null).defense.passive;
     expect(passive).toBeGreaterThan(0);
     const out = renderMain(game, { kind: "characterInfo", characterIndex: game.state.party.indexOf(knight), previousUi: { kind: "room" } as UiState });
     const chunks = typeof out === "string" ? [] : out.chunks;

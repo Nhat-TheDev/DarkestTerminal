@@ -1,4 +1,6 @@
-import type { GameState } from "../../src/types";
+import type { GameState, ReflectionAnswer } from "../../src/types";
+import { conditionHolds } from "../../src/engine/reflection";
+import { pendingReflectionOptions } from "../../src/ui/screens/events";
 import type { EngineContext } from "../../src/engine/combat";
 
 /** `detail` must not name the screen or seed: the report groups findings by `type` + `detail`. */
@@ -62,6 +64,8 @@ export function findInvariantViolations(state: GameState, ctx: EngineContext): F
   const abilityIds = state.party.map((c) => c.equippedAbilityId).filter((id): id is string => !!id);
   if (new Set(abilityIds).size !== abilityIds.length) found.push("two characters carry the same Ability");
 
+  checkNumber("faith", state.faith);
+  if (state.faith < 0 || state.faith > 100) found.push(`faith ${state.faith} outside 0..100`);
   checkNumber("coins", state.coins);
   checkNumber("satiety", state.satiety);
   if (state.coins < 0) found.push(`coins ${state.coins} below 0`);
@@ -71,7 +75,14 @@ export function findInvariantViolations(state: GameState, ctx: EngineContext): F
   if (!state.floor.rooms.some((r) => r.id === state.currentRoomId)) found.push("currentRoomId is not a room on this floor");
   if (state.gameOver !== null && state.combat !== null) found.push("run is over but a combat is still open");
 
-  return [...new Set(found)].map((detail) => ({ type: "invariant", detail }));
+  const issues = [...new Set(found)].map((detail): Finding => ({ type: "invariant", detail }));
+  return [...issues, ...findShownAnswerIssues(state, pendingReflectionOptions(state))];
+}
+
+/** An answer on screen must have every `requires` holding. */
+export function findShownAnswerIssues(state: GameState, shown: Pick<ReflectionAnswer, "requires">[]): Finding[] {
+  const broken = shown.some((answer) => !(answer.requires ?? []).every((c) => conditionHolds(state, c)));
+  return broken ? [{ type: "invariant", detail: "a shown answer's requirements do not hold" }] : [];
 }
 
 export interface FooterInfo {

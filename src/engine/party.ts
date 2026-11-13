@@ -1,6 +1,7 @@
-import type { ActiveStatusEffect, Character, CharacterClass, CombatStat, GameState, Id } from "../types";
+import type { ActiveBoon, ActiveStatusEffect, BoonStat, Character, CharacterClass, CombatStat, GameState, Id } from "../types";
 import { classGrowthBonus, levelForTotalExp } from "../data/levelGrowth";
 import { getClass, passiveRankDef } from "../data/classes";
+import { getReligion, religionOf } from "../data/religions";
 import { getArtifact } from "../data/artifacts";
 import { getStatusEffect } from "../data/statusEffects";
 import { artifactStatBoostSum, curseAggroBoostSum, abilityWidenedStatBoost } from "./artifacts";
@@ -97,13 +98,28 @@ export interface StatBreakdown {
   artifact: number;
   ability: number;
   passive: number;
+  boon: number;
   status: number;
   total: number;
 }
 
+const BOON_STAT_GROUP: Partial<Record<CharacterStat, BoonStat>> = { attack: "offense", magicPower: "offense", defense: "defense", speed: "speed" };
+
+export function boonMatches(character: Character, boon: ActiveBoon): boolean {
+  return religionOf(character).id === boon.religionId;
+}
+
+function boonStatPercent(character: Character, stat: CharacterStat, boon: ActiveBoon | null): number {
+  const group = BOON_STAT_GROUP[stat];
+  if (!group || !boon) return 0;
+  const config = BALANCE.temple.boon;
+  const percent = getReligion(boon.religionId).boon.emphasis === group ? config.emphasisPercent : config.statPercent;
+  return boonMatches(character, boon) ? percent * config.matchingMultiplier : percent;
+}
+
 /** Exhausted scales the base of every stat but maxHp/maxMp. Knight's passive multiplies maxHp/defense after
- *  equipment; status deltas come last and flat, the way the resolver applies and undoes them. */
-export function characterStatBreakdown(character: Character, satiety: number): Record<CharacterStat, StatBreakdown> {
+ *  equipment, then the floor's boon; status deltas come last and flat, the way the resolver applies and undoes them. */
+export function characterStatBreakdown(character: Character, satiety: number, boon: ActiveBoon | null): Record<CharacterStat, StatBreakdown> {
   const cls = getClass(character.classId);
   const base = statsForLevel(cls, character.level);
   const reference: Record<CharacterStat, number> = { ...base, speed: cls.baseSpeed, aggro: cls.baseAggro };
@@ -125,8 +141,11 @@ export function characterStatBreakdown(character: Character, satiety: number): R
     const beforePassive = statBase + artifact + ability;
     const percent = passivePercent[stat] ?? 0;
     const passive = percent ? Math.round(beforePassive * (1 + percent / 100)) - beforePassive : 0;
+    const beforeBoon = beforePassive + passive;
+    const boonPercent = boonStatPercent(character, stat, boon);
+    const boonDelta = boonPercent ? Math.round(beforeBoon * (1 + boonPercent / 100)) - beforeBoon : 0;
     const status = stat === "maxMp" ? 0 : activeStatusCombatStatSum(character, stat);
-    return { base: statBase, isExhausted: scalesWithExhausted && isExhausted, artifact, ability, passive, status, total: beforePassive + passive + status };
+    return { base: statBase, isExhausted: scalesWithExhausted && isExhausted, artifact, ability, passive, boon: boonDelta, status, total: beforeBoon + boonDelta + status };
   };
   return {
     maxHp: build("maxHp"),
@@ -139,8 +158,8 @@ export function characterStatBreakdown(character: Character, satiety: number): R
   };
 }
 
-export function recomputeCharacterStats(character: Character, satiety: number): void {
-  const stats = characterStatBreakdown(character, satiety);
+export function recomputeCharacterStats(character: Character, satiety: number, boon: ActiveBoon | null): void {
+  const stats = characterStatBreakdown(character, satiety, boon);
   character.maxHp = stats.maxHp.total;
   character.maxMp = stats.maxMp.total;
   character.attack = stats.attack.total;
@@ -152,9 +171,9 @@ export function recomputeCharacterStats(character: Character, satiety: number): 
   character.mp = Math.min(character.mp, character.maxMp);
 }
 
-/** Call whenever `GameState.satiety` changes: Exhausted is party-wide. */
+/** Call whenever `GameState.satiety` or `GameState.boon` changes: both are party-wide. */
 export function recomputeAllPartyStats(state: GameState): void {
-  for (const c of state.party) recomputeCharacterStats(c, state.satiety);
+  for (const c of state.party) recomputeCharacterStats(c, state.satiety, state.boon);
 }
 
 /** Permanent: there is no pool to return it to. */
@@ -165,7 +184,7 @@ export function removeArtifactFromCharacter(state: GameState, characterId: Id, a
   if (idx === -1) return { reason: t("errors.artifactNotEquippedOnCharacter") };
 
   character.equippedArtifactIds.splice(idx, 1);
-  recomputeCharacterStats(character, state.satiety);
+  recomputeCharacterStats(character, state.satiety, state.boon);
   return null;
 }
 
@@ -209,7 +228,7 @@ export function resolveArtifactEquip(state: GameState, characterId: Id, replaceA
   }
 
   character.equippedArtifactIds.push(pending.artifactId);
-  recomputeCharacterStats(character, state.satiety);
+  recomputeCharacterStats(character, state.satiety, state.boon);
   state.message = replacedName
     ? t("game.artifactReplaced", { character: character.name, old: replacedName, artifact: getArtifact(pending.artifactId).name })
     : t("game.artifactEquippedOn", { character: character.name, artifact: getArtifact(pending.artifactId).name });
@@ -227,7 +246,7 @@ export function applyPartyExp(state: GameState, gained: number): void {
     const stats = statsForLevel(cls, newLevel);
     character.level = newLevel;
     character.unlockedSkillIds = stats.unlockedSkillIds;
-    recomputeCharacterStats(character, state.satiety);
+    recomputeCharacterStats(character, state.satiety, state.boon);
     if (character.isAlive) {
       character.hp = character.maxHp;
       character.mp = character.maxMp;

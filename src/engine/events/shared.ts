@@ -53,20 +53,22 @@ export function closeEvent(state: GameState): void {
 }
 
 /**
- * Safe to call after any event action: until the room is cleared it no-ops and draws no rng.
+ * Safe to call after any event action: until the room is cleared it no-ops and draws no rng. Every cleared event room ends on the exit scene.
  * `discard` (a journal scene took the reflection's place) still draws the roll, so the run's rng stream doesn't depend on the journal.
  */
-export function maybeTriggerReflection(state: GameState, ctx: EngineContext, discard = false): void {
-  if (state.pendingReflection) return;
+export function armEventExit(state: GameState, ctx: EngineContext, discard = false): void {
+  if (state.pendingEventExit) return;
   const room = getRoom(state.floor, state.currentRoomId);
   if (!room.cleared || !room.rolledEventId) return;
   const event = getEvent(room.rolledEventId);
+  let withReflection = false;
   // A reflection may describe the event's core action; `reflectionRequiresOutcome` skips it when the party merely left.
-  if (!event.reflection) return;
-  if (event.reflectionRequiresOutcome && state.eventOutcomes[event.id] !== event.reflectionRequiresOutcome) return;
-  const alreadySeen = event.id in state.eventReflectionStances;
-  const chance = alreadySeen ? BALANCE.events.reflectionRepeatChance : 1;
-  if (ctx.rng.chance(chance) && !discard) state.pendingReflection = { eventId: event.id };
+  if (event.reflection && !(event.reflectionRequiresOutcome && state.eventOutcomes[event.id] !== event.reflectionRequiresOutcome)) {
+    const alreadySeen = event.id in state.eventReflectionStances;
+    const chance = alreadySeen ? BALANCE.events.reflectionRepeatChance : 1;
+    withReflection = ctx.rng.chance(chance) && !discard;
+  }
+  state.pendingEventExit = { eventId: event.id, withReflection };
 }
 
 /** How far an event's `escalation` has gone: 0 below its first threshold; tiers 2 and 3 also need their floor depth. Counters never reset, so no room-level flag is needed. */

@@ -1,9 +1,10 @@
-import type { Character, GameState, Id, LogEntry } from "../types";
+import type { Character, GameState, Id, LogEntry, Room } from "../types";
 import { fearResistMultiplier } from "./artifacts";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { CAMP_KIT_ITEM_ID } from "../data/items";
 import { getStatusEffect } from "../data/statusEffects";
+import { livingReligionCounts } from "../data/religions";
 
 export const SATIETY_DRAIN_COMBAT = BALANCE.survival.satietyDrainCombat;
 export const SATIETY_DRAIN_EVENT = BALANCE.survival.satietyDrainEvent;
@@ -82,8 +83,34 @@ function statusFearResistMultiplier(character: Character): number {
   return character.activeStatusEffects.reduce((mult, s) => mult * (1 - Math.min(100, getStatusEffect(s.statusEffectId).fearResistPercent ?? 0) / 100), 1);
 }
 
-export function resistedFearGain(character: Character, amount: number): number {
-  return roundFear(amount * fearResistMultiplier(character) * statusFearResistMultiplier(character));
+export function roundFaith(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+/** The one place Faith is written. Returns the change actually made. */
+export function adjustFaith(state: GameState, delta: number): number {
+  const before = state.faith;
+  state.faith = roundFaith(clamp(before + delta, 0, 100));
+  return roundFaith(state.faith - before);
+}
+
+export function faithFearMultiplier(faith: number): number {
+  const { fearGainMultiplierAtZero: atZero, fearGainMultiplierAtFull: atFull } = BALANCE.faith;
+  return atZero + (atFull - atZero) * (clamp(faith, 0, 100) / 100);
+}
+
+export function faithDecayForRoom(faith: number, decayMultiplier: number): number {
+  return (BALANCE.faith.decayFlatPerRoom + faith * BALANCE.faith.decayPercentPerRoom) * decayMultiplier;
+}
+
+export function drainFaithOnFirstEntry(state: GameState, room: Room, firstEntry: boolean): void {
+  if (!firstEntry || room.type === "temple") return;
+  const decayMultiplier = state.boon?.depth === state.floor.depth ? BALANCE.temple.boon.decayMultiplier : 1;
+  adjustFaith(state, -faithDecayForRoom(state.faith, decayMultiplier));
+}
+
+export function resistedFearGain(character: Character, amount: number, faith: number): number {
+  return roundFear(amount * fearResistMultiplier(character) * statusFearResistMultiplier(character) * faithFearMultiplier(faith));
 }
 
 /** The one place fear is written. Returns the change actually made. */
@@ -93,29 +120,29 @@ export function adjustFear(character: Character, delta: number): number {
   return roundFear(character.survival.fear - before);
 }
 
-function scaledFearGain(character: Character, base: number, cap: number, floorDepth: number): number {
+function scaledFearGain(character: Character, base: number, cap: number, floorDepth: number, faith: number): number {
   const growthMultiplier = 1 + FEAR_PER_ROUND_DEPTH_GROWTH * (floorDepth - 1);
   const scaled = Math.min(base * growthMultiplier, cap);
-  return scaled > 0 ? resistedFearGain(character, scaled) : roundFear(scaled);
+  return scaled > 0 ? resistedFearGain(character, scaled, faith) : roundFear(scaled);
 }
 
-export function fearGainForRound(character: Character, floorDepth: number): number {
+export function fearGainForRound(character: Character, floorDepth: number, faith: number): number {
   const isLowHp = character.hp < character.maxHp * FEAR_LOW_HP_THRESHOLD_FRACTION;
   return isLowHp
-    ? scaledFearGain(character, FEAR_PER_ROUND_LOW_HP, FEAR_PER_ROUND_LOW_HP_CAP, floorDepth)
-    : scaledFearGain(character, FEAR_PER_ROUND_BASE, FEAR_PER_ROUND_BASE_CAP, floorDepth);
+    ? scaledFearGain(character, FEAR_PER_ROUND_LOW_HP, FEAR_PER_ROUND_LOW_HP_CAP, floorDepth, faith)
+    : scaledFearGain(character, FEAR_PER_ROUND_BASE, FEAR_PER_ROUND_BASE_CAP, floorDepth, faith);
 }
 
-export function fearGainForHit(character: Character, floorDepth: number): number {
-  return scaledFearGain(character, FEAR_PER_HIT_TAKEN, FEAR_PER_HIT_TAKEN_CAP, floorDepth);
+export function fearGainForHit(character: Character, floorDepth: number, faith: number): number {
+  return scaledFearGain(character, FEAR_PER_HIT_TAKEN, FEAR_PER_HIT_TAKEN_CAP, floorDepth, faith);
 }
 
-export function applyRoundFear(character: Character, floorDepth: number): number {
-  return character.isAlive ? adjustFear(character, fearGainForRound(character, floorDepth)) : 0;
+export function applyRoundFear(character: Character, floorDepth: number, faith: number): number {
+  return character.isAlive ? adjustFear(character, fearGainForRound(character, floorDepth, faith)) : 0;
 }
 
-export function applyHitFear(character: Character, floorDepth: number): number {
-  return character.isAlive ? adjustFear(character, fearGainForHit(character, floorDepth)) : 0;
+export function applyHitFear(character: Character, floorDepth: number, faith: number): number {
+  return character.isAlive ? adjustFear(character, fearGainForHit(character, floorDepth, faith)) : 0;
 }
 
 export function applyVictoryFearRelief(party: Character[], isEliteOrBossFight: boolean, roundNumber: number): Character[] {
@@ -156,6 +183,20 @@ export function addItem(state: GameState, itemId: Id, count: number): number {
   const added = itemId === CAMP_KIT_ITEM_ID ? Math.min(count, campKitRoom(state)) : count;
   if (added > 0) state.inventory[itemId] = (state.inventory[itemId] ?? 0) + added;
   return added;
+}
+
+export function chatFaith(party: Character[]): number {
+  const bySize = BALANCE.rest.chat.faithByGroupSize;
+  let total = 0;
+  for (const count of livingReligionCounts(party).values()) {
+    if (count >= 2) total += bySize[String(Math.min(count, 4)) as keyof typeof bySize];
+  }
+  return total;
+}
+
+export function restPray(state: GameState): void {
+  adjustFaith(state, BALANCE.rest.pray.faith);
+  for (const c of state.party) if (c.isAlive) adjustFear(c, -BALANCE.rest.pray.fearRelief);
 }
 
 export function campAction(state: GameState): { reason: string } | null {

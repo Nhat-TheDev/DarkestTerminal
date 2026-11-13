@@ -6,6 +6,8 @@ import { STRINGS, t } from "../src/data/strings";
 import { composeFooter, globalHints, withPageHint, digitRange, digitHint, HINT_GAP } from "../src/ui/keyHints";
 import { MIN_TERMINAL_WIDTH } from "../src/ui/layout";
 import type { UiState } from "../src/ui/state";
+import { getRoom } from "../src/engine/dungeon";
+import { renderFooter as renderRoomFooter } from "../src/ui/screens/room";
 
 const FOOTER_KEYS = Object.keys(STRINGS).filter(
   (k) =>
@@ -51,6 +53,21 @@ describe("key-hint grammar (R2/R3)", () => {
   });
 });
 
+describe("rest footer", () => {
+  test("offers [1-3] without the runner, [1-4] with it, and only Leave and Trade once rested", () => {
+    const game = new Game(1);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "rest";
+    expect(renderRoomFooter({ kind: "rest" }, game)).toBe("[1-3] Choose   [Enter] Leave");
+    game.state.restRunner = { roomId: room.id, noticeShown: true, noticeVariant: 0, offers: [], refreshCount: 0 };
+    expect(renderRoomFooter({ kind: "rest" }, game)).toBe("[1-4] Choose   [Enter] Leave");
+    room.rested = true;
+    expect(renderRoomFooter({ kind: "rest" }, game)).toBe("[4] Trade   [Enter] Leave");
+    game.state.restRunner = null;
+    expect(renderRoomFooter({ kind: "rest" }, game)).toBe("[Enter] Leave");
+  });
+});
+
 describe("global hints (R5)", () => {
   test("Memory goes after the party hint once unlocked, and never on screens that cannot open it", () => {
     expect(globalHints("room", true, true)).toBe("[b] Party   [m] Memory   [p] Map   [l] Log   [q] Save   [s] Quicksave   [Ctrl+C] Quit");
@@ -78,7 +95,7 @@ describe("global hints (R5)", () => {
   test("every screen offering [p] or [v] still fits its fullest footer on the smallest terminal", () => {
     const fullest: [UiState["kind"], string, boolean][] = [
       ["room", digitHint("ui.footerRoom", 3), false],
-      ["rest", digitHint("ui.footerRest", 3), false],
+      ["rest", digitHint("ui.footerRest", 4), false],
       ["campPrompt", t("ui.footerCampPrompt"), false],
       ["pickAction", digitHint("ui.footerChooseAction", 2), false],
       ["pickSkill", digitHint("ui.footerChooseSkillEsc", 9), false],

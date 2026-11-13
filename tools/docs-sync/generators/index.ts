@@ -12,8 +12,9 @@ import { deathBursts, minionSkills, minions } from "./minions";
 import { monsterSkills, monsterTypeWeights } from "./monsters";
 import { passives } from "./passives";
 import { rarityOdds } from "./rarityOdds";
+import { religions } from "./religions";
 import { shopOdds } from "./shopOdds";
 import { statusEffects } from "./statusEffects";
 import { targetingProfiles, targetingRankScores } from "./targeting";
 
-export const REGISTRY: Readonly<Record<string, GeneratorSpec>> = { abilities, artifacts, balancePoints, basicAttacks, classSkills, classStats, coinDropByTier, deathBursts, eventTiers, gamblingRounds, map, minionSkills, minions, monsterSkills, monsterTypeWeights, passives, rarityOdds, shopOdds, statusEffects, targetingProfiles, targetingRankScores };
+export const REGISTRY: Readonly<Record<string, GeneratorSpec>> = { abilities, artifacts, balancePoints, basicAttacks, classSkills, classStats, coinDropByTier, deathBursts, eventTiers, gamblingRounds, map, minionSkills, minions, monsterSkills, monsterTypeWeights, passives, rarityOdds, religions, shopOdds, statusEffects, targetingProfiles, targetingRankScores };

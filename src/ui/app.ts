@@ -34,10 +34,12 @@ import {
   renderSpriteInSlot,
   MAX_BOSS_HEIGHT,
   TOMBSTONE_SPRITE,
+  torchFrameForFaith,
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
+  TEMPLE_ALTAR_SPRITE,
 } from "./sprites";
-import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, battlefieldInnerWidth, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { SLOT_WIDTH, SLOT_GAP, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, battlefieldInnerWidth, centerText, monsterStyle, mergeBlocksHorizontally, torchDividerBlock } from "./layout";
 import { sceneById, type UnitShadow } from "../data/backdrops";
 import { backdropIdForRoomName } from "../data/roomNames";
 import { paintBackdrop, composeBattlefield, sameContent } from "./backdrop";
@@ -64,6 +66,7 @@ import * as journalScreen from "./screens/journal";
 import * as endingScreen from "./screens/ending";
 import * as founderDialogueScreen from "./screens/founderDialogue";
 import * as gatekeeperScreen from "./screens/gatekeeper";
+import * as templeScreen from "./screens/temple";
 import { GATEKEEPER_EVENT_ID } from "../engine/events/gatekeeper";
 import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
@@ -400,13 +403,15 @@ export class App implements ScreenContext {
         this.ui = { kind: "artifactDecision" };
         return;
       }
-      if (this.game.state.pendingReflection) {
-        this.ui = { kind: "eventReflection" };
+      const exit = this.game.state.pendingEventExit;
+      const journalFirst = !exit?.withReflection && (this.game.state.pendingJournalFind || this.game.state.pendingJournal || this.game.journalNoticeView());
+      if (exit && !journalFirst) {
+        this.ui = { kind: "eventExit" };
         return;
       }
       const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
       const restOpen = room.type === "rest" && !room.cleared;
-      if (this.game.state.pendingCampReflectionTier !== null && !restOpen) {
+      if (this.game.state.pendingCampReflectionTier !== null && (!restOpen || room.rested)) {
         this.ui = { kind: "campReflection" };
         return;
       }
@@ -429,6 +434,10 @@ export class App implements ScreenContext {
         } else if (!runner || (this.ui.kind !== "runnerShop" && this.ui.kind !== "runnerSell" && this.ui.kind !== "runnerBarter")) {
           this.ui = { kind: "rest" };
         }
+        return;
+      }
+      if (room.type === "temple" && !room.cleared) {
+        this.ui = { kind: "temple" };
         return;
       }
       if (room.type === "event" && !room.cleared && room.rolledEventId) {
@@ -532,7 +541,7 @@ export class App implements ScreenContext {
     }
     if (
       key.name === "b" &&
-      ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickCommandMinion", "pickCommandSkill", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
+      ["room", "rest", "temple", "pickAction", "pickSkill", "skillDetail", "pickCommandMinion", "pickCommandSkill", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
     ) {
       this.setUi({ kind: "characterInfo", characterIndex: 0, previousUi: this.ui });
       this.render();
@@ -557,6 +566,9 @@ export class App implements ScreenContext {
       case "room":
       case "rest":
         roomScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "temple":
+        templeScreen.handleKey(this, key, digit);
         break;
       case "runnerNotice":
       case "runnerShop":
@@ -608,7 +620,7 @@ export class App implements ScreenContext {
       case "eventFortuneExchange":
       case "eventFortuneExchangePickArtifact":
       case "eventCombatReward":
-      case "eventReflection":
+      case "eventExit":
         eventsScreen.handleKey(this, this.ui, key, digit);
         break;
       case "campReflection":
@@ -903,6 +915,8 @@ export class App implements ScreenContext {
         colorChunk(t("ui.coinsStat", { coins }), PALETTE.title),
         plainChunk("  "),
         colorChunk(t("ui.satietyStat", { satiety }), PALETTE.title),
+        plainChunk("  "),
+        colorChunk(`${t("ui.faithLabel")} ${Math.floor(s.faith)}`, PALETTE.title),
         ...(s.runStardust > 0 ? [plainChunk("  "), colorChunk(t("ui.stardustStat", { stardust: s.runStardust }), PALETTE.title)] : []),
       ],
       expLine,
@@ -1149,6 +1163,14 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
+  private buildTempleBlock(): TextChunk[][] {
+    const lines = renderSpriteInSlot(TEMPLE_ALTAR_SPRITE, MAX_BOSS_HEIGHT, EMPTY_ENEMY_WIDTH);
+    lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
+    lines.push([colorChunk(centerText(t("ui.templeLabel"), EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
+    lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
+  }
+
   private buildTreasureBlock(): TextChunk[][] {
     const lines = renderSpriteInSlot(TREASURE_CHEST_SPRITE, MAX_BOSS_HEIGHT, EMPTY_ENEMY_WIDTH);
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
@@ -1231,6 +1253,7 @@ export class App implements ScreenContext {
 
     const room = getRoom(s.floor, s.currentRoomId);
     const isRestRoom = !combat && room.type === "rest";
+    const isTempleRoom = !combat && room.type === "temple" && !room.cleared;
     const isEventRoom = !combat && room.type === "event" && !!room.rolledEventId && !room.cleared;
     const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
@@ -1257,6 +1280,8 @@ export class App implements ScreenContext {
       }
     } else if (isRestRoom) {
       enemyBlock = this.buildCampfireBlock();
+    } else if (isTempleRoom) {
+      enemyBlock = this.buildTempleBlock();
     } else if (isTreasureRoom) {
       enemyBlock = this.buildTreasureBlock();
     } else if (isEventRoom) {
@@ -1266,14 +1291,7 @@ export class App implements ScreenContext {
       enemyBlock = this.buildEmptyEnemyBlock(message);
     }
 
-    const divider: TextChunk[][] = [];
-    for (let i = 0; i < UNIT_BLOCK_HEIGHT; i++) {
-      divider.push(
-        i === ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS) / 2) && !isRestRoom && !isEventRoom && !isTreasureRoom
-          ? [colorChunk(centerText(t("ui.versusDivider"), DIVIDER_WIDTH), PALETTE.dim)]
-          : [plainChunk(" ".repeat(DIVIDER_WIDTH))]
-      );
-    }
+    const divider = torchDividerBlock(torchFrameForFaith(s.faith));
 
     return { rows: mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP), dimmed };
   }
@@ -1414,7 +1432,7 @@ export class App implements ScreenContext {
       case "eventFortuneExchange":
       case "eventFortuneExchangePickArtifact":
       case "eventCombatReward":
-      case "eventReflection":
+      case "eventExit":
         return eventsScreen.renderMain(this.game, this.ui, this.listPage);
 
       case "campReflection":
@@ -1455,6 +1473,9 @@ export class App implements ScreenContext {
 
       case "gatekeeper":
         return gatekeeperScreen.renderMain(this.game, this.ui);
+
+      case "temple":
+        return templeScreen.renderMain(this.game);
 
       default: {
         const _exhaustive: never = this.ui;
@@ -1515,10 +1536,10 @@ export class App implements ScreenContext {
       case "eventFortuneExchange":
       case "eventFortuneExchangePickArtifact":
       case "eventCombatReward":
-      case "eventReflection":
+      case "eventExit":
         return eventsScreen.renderFooter(this.ui, this.game, this.listPage);
       case "campReflection":
-        return campReflectionScreen.renderFooter(this.ui);
+        return campReflectionScreen.renderFooter(this.game);
       case "floorMilestone":
         return floorMilestoneScreen.renderFooter(this.ui);
       case "memoryIntro":
@@ -1541,6 +1562,8 @@ export class App implements ScreenContext {
         return founderDialogueScreen.renderFooter(this.ui);
       case "gatekeeper":
         return gatekeeperScreen.renderFooter(this.ui, this.game);
+      case "temple":
+        return templeScreen.renderFooter(this.game);
       case "abilityBuyback":
         return abilityBuybackScreen.renderFooter(this.game);
       case "gameover":

@@ -4,8 +4,8 @@ import { resolveScene, type BackdropsFile } from "../../src/data/backdrops";
 import { getClass } from "../../src/data/classes";
 import { t } from "../../src/data/strings";
 import { composeBattlefield, paintBackdrop } from "../../src/ui/backdrop";
-import { mergeBlocksHorizontally, centerText, monsterStyle, BATTLEFIELD_CONTENT_WIDTH, DIVIDER_WIDTH, ICON_BAND_ROWS, SLOT_GAP, SLOT_WIDTH, UNIT_BLOCK_HEIGHT } from "../../src/ui/layout";
-import { compositeSpriteRow, spriteForClass, spriteForMonster, MAX_BOSS_HEIGHT, type Sprite } from "../../src/ui/sprites";
+import { mergeBlocksHorizontally, centerText, monsterStyle, BATTLEFIELD_CONTENT_WIDTH, ICON_BAND_ROWS, SLOT_GAP, SLOT_WIDTH, torchDividerBlock } from "../../src/ui/layout";
+import { compositeSpriteRow, spriteForClass, spriteForMonster, MAX_BOSS_HEIGHT, TORCH_SPRITES, type Sprite } from "../../src/ui/sprites";
 import { colorChunk, hpColorFor, plainChunk, PALETTE } from "../../src/ui/theme";
 
 export interface PreviewCell {
@@ -43,13 +43,6 @@ function sideBlock(units: Unit[]): TextChunk[][] {
   return [...sprites, ...meta];
 }
 
-function dividerBlock(): TextChunk[][] {
-  const vsRow = ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS) / 2);
-  return Array.from({ length: UNIT_BLOCK_HEIGHT }, (_, i) => [
-    i === vsRow ? colorChunk(centerText(t("ui.versusDivider"), DIVIDER_WIDTH), PALETTE.dim) : plainChunk(" ".repeat(DIVIDER_WIDTH)),
-  ]);
-}
-
 function hex(c: { toInts(): number[] } | undefined): string | null {
   if (!c) return null;
   const [r, g, b] = c.toInts();
@@ -67,7 +60,7 @@ export function previewScene(file: BackdropsFile, sceneId: string, opts: Preview
     return { sprite: spriteForMonster(m.id, m.tier), label: style.abbr, color: style.color };
   });
 
-  const content = mergeBlocksHorizontally([sideBlock(party), dividerBlock(), sideBlock(monsters)], SLOT_GAP);
+  const content = mergeBlocksHorizontally([sideBlock(party), torchDividerBlock(TORCH_SPRITES["full"]!), sideBlock(monsters)], SLOT_GAP);
   const backdrop = paintBackdrop(scene, BATTLEFIELD_CONTENT_WIDTH, 0, opts.dimmed);
   const shadow = opts.shadow === undefined ? scene.render.unitShadow : { ...scene.render.unitShadow, enabled: opts.shadow };
   const rows = composeBattlefield(content, backdrop, BATTLEFIELD_CONTENT_WIDTH, 0, shadow);

@@ -3,10 +3,11 @@ import { resolve } from "node:path";
 import { BALANCE } from "../src/data/balanceConfig";
 import { loadDocsData } from "../tools/docs-sync/data";
 import { formatFinding, runDocsSync } from "../tools/docs-sync/index";
+import { CONFIGURED_TEMPLE_CHANCE, withTempleChance } from "./setup";
 
 // Goes red after a rebalance until `bun run docs:sync` rewrites the numbers the docs mirror; that is its job.
 test("the docs are in step with data/balance-config.json (fix with `bun run docs:sync`)", () => {
-  const result = runDocsSync({ root: resolve(import.meta.dir, ".."), write: false, data: loadDocsData() });
+  const result = withTempleChance(CONFIGURED_TEMPLE_CHANCE, () => runDocsSync({ root: resolve(import.meta.dir, ".."), write: false, data: loadDocsData() }));
   expect(result.findings.map(formatFinding)).toEqual([]);
 });
 

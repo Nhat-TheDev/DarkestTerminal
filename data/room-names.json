@@ -55,6 +55,20 @@
       "backdrop": "abandoned-shrine"
     }
   ],
+  "temple": [
+    {
+      "name": "Votive Hall",
+      "backdrop": "abandoned-shrine"
+    },
+    {
+      "name": "Cold Sanctum",
+      "backdrop": "abandoned-shrine"
+    },
+    {
+      "name": "Pilgrim's Chapel",
+      "backdrop": "abandoned-shrine"
+    }
+  ],
   "boss": [
     {
       "name": "Dungeon Lord's Hall",

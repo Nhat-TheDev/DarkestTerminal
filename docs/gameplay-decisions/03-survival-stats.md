@@ -4,7 +4,7 @@
 
 **Source of truth for every number below**: `data/balance-config.json` field `survival`, read into named constants in `src/engine/survival.ts` (fear-per-round handling, satiety drain, Exhausted/Dying) and `src/engine/resolver.ts`/`combat.ts` (fear's effect on combat, `04-fear-combat.md` §4). This document names the mechanic and the field that drives it — not the current value.
 
-There are 2 survival stats, tracked at different scopes:
+There are 2 survival stats, tracked at different scopes. Faith, the party's slower third pressure, has its own document (`13-faith-and-religion.md`); this one covers where it meets the rest room and Camp Reflection.
 
 | Stat | Scope | Range |
 |---|---|---|
@@ -36,7 +36,7 @@ Implementation: `drainSatiety(state, amount, log)` (`src/engine/survival.ts`), c
 
 **A room never drains satiety twice.** Rooms only link forward: `moveToRoom` (`dungeon.ts`) refuses any room that isn't in the current room's `connectedRoomIds`, so the party never walks back into a room it has cleared. `enterRoom`'s dispatch ends in a catch-all branch that drains `SATIETY_DRAIN_COMBAT` for an arrival matching none of its cases (a cleared room, or a combat/boss room with no living monsters). Forward-only movement keeps a cleared room out of reach in play; the dev tools that call `enterRoom` directly (`tools/dev-save-dump`, `tools/curve`) can still land in that branch.
 
-The drain/threshold numbers are sized against the existing floor-generation guarantee: every route already passes through `floorGeneration.minRestRoomsPerRoute`–`maxRestRoomsPerRoute` Rest rooms (`src/data/floorPatterns.ts`), and the Rest room's Eat & Drink option restores satiety too (see below) — so a party following any route is expected to hit at least 1 Rest room before satiety drains far enough to reach Exhausted, as long as they don't stall on Skip repeatedly.
+The drain/threshold numbers are sized against the existing floor-generation guarantee: every route already passes through `floorGeneration.minRestRoomsPerRoute`–`maxRestRoomsPerRoute` Rest rooms (`src/data/floorPatterns.ts`), and the Rest room's Eat and drink option restores satiety too (see below) — so a party following any route is expected to hit at least 1 Rest room before satiety drains far enough to reach Exhausted, as long as they don't skip every rest room.
 
 ### Exhausted — satiety < 30
 
@@ -45,7 +45,7 @@ While satiety < `survival.exhaustedThreshold` (30), the **whole party** is Exhau
 - Every character's **own** `attack`, `defense`, `magicPower`, `aggro`, `speed` is multiplied by `survival.exhaustedStatMultiplier` (≈ 2/3) — `maxHp`/`maxMp` are never touched.
 - **Artifact `statBoost` bonuses are not reduced** — only the character's own base/leveled stat shrinks. Example: a character with 30 `attack` + 6 `attack` from an equipped artifact, while Exhausted: `round(30 × 2/3) = 20`, plus the untouched `+6` from the artifact → effective `attack = 26`.
 
-Modeled as a **live-computed condition, not a stored status effect** — mirrors how fear tiers work (`getFearTier(fear)` in `resolver.ts`, a function of the current value, not an `ActiveStatusEffect` with `turnsRemaining`). `isPartyExhausted(satiety)` (`src/engine/survival.ts`) is applied inside `recomputeCharacterStats` (`src/engine/party.ts`) — after the character's own base stat, before artifact bonuses are added on top. Whenever `GameState.satiety` itself changes (room-entry drain, Camp, Rest room Eat & Drink), `recomputeAllPartyStats(state)` re-runs this for the whole party, so Exhausted turns on/off instantly and continuously as satiety crosses below 30 or back to it — no `StatusEffectDefinition` entry at all.
+Modeled as a **live-computed condition, not a stored status effect** — mirrors how fear tiers work (`getFearTier(fear)` in `resolver.ts`, a function of the current value, not an `ActiveStatusEffect` with `turnsRemaining`). `isPartyExhausted(satiety)` (`src/engine/survival.ts`) is applied inside `recomputeCharacterStats` (`src/engine/party.ts`) — after the character's own base stat, before artifact bonuses are added on top. Whenever `GameState.satiety` itself changes (room-entry drain, Camp, Rest room Eat and drink), `recomputeAllPartyStats(state)` re-runs this for the whole party, so Exhausted turns on/off instantly and continuously as satiety crosses below 30 or back to it — no `StatusEffectDefinition` entry at all.
 
 ### Dying — satiety < 10
 
@@ -94,7 +94,7 @@ Fear is kept to one decimal place: every change goes through `adjustFear` (`src/
   | Elite / Boss | `survival.fearEliteOrBossVictoryRelief` (8) | `survival.fearEliteOrBossVictoryReliefQuick` (12) | won with `roundNumber < survival.fearEliteOrBossQuickVictoryRoundThreshold` (5) |
 
   Neither pair is additive with the other: the Elite/Boss relief replaces the regular one, never adds to it. Determined by the actual tier of the monster just defeated (`Monster.tier !== "normal"`), not by room type. Implementation: `applyVictoryFearRelief(party, isEliteOrBossFight, roundNumber)`, called from `finalizeRound` when `outcome === "victory"`.
-- Rest room ("Chat" option): reduces fear by `survival.chatFearRelief` (`CHAT_FEAR_RELIEF`, `src/engine/survival.ts`).
+- Rest room ("Talk" option, the `chat` action): reduces fear by `survival.chatFearRelief` (`CHAT_FEAR_RELIEF`, `src/engine/survival.ts`).
 
 Fear does not increase while moving between rooms — it only increases during combat: every round the fight continues, and every monster hit that lands (as described above).
 
@@ -113,23 +113,26 @@ Fear does not increase while moving between rooms — it only increases during c
 
 ## Rest room
 
-Entering a rest room, the player picks 1 of 3 options (`Game.restAction`):
+Entering a rest room, the party takes **one** rest action (`Game.restAction`: `eat`, `chat`, `pray` or `leave`). The screen shows each option's effect as a line under it, in the same format as a reflection answer (`src/ui/effectLine.ts`), computed for the party as it stands: HP and MP are separate chips, and Talk shows a Faith chip only when it would raise Faith.
 
 | Option | Effect |
 |---|---|
-| **Eat & Drink** (`restEatDrink`) | `hp`/`mp` restored by `survival.eatDrinkRestoreFraction` (30%) of max, **plus** `survival.eatDrinkSatietyRestore` (40) satiety, all in 1 action |
-| **Chat** (`restChat`) | `hp`/`mp` restored by `survival.chatRestoreFraction` of max, plus `fear` reduced by `survival.chatFearRelief` — doesn't touch satiety (satiety recovery is tied to "eating") |
-| **Skip** | No effect at all, just marks the room as cleared (`room.cleared = true`) and moves on |
+| **Eat and drink** (`restEatDrink`) | `hp`/`mp` restored by `survival.eatDrinkRestoreFraction` (30%) of max, **plus** `survival.eatDrinkSatietyRestore` (40) satiety, all in 1 action |
+| **Talk** (`restChat`, the `chat` action) | `hp`/`mp` restored by `survival.chatRestoreFraction` of max, plus `fear` reduced by `survival.chatFearRelief` — doesn't touch satiety (satiety recovery is tied to "eating"). It also raises Faith by the shared-religion bonus below |
+| **Pray** (`restPray`) | Raises Faith by `rest.pray.faith` (15) and reduces every living member's fear by `rest.pray.fearRelief` (5); no HP/MP or satiety |
+| **Leave** | Ends the room. If the party never rested, the room still counts as cleared and nothing happens |
 
-All 3 options mark the room as "cleared" once chosen (cannot be repeated). Entering/using the Rest room itself never drains satiety (see the drain table above).
+**Talk's Faith** (`chatFaith`, `src/engine/survival.ts`) is summed per religion with at least two **living** followers in the party. Each such group adds the value `rest.chat.faithByGroupSize` lists for its size (2, 3 or 4, larger groups count as 4), so a party with no shared religion gets none and the Talk line shows no Faith. The line is computed for the current party, so it changes as members die.
+
+The rest action can be taken once per room: after it the three options are dimmed and ignored, effect lines included, and the footer drops to `[Enter] Leave` (`[4] Trade   [Enter] Leave` with the runner there). Trading with the runner (below) never costs the rest: it works before or after the rest action, in either order, and closing the shop returns to the same menu. The room is marked cleared when the party leaves with Enter, not when it rests or trades. Leaving without resting is allowed and costs nothing. Entering/using the Rest room itself never drains satiety (see the drain table above).
 
 ### The Merchant's Runner
 
 On entering an uncleared Rest room there is a `runner.appearChance` (50%) chance the Merchant's Runner is there (`rollRestRunner`, `src/engine/events/runner.ts`, called from `enterRoom`). He is kept in `GameState.restRunner` with his stock, so a save keeps him. With him present:
 
 1. A **notice screen** (`runnerNotice`) comes first, one of 3 appearance texts (`runner.notice0`-`2`, `data/strings.json`); `[Enter]` continues.
-2. The Rest screen offers a **fourth option, `[3] Trade`**, next to Eat, Chat and Skip. Trade opens the shop (`runnerShop`) and leaving it ends the room (`Game.leaveRunner`), so **trading replaces the room's rest action**.
-3. **Camp Reflection** shows after that choice.
+2. The Rest screen offers a **fourth option, `[4] Trade`**, next to Eat and drink, Talk, Pray and Leave. Trade opens the shop (`runnerShop`); leaving it (`Game.leaveRunner`) returns to the rest menu with the rest action and the runner still available.
+3. **Camp Reflection** shows right after the rest action, or on leaving if the party never rested.
 
 The shop sells 5 distinct items (`rollShopOffers`, `src/data/shopStock.ts`), each listed with a line saying what it does, refreshable like the Merchant (`events.merchantRefreshCostCoins`, `events.merchantMaxRefreshes`), and buys consumables and trophies back at a fifth of the single price. Prices, odds and the offer mix are in `data/balance-config.json` (`runner`, `shop`); item rules in `07-items-artifacts.md`, the coin side in `09-currency.md`.
 
@@ -176,15 +179,15 @@ Code: `src/engine/events/barter.ts`.
 
 ### Camp Reflection
 
-A 4th piece of content at Rest rooms, independent of which of the 3 options above is picked and
-independent of `08-events.md` §8.6's post-event reflection — no shared data, no shared trigger
-logic, deliberately, since the register is different: §8.6 is a short in-the-moment dialogue beat
+A further piece of content at Rest rooms, independent of which rest action is taken and
+separate from `08-events.md` §8.6's post-event reflection in its data (`data/camp-reflections.json`) and its
+trigger, deliberately, since the register is different: §8.6 is a short in-the-moment beat
 reacting to 1 room; Camp Reflection is the party looking back at its own *accumulated* pattern of
 exchanges across the whole run so far, fires at most 4 times ever, and is meant to land each time
-rather than repeat. It is armed on entering the Rest room but shown only once the room's own choice has been made (including Trade).
+rather than repeat. It shares §8.6's answer shape, effect lines and rules (`08-events.md` §8.6), so every answer carries visible effects. It is armed on entering the Rest room but shown right after the room's rest action, or on leaving if the party never rested; trading alone does not trigger it.
 
 **Tracking** — its own `GameState` fields, none of them touching `narrativeCounters`,
-`eventOutcomes`, `pendingReflection`, or `eventReflectionStances`:
+`eventOutcomes`, `pendingEventExit`, or `eventReflectionStances`:
 
 ```ts
 /** Increments by 1 each time the party resolves an event in LORE_EXPOSURE_EVENT_IDS
@@ -198,13 +201,13 @@ loreExposureCount: number;
 
 /** Set at rest-room entry (enterRoom's "rest" branch, src/engine/dungeon.ts) when a new tier —
     computed fresh from loreExposureCount each time, not stored — is higher than the highest tier
-    already present in campReflectionChoices. Skipped if state.pendingReflection is currently set
+    already present in campReflectionChoices. Skipped if state.pendingEventExit is currently set
     (narrow defensive check only, not a dependency). Cleared once the player picks a response. */
 pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
 
-/** Which option (0/1/2) was picked at each tier — a genuine per-tier record, unlike
+/** Which shown answer (its index among the answers `shownOptions` returned) was picked at each tier — a genuine per-tier record, unlike
     eventReflectionStances (overwritten on repeat), since each tier fires exactly once per run. */
-campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
+campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, number>>;
 ```
 
 Tier thresholds against `loreExposureCount` (a balance decision, not a lore one): tier 1 at
@@ -221,8 +224,8 @@ chance roll — unlike §8.6's reflection, which needs `reflectionRepeatChance` 
 trigger many times per event id; Camp Reflection fires at most 4 times, ever.
 
 **UI**: its own screen (`"campReflection"` in `UiState`, `src/ui/state.ts`, rendered from
-`src/ui/screens/campReflection.ts`), not a variant of the `eventReflection` screen,
-triggered from the rest-room entry flow rather than from event-room `closeEvent()`.
+`src/ui/screens/campReflection.ts`), not a variant of the `eventExit` screen,
+triggered from the rest-room entry flow rather than from event-room `closeEvent()`. It lists the shown answers with their effect lines, the same way an exit scene does, and has no "leave without a word": the party always answers. After a pick the log reports the branch that was taken (`reflection.result`).
 
 **Content — all 4 tiers.** Tier 0 (Untouched) has no content — nothing has happened
 yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having no §8.6 reflection.
@@ -251,6 +254,7 @@ yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having 
 - "You put your bowl down and look at the one who paid."
 - "You pass them the bread."
 - "You look at your own hands, turning them over once."
+- Plague and Healing only (`requires: religionInParty`, the answer is hidden without a living follower): "You clean and bind the hand of the one who paid."
 
 **Tier 4 — Unawareness**
 
@@ -261,18 +265,20 @@ yet, nothing to reflect on, same principle as Open Chest/Collapsed Floor having 
 - "You start to tell them about today, then ask for the salt."
 - "You look at the knife until someone asks if you're going to eat."
 
+**Effects.** Every answer declares its effects in `data/camp-reflections.json`, with a `readFrom` phrase that must appear in its text, and obeys the rules in `08-events.md` §8.6 (a tier is refused at load otherwise). Faith across the camp answers as a group is held to the same no-tied-direction rule as the events' stances.
+
 **Craft notes**: Camp Reflection is the party looking at itself, not at any altar, so its prompts
 stay at the fire — supplies, a route, a meal — and each one is 1–3 sentences with a single
 observable detail: a hand finding the right pouch, a route bent around the altars, the rest of the
 party eating while one of them has paid, a bloodied knife beside the dinner talk. The altar itself
 is only ever named at second hand, and the drift (§12.5) is carried by what the party's hands do
 out of habit, never by a line telling the player how it feels. Tier 4 ends on the knife: the cost
-has become one more object by the fire. The 3 options per tier are gestures — what the hand does
+has become one more object by the fire. The answers per tier (three, and a fourth one-religion answer at tier 3) are gestures — what the hand does
 next — not opinions, and they are bespoke per tier rather than a `curious`/`wary`/`dismissive`
 relabeling. Each set gives three distinct readings of the same moment (fall in with it, take
 note of it, look at it squarely), but what those gestures can be changes as the habit deepens — by
 tier 4 even the attempt to say something turns into asking for the salt — so one fixed label set
-would have forced a fit the content no longer supports.
+would have forced a fit the content no longer supports. The conditional answer at tier 3 is a fourth reading that only a follower of Plague and Healing has: the one who binds the wound.
 
 **Downstream effect on 1 other event**: does not touch `eventOutcomes` as part of its own tracking
 — but the moment tier 4 resolves, 1 line writes a synthetic tag into the *existing* `eventOutcomes`

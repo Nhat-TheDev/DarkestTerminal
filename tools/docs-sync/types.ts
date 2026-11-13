@@ -1,5 +1,5 @@
 import type { BALANCE } from "../../src/data/balanceConfig";
-import type { AbilityDefinition, ArtifactDefinition, CharacterClass, EventDefinition, GrowthWeightsData, MonsterArchetype, SkillDefinition, StatusEffectDefinition, SummonArchetype, SummonCast } from "../../src/types";
+import type { AbilityDefinition, ArtifactDefinition, CharacterClass, EventDefinition, GrowthWeightsData, MonsterArchetype, Religion, SkillDefinition, StatusEffectDefinition, SummonArchetype, SummonCast } from "../../src/types";
 
 export interface DocTable {
   columns: string[];
@@ -9,6 +9,7 @@ export interface DocTable {
 export interface DocsData {
   balance: typeof BALANCE;
   classes: readonly CharacterClass[];
+  religions: readonly Religion[];
   abilities: readonly AbilityDefinition[];
   events: readonly EventDefinition[];
   artifacts: readonly ArtifactDefinition[];

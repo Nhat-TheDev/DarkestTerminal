@@ -1,6 +1,9 @@
 import type { App } from "../../src/ui/app";
 import type { Game } from "../../src/engine/game";
 import { getActorByRef, channelStatus, checkSkillUsable, coinFlipWinChance, isCommandSkill } from "../../src/engine/combat";
+import { templeActionsAvailable } from "../../src/engine/temple";
+import type { Rng } from "../../src/engine/rng";
+import { pendingReflectionOptions } from "../../src/ui/screens/events";
 import { getRoom } from "../../src/engine/dungeon";
 import { getArtifact } from "../../src/data/artifacts";
 import { getStatusEffect } from "../../src/data/statusEffects";
@@ -323,10 +326,35 @@ export function chooseRoom(game: Game): number {
   return choices.reduce((best, room, i) => (rank(room) < rank(choices[best]!) ? i : best), 0) + 1;
 }
 
-/** 1 eats, 2 talks. */
-export function chooseRest(game: Game): "1" | "2" {
-  if (game.state.satiety <= SATIETY_TARGET) return "1";
-  return game.state.party.some((c) => c.isAlive && c.survival.fear >= FEAR_ACT_AT) ? "2" : "1";
+/** Below this Faith the party prays at a rest, unless it is hungry. */
+export const PRAY_FAITH_BELOW = 50;
+/** Chance to leave an exit scene without answering. */
+export const LEAVE_SILENT_CHANCE = 0.25;
+
+/** 1 eats, 2 talks, 3 prays; Enter once rested, the only key the footer then offers besides Trade. */
+export function chooseRest(game: Game): "1" | "2" | "3" | "RETURN" {
+  const s = game.state;
+  if (getRoom(s.floor, s.currentRoomId).rested) return "RETURN";
+  if (s.satiety <= SATIETY_TARGET) return "1";
+  if (s.faith < PRAY_FAITH_BELOW) return "3";
+  return s.party.some((c) => c.isAlive && c.survival.fear >= FEAR_ACT_AT) ? "2" : "1";
+}
+
+/** Gives blood whenever the temple takes it, which is what raises Faith; the boon costs Faith, so it is left to the random keys. Giving everyone's blood needs every living member above its cost. */
+export function chooseTemple(game: Game): "1" | "RETURN" {
+  const available = templeActionsAvailable(game.state);
+  if (available.giveAll) {
+    const cost = (c: Character) => Math.round(c.maxHp * BALANCE.temple.giveAll.hpCost);
+    return game.state.party.every((c) => !c.isAlive || c.hp > cost(c)) ? "1" : "RETURN";
+  }
+  return available.giveBlood === "open" ? "1" : "RETURN";
+}
+
+/** A random shown answer, or leaving without a word. */
+export function chooseExit(game: Game, rng: Rng): string {
+  const shown = pendingReflectionOptions(game.state).length;
+  if (shown === 0 || rng.next() < LEAVE_SILENT_CHANCE) return "RETURN";
+  return String(1 + Math.floor(rng.next() * shown));
 }
 
 /** Backs out of the screens only a stray key opens. */
@@ -340,7 +368,7 @@ export class TeamPolicy {
   private memoryCombat: unknown = null;
   private itemPage = 0;
 
-  constructor(private readonly team: Team) {}
+  constructor(private readonly team: Team, private readonly rng: Rng) {}
 
   private rolesOf(actor: Character): Role[] {
     return this.team.members.find((m) => m.classId === actor.classId)?.roles ?? ["striker"];
@@ -378,6 +406,10 @@ export class TeamPolicy {
         return String(chooseRoom(game));
       case "rest":
         return chooseRest(game);
+      case "temple":
+        return chooseTemple(game);
+      case "eventExit":
+        return chooseExit(game, this.rng);
       case "campPrompt":
         return s.satiety <= SATIETY_TARGET && (s.inventory[CAMP_KIT_ITEM_ID] ?? 0) > 0 ? "1" : "RETURN";
       case "pickAction": {

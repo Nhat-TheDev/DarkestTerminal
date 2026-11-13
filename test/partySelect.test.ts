@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
 import { showPartySelect } from "../src/ui/partySelect";
 import { CLASSES } from "../src/data/classes";
+import { getReligion } from "../src/data/religions";
 import { ABILITIES } from "../src/data/abilities";
 import { STRINGS } from "../src/data/strings";
 import { BALANCE } from "../src/data/balanceConfig";
@@ -24,6 +25,22 @@ async function openScreen(exitHint?: string) {
 }
 
 describe("party select", () => {
+  test("labels each class religion while browsing and choosing an ability", async () => {
+    const { frame, press, renderer } = await openScreen();
+    try {
+      for (const cls of CLASSES) {
+        const label = `Religion: ${getReligion(cls.religionId).name}`;
+        expect(frame(), cls.id).toContain(label);
+        await press("RETURN");
+        expect(frame(), cls.id).toContain(label);
+        await press("ESCAPE");
+        await press("RIGHT");
+      }
+    } finally {
+      renderer.destroy();
+    }
+  });
+
   test("shows one class at a time with its stats, passive and first two skills", async () => {
     const { frame, press, renderer } = await openScreen();
     const first = CLASSES[0]!;

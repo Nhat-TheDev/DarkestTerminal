@@ -71,6 +71,8 @@ export interface EngineContext {
   inventory: Record<Id, number>;
   /** Set for the length of one `resolveRound`, so fear gained mid-round scales with the floor. */
   floorDepth?: number;
+  /** Set beside `floorDepth`, so fear gained mid-round scales with the party's Faith. */
+  faith?: number;
 }
 
 function actionDefinition(source: ActionSource, actor?: Actor, ctx?: EngineContext): SkillDefinition {
@@ -560,8 +562,8 @@ function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx:
   );
 }
 
-export function resolveRound(combat: CombatState, roundCtx: EngineContext, floorDepth = 1, satiety = 100): void {
-  const ctx: EngineContext = { ...roundCtx, floorDepth };
+export function resolveRound(combat: CombatState, roundCtx: EngineContext, floorDepth = 1, satiety = 100, faith = BALANCE.faith.initial): void {
+  const ctx: EngineContext = { ...roundCtx, floorDepth, faith };
   combat.phase = "resolution";
   combat.turnQueue = buildTurnQueue(combat, ctx);
   combat.activeTurnIndex = 0;
@@ -649,7 +651,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
       }
     }
     for (const ref of livingMonsterRefs(combat, ctx)) fadeDamageMemory(getActorByRef(ref, ctx) as Monster);
-    runFearSession(combat, ctx, () => ctx.party.filter((c) => applyRoundFear(c, floorDepth) !== 0));
+    runFearSession(combat, ctx, () => ctx.party.filter((c) => applyRoundFear(c, floorDepth, faith) !== 0));
     if (isPartyDying(satiety)) {
       runInSession(combat, null, () => applyDyingDamage(ctx.party, combat.log), {
         affectedIds: ctx.party.filter((c) => c.isAlive).map((c) => c.id),
@@ -1254,6 +1256,7 @@ function resolveOneDamageEffect(
     target,
     {
       log,
+      faith: ctx.faith,
       isMagic: skill.isMagic,
       skillName: skill.name,
       isCrit,
@@ -1617,7 +1620,7 @@ function applyAttackerBuffsOnHit(source: Character, target: Actor, ctx: EngineCo
 }
 
 export function applyMonsterHitFear(source: Actor, target: Actor, combat: CombatState, ctx: EngineContext): void {
-  if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1) !== 0) noteFearChange(combat, target);
+  if (isCharacter(target) && isMonster(source) && applyHitFear(target, ctx.floorDepth ?? 1, ctx.faith ?? BALANCE.faith.initial) !== 0) noteFearChange(combat, target);
 }
 
 /** Picks the family level a landed `rankWeights` status applies at; `assertRankWeights` vouches that every weighted level exists. */

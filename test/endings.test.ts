@@ -18,6 +18,7 @@ import { migrateGameState } from "../src/engine/migration";
 import { loadProfile, addRetiredCharacter, markRetiredCharacterEventShown, profileFilename } from "../src/engine/profile";
 import { EVENTS, rollEvent } from "../src/data/events";
 import { Rng } from "../src/engine/rng";
+import { withTempleChance } from "./setup";
 
 /** Floor 100 with its boss just cleared, as the boss-clear pipeline leaves it before `advanceToNextFloor()`; not arriving from floor 99. */
 function toFloor100BossCleared(game: Game) {
@@ -321,6 +322,34 @@ describe("Part F.5: Continue → the founder encounter", () => {
     expect(founder?.archetypeId).toBe("the-founder");
     expect(founder?.tier).toBe("boss");
     expect(game.state.combat).not.toBeNull();
+  });
+
+  test("the Founder floor has no temple even when every other floor rolls one", () => {
+    const game = new Game(423);
+    toFloor119Continued(game);
+    withTempleChance(1, () => game.advanceToNextFloor());
+    expect(game.state.floor.depth).toBe(FOUNDER_FLOOR_DEPTH);
+    expect(game.state.floor.rooms.some((room) => room.type === "temple")).toBe(false);
+    expect(game.state.pendingFounderDialogue).toBe(true);
+    game.enterFounderFight();
+    expect(getRoom(game.state.floor, game.state.currentRoomId).type).toBe("boss");
+    expect(game.state.combat).not.toBeNull();
+  });
+
+  test.each([0, 1])("the floor after the Founder rolls temples again with chance %s", (chance) => {
+    const game = new Game(423);
+    toFloor119Continued(game);
+    withTempleChance(1, () => game.advanceToNextFloor());
+    game.enterFounderFight();
+    game.state.combat!.phase = "over";
+    game.state.combat!.outcome = "victory";
+    getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
+    expect(game.clearFinishedCombat()).toBe(true);
+    withTempleChance(chance, () => game.advanceToNextFloor());
+    expect(game.state.floor.depth).toBe(FOUNDER_FLOOR_DEPTH + 1);
+    expect(game.state.floor.rooms.some((room) => room.type === "temple")).toBe(chance === 1);
+    expect(getRoom(game.state.floor, game.state.currentRoomId).type).toBe(chance === 1 ? "temple" : "combat");
+    expect(game.state.pendingFounderDialogue).toBe(false);
   });
 
   test("defeating the founder removes all 11 Covenant events from the roll pool", () => {

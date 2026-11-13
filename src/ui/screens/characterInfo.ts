@@ -4,6 +4,7 @@ import type { UiState } from "../state";
 import { PALETTE, colorChunk, boldColorChunk, plainChunk, joinLines, hpColorFor } from "../theme";
 import type { ScreenContext } from "./context";
 import { digitHint } from "../keyHints";
+import { getReligion } from "../../data/religions";
 import { getClass, getSkill, passiveRankDef } from "../../data/classes";
 import type { ActiveStatusEffect, CombatStat, PassiveRankDefinition, PassiveSkillDefinition, Summon } from "../../types";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
@@ -140,6 +141,7 @@ function statLines(name: string, stat: StatBreakdown, total: number): TextChunk[
   if (stat.artifact !== 0) push(statTag(stat.artifact, PALETTE.title));
   if (stat.ability !== 0) push(statTag(stat.ability, PALETTE.mp));
   if (stat.passive !== 0) push(statTag(stat.passive, PALETTE.passive));
+  if (stat.boon !== 0) push(statTag(stat.boon, PALETTE.markerHealParty));
   if (stat.status !== 0) push(statTag(stat.status, stat.status > 0 ? PALETTE.hpHigh : PALETTE.hpLow));
 
   return [
@@ -218,11 +220,12 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
   if (!character) return t("ui.characterInfoInvalidIndex");
 
   const cls = getClass(character.classId);
-  const stats = characterStatBreakdown(character, game.state.satiety);
+  const stats = characterStatBreakdown(character, game.state.satiety, game.state.boon);
 
   const lines: TextChunk[][] = [
     ...picker,
     [colorChunk(t("ui.characterInfoHeading", { name: character.name, level: character.level, cls: cls.name }), PALETTE.title)],
+    [colorChunk(t("ui.characterInfoReligion", { name: getReligion(cls.religionId).name }), getReligion(cls.religionId).style.color)],
     [
       colorChunk(t("ui.characterInfoHp", { hp: character.hp, maxHp: character.maxHp }), hpColorFor(character.hp, character.maxHp)),
       colorChunk(t("ui.characterInfoMp", { mp: character.mp, maxMp: character.maxMp }), PALETTE.mp),
