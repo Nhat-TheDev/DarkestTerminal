@@ -11,6 +11,7 @@ const TYPE_LABEL: Record<RoomType, string> = {
   event: t("ui.floorMapLegendEvent"),
   rest: t("ui.floorMapLegendRest"),
   boss: t("ui.floorMapLegendGuard"),
+  temple: t("ui.floorMapLegendTemple"),
 };
 
 const spanText = (span: Span): string => (span.min === span.max ? String(span.min) : `${span.min}-${span.max}`);

@@ -1,6 +1,6 @@
 import type { Floor, Id, RoomType } from "../../src/types";
 
-export const ROOM_TYPES: RoomType[] = ["combat", "rest", "boss", "event"];
+export const ROOM_TYPES: RoomType[] = ["combat", "rest", "boss", "event", "temple"];
 
 export function parseArgs(argv: string[]): Record<string, string> {
   const args: Record<string, string> = {};

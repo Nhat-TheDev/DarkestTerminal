@@ -388,6 +388,8 @@
           <option value="events">Event rooms (events)</option>
           <option value="rest">Rest rooms (rest)</option>
           <option value="treasure">Treasure rooms (treasure)</option>
+          <option value="temple">Temple altar (temple)</option>
+          <option value="torch">Faith torch frames (torch)</option>
         </select>
       </div>
 
@@ -765,6 +767,45 @@ function buildBalanceEditCard(title, filePath, sectionKey, fields, afterSave) {
       const patch = {};
       fields.forEach((f, i) => {
         patch[f.key] = Number($("#" + ids[i]).value);
+      });
+      return { [sectionKey]: patch };
+    },
+    afterSave
+  );
+  form.appendChild(saveBtn);
+  form.appendChild(status);
+  card.appendChild(form);
+  return card;
+}
+
+/** The numbers of a nested balance section as { path: ["giveBlood", "hpCost"], value }, skipping arrays and text. */
+function numericLeaves(section, trail = []) {
+  return Object.entries(section).flatMap(([key, value]) => {
+    if (typeof value === "number") return [{ path: [...trail, key], value }];
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) return numericLeaves(value, [...trail, key]);
+    return [];
+  });
+}
+
+/** Like buildBalanceEditCard for a section with nested groups; each number is saved at its own path. */
+function buildNestedBalanceCard(title, sectionKey, section, afterSave) {
+  const leaves = numericLeaves(section);
+  const card = el("div", { class: "card" }, [el("h3", { text: title + " — saves to data/balance-config.json" })]);
+  const form = el("div", { class: "edit-form" });
+  const ids = leaves.map((leaf) => ["edit", sectionKey, ...leaf.path].join("-"));
+  leaves.forEach((leaf, i) => form.appendChild(editField(ids[i], leaf.path.join("."), leaf.value)));
+  const saveBtn = el("button", { class: "action", text: "Save" });
+  const status = el("span", { class: "save-status" });
+  wireSaveButton(
+    saveBtn,
+    status,
+    "/api/edit/balance",
+    () => {
+      const patch = {};
+      leaves.forEach((leaf, i) => {
+        let at = patch;
+        for (const key of leaf.path.slice(0, -1)) at = at[key] ??= {};
+        at[leaf.path[leaf.path.length - 1]] = Number($("#" + ids[i]).value);
       });
       return { [sectionKey]: patch };
     },
@@ -1417,6 +1458,20 @@ function buildClassGrowthEditCard(classId, clsMeta) {
   return card;
 }
 
+async function buildClassReligionCard(classId) {
+  const [religions, classes] = await Promise.all([api("/api/religions"), api("/api/classes")]);
+  const current = classes.find((c) => c.id === classId).religionId;
+  const card = el("div", { class: "card" }, [el("h3", { text: "Religion — saves to data/classes.json" })]);
+  const select = el("select", {});
+  for (const r of religions) select.appendChild(el("option", { value: r.id, text: r.name }));
+  select.value = current;
+  const saveBtn = el("button", { class: "action", text: "Save" });
+  const status = el("span", { class: "save-status" });
+  wireSaveButton(saveBtn, status, "/api/edit/class", () => ({ classId, religionId: select.value }), async () => {});
+  card.appendChild(el("div", { class: "edit-form" }, [el("div", { class: "field" }, [el("label", { text: "religionId" }), select]), saveBtn, status]));
+  return card;
+}
+
 async function renderRebalanceCharacter() {
   const classId = $("#rb-char-class").value;
   const out = $("#rb-char-output");
@@ -1427,6 +1482,7 @@ async function renderRebalanceCharacter() {
     const clsMeta = META.classes.find((c) => c.id === classId);
     out.appendChild(buildClassBaseEditCard(classId, data, avgBalancePoints));
     out.appendChild(buildClassGrowthEditCard(classId, clsMeta));
+    out.appendChild(await buildClassReligionCard(classId));
   } catch (err) {
     out.appendChild(el("p", { class: "hint", text: "Error: " + err.message }));
   }
@@ -1845,6 +1901,22 @@ function renderOther() {
     )
   );
 
+  out.appendChild(el("h2", { class: "tab-section-title", text: "Faith, temples and rest" }));
+  out.appendChild(buildNestedBalanceCard("Faith", "faith", b.faith, renderOther));
+  out.appendChild(el("p", { class: "hint", text: "faith.torchFrameThresholds is a list, not editable here — edit data/balance-config.json directly." }));
+  out.appendChild(buildNestedBalanceCard("Temples", "temple", b.temple, renderOther));
+  out.appendChild(buildNestedBalanceCard("Rest options", "rest", b.rest, renderOther));
+  out.appendChild(buildNestedBalanceCard("Reflection effect sizes", "reflection", b.reflection, renderOther));
+  const religionCard = el("div", { class: "card" }, [el("h3", { text: "Religions (data/religions.json, read-only)" })]);
+  const religionTable = el("table", {}, [el("tr", {}, [el("th", { text: "id" }), el("th", { text: "name" }), el("th", { text: "boon emphasis" }), el("th", { text: "boon recovers HP/MP" })])]);
+  religionCard.appendChild(religionTable);
+  out.appendChild(religionCard);
+  api("/api/religions").then((religions) => {
+    for (const r of religions) {
+      religionTable.appendChild(el("tr", {}, [el("td", { text: r.id }), el("td", { text: r.name }), el("td", { text: r.boon.emphasis }), el("td", { text: String(r.boon.recoversHpMp) })]));
+    }
+  });
+
   out.appendChild(el("h2", { class: "tab-section-title", text: "Events" }));
   out.appendChild(
     buildBalanceEditCard(
@@ -2029,10 +2101,10 @@ boot();
   // in src/ui/sprites.ts look up exactly this id) — unlike events there's no variety to pick from.
   const ROOM_SPRITE_ID = { rest: "campfire", treasure: "chest" };
   // Mirrors MAX_UNIT_HEIGHT/MAX_ELITE_HEIGHT/MAX_BOSS_HEIGHT in src/ui/sprites.ts.
-  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
+  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15, temple: 15, torch: 15 };
   // Event/rest/treasure sprites render into a fixed-width slot (EMPTY_ENEMY_WIDTH in
   // src/ui/layout.ts) — going wider silently overflows the battlefield panel on a ~100-col terminal.
-  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 30, rest: 30, treasure: 30 };
+  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 30, rest: 30, treasure: 30, temple: 30, torch: 3 };
 
   const elId = (id) => $("#" + id);
   const categoryEl = elId("category");
@@ -2065,6 +2137,8 @@ boot();
       text = `The "treasure" room uses exactly 1 sprite — the ID must be "${ROOM_SPRITE_ID.treasure}". Note: this room type is not generated in the current random path yet, so the sprite won't appear in play until it is enabled.`;
     } else if (category === "rest") {
       text = `The "rest" room uses exactly 1 sprite in-game — the ID must be "${ROOM_SPRITE_ID.rest}" to take effect.`;
+    } else if (category === "temple" || category === "torch") {
+      text = `The game reads only the ids already in this category: ${Object.keys(currentSection()).join(", ")}. A torch frame is picked by Faith (faith.torchFrameThresholds in data/balance-config.json), 3 columns wide.`;
     }
     idHintEl.title = text;
     idHintEl.style.display = text ? "" : "none";
@@ -2402,9 +2476,11 @@ boot();
         ? ` (Warning: "${id}" has no ${category === "monsters" ? "normal" : category === "elites" ? "elite" : "boss"} role in data/monsters.json — the game won't use this sprite.)`
         : category === "events" && !EVENT_IDS.includes(id)
           ? ` (Warning: "${id}" is not an event id in data/events.json — the game won't use this sprite.)`
-          : (category === "rest" || category === "treasure") && id !== ROOM_SPRITE_ID[category]
-            ? ` (Warning: the game only reads id "${ROOM_SPRITE_ID[category]}" for ${category} rooms — "${id}" won't be used.)`
-            : "";
+          : (category === "temple" || category === "torch") && !currentSection()[id]
+            ? ` (Warning: the game only reads the ids already in "${category}" — "${id}" won't be used.)`
+            : (category === "rest" || category === "treasure") && id !== ROOM_SPRITE_ID[category]
+              ? ` (Warning: the game only reads id "${ROOM_SPRITE_ID[category]}" for ${category} rooms — "${id}" won't be used.)`
+              : "";
 
     try {
       const res = await fetch("/api/sprites", {
@@ -3284,7 +3360,7 @@ boot();
 
 // ============================== BACKDROPS ==============================
 (() => {
-  const ROOM_TYPES = ["combat", "rest", "boss", "event"];
+  const ROOM_TYPES = ["combat", "rest", "temple", "boss", "event"];
   const ERASER = ".";
   const CELL_W = 8, CELL_H = 16, COLS = 113, ROWS = 20;
   const MAX_PARTY = 4, MONSTER_SLOTS = 3;

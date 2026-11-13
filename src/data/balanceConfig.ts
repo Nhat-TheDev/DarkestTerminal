@@ -1,5 +1,5 @@
 import balanceConfigJson from "../../data/balance-config.json";
-import type { ArtifactRarity, AttackRange, ItemTier, MonsterTier } from "../types";
+import type { ArtifactRarity, AttackRange, ItemTier, MonsterTier, ReflectionEffectSize, ReflectionEffectStat } from "../types";
 
 /** The factors a monster weighs when it picks a target — `docs/gameplay-decisions/02-monster.md`, "Targeting". */
 export const TARGETING_FACTORS = ["aggro", "lowHp", "damage", "range", "fear"] as const;
@@ -23,6 +23,41 @@ export interface TargetingConfig {
 }
 
 interface BalanceConfig {
+  temple: {
+    /** Chance a floor opens with a temple room in front of its entrance fight; 0 disables and draws nothing from the rng. */
+    chance: number;
+    giveBlood: {
+      /** A matching member at or above this share of max HP gives the full cost. */
+      upperHpFraction: number;
+      /** Share of max HP the upper band gives. */
+      hpCost: number;
+      faithGain: number;
+      /** Under this share of max HP a member cannot give; from here up to the upper line the member is brought down to `hpFloor`. */
+      lowerHpFraction: number;
+      /** Share of max HP Give blood never takes anyone below. */
+      hpFloor: number;
+      lowerFaithGain: number;
+    };
+    giveAll: {
+      /** Share of max HP every living member loses; it can kill. */
+      hpCost: number;
+      /** Gained once, not per member. */
+      faithGain: number;
+    };
+    boon: {
+      faithCost: number;
+      /** Percent added to Attack, Magic Power, Defense and Speed. */
+      statPercent: number;
+      /** Percent added to the stats the religion emphasises, instead of `statPercent`. */
+      emphasisPercent: number;
+      /** Share of max HP and MP a recovering boon restores per room entered. */
+      recoveryPerRoom: number;
+      /** Applied to the boon's stats and recovery for members of the temple's religion. */
+      matchingMultiplier: number;
+      /** Faith decay multiplier for the rest of the floor. */
+      decayMultiplier: number;
+    };
+  };
   combat: {
     /** A status lasting at least this many turns is shown as (∞). */
     statusLastsFightFromTurns: number;
@@ -56,6 +91,32 @@ interface BalanceConfig {
     ultimateMultiplierByFearTier: [number, number, number, number];
   };
   targeting: TargetingConfig;
+  faith: {
+    initial: number;
+    /** The Faith a party typically carries into a guard fight; dev tools that measure fights start there. */
+    typicalLevel: number;
+    decayFlatPerRoom: number;
+    /** Share of the current Faith lost on top of the flat amount. */
+    decayPercentPerRoom: number;
+    fearGainMultiplierAtZero: number;
+    fearGainMultiplierAtFull: number;
+    /** The lowest Faith that still shows each torch frame, brightest first. */
+    torchFrameThresholds: number[];
+  };
+  reflection: {
+    /** Per stat and size. Faith, Fear and Satiety are points; HP and MP are fractions of the target's maximum. */
+    effectSizes: Record<ReflectionEffectStat, Record<ReflectionEffectSize, number>>;
+  };
+  rest: {
+    pray: {
+      faith: number;
+      fearRelief: number;
+    };
+    chat: {
+      /** Faith a religion group of this many living members adds; groups of 4 or more use the "4" entry. */
+      faithByGroupSize: Record<"2" | "3" | "4", number>;
+    };
+  };
   survival: {
     initialSatiety: number;
     initialFear: number;

@@ -22,6 +22,7 @@ export type HpGambleKind = "hpGamble" | "rescueGamble";
 export type UiState =
   | { kind: "room" }
   | { kind: "rest" }
+  | { kind: "temple" }
   | { kind: "runnerNotice" }
   | { kind: "runnerShop" }
   | { kind: "runnerSell" }
@@ -57,7 +58,7 @@ export type UiState =
   | { kind: "eventFortuneExchange" }
   | { kind: "eventFortuneExchangePickArtifact" }
   | { kind: "eventCombatReward" }
-  | { kind: "eventReflection" }
+  | { kind: "eventExit" }
   | { kind: "campReflection" }
   | { kind: "floorMilestone" }
   | { kind: "memoryIntro" }

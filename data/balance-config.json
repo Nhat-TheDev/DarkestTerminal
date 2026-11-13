@@ -111,6 +111,37 @@
       }
     }
   },
+  "faith": {
+    "initial": 100,
+    "typicalLevel": 35,
+    "decayFlatPerRoom": 1,
+    "decayPercentPerRoom": 0.03,
+    "fearGainMultiplierAtZero": 1.2,
+    "fearGainMultiplierAtFull": 0.5,
+    "torchFrameThresholds": [80, 55, 30, 1, 0]
+  },
+  "reflection": {
+    "effectSizes": {
+      "faith": { "small": 3, "medium": 6, "large": 10 },
+      "fear": { "small": 5, "medium": 10, "large": 20 },
+      "satiety": { "small": 5, "medium": 10, "large": 20 },
+      "hp": { "small": 0.05, "medium": 0.1, "large": 0.2 },
+      "mp": { "small": 0.05, "medium": 0.1, "large": 0.2 }
+    }
+  },
+  "rest": {
+    "pray": {
+      "faith": 15,
+      "fearRelief": 5
+    },
+    "chat": {
+      "faithByGroupSize": {
+        "2": 3,
+        "3": 8,
+        "4": 12
+      }
+    }
+  },
   "survival": {
     "initialFear": 0,
     "initialSatiety": 100,
@@ -155,6 +186,29 @@
       "small-mana-potion": 4
     },
     "startingCoins": 50
+  },
+  "temple": {
+    "chance": 0.8,
+    "giveBlood": {
+      "upperHpFraction": 0.5,
+      "hpCost": 0.5,
+      "faithGain": 15,
+      "lowerHpFraction": 0.3,
+      "hpFloor": 0.05,
+      "lowerFaithGain": 5
+    },
+    "giveAll": {
+      "hpCost": 0.6,
+      "faithGain": 30
+    },
+    "boon": {
+      "faithCost": 20,
+      "statPercent": 5,
+      "emphasisPercent": 12,
+      "recoveryPerRoom": 0.1,
+      "matchingMultiplier": 1.5,
+      "decayMultiplier": 0.5
+    }
   },
   "gatekeeper": {
     "tollCoins": 50,

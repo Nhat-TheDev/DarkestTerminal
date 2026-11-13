@@ -9,6 +9,9 @@ import { spawnMonster } from "../src/data/monsters";
 import { getClass } from "../src/data/classes";
 import type { CombatantRef, LogSession, Summon } from "../src/types";
 import { pickAnyAction } from "./helpers";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { SAVE_DIR } from "../src/engine/paths";
 
 const PARTY = ["knight", "mage", "ninja", "summoner"];
 /** Ids an older build used that are no longer in data/*.json. */
@@ -140,5 +143,20 @@ describe("a mid-fight save written before ids were renamed", () => {
     } finally {
       SLOT_IDS.forEach(deleteSlot);
     }
+  });
+});
+
+describe("a save written before Faith existed", () => {
+  test("migration gives a 1.2.1 save full faith", () => {
+    const game = new Game(7, PARTY);
+    game.currentSaveSlot = "slot1";
+    saveRun(game);
+    const save = loadSave("slot1");
+    save.meta.saveVersion = "1.2.1";
+    delete (save.state as Partial<typeof save.state>).faith;
+    writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(save));
+
+    expect(gameFromSave(loadSave("slot1"), "slot1").state.faith).toBe(100);
+    deleteSlot("slot1");
   });
 });

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "light-and-glory",
+    "name": "Light and Glory",
+    "templeDescription": "Brass lamps line both walls, each one polished to a shine and each one cold. The floor has been swept down to the stone, and a sun is beaten into the far wall in gold leaf, its rays reaching almost to the ceiling. The broom leaning by the door is still damp at the bristles.",
+    "style": { "abbr": "LG", "color": "#f0e2a8" },
+    "boon": { "emphasis": "defense", "recoversHpMp": false }
+  },
+  {
+    "id": "plague-and-healing",
+    "name": "Plague and Healing",
+    "templeDescription": "Bundles of dried herbs hang from hooks in the ceiling, and the air is thick with camphor and old smoke. A stone basin stands in the middle of the room, rimmed with salt, rolled bandages stacked beside it. The water in the basin is warm, though nothing burns beneath it.",
+    "style": { "abbr": "PH", "color": "#7fbf9a" },
+    "boon": { "emphasis": null, "recoversHpMp": true }
+  },
+  {
+    "id": "night-and-silence",
+    "name": "Night and Silence",
+    "templeDescription": "The walls are hung with felt gone grey with age, and your boots make no sound on the floor. There are no hooks for lamps and no soot on the ceiling. Small stone bowls sit in a row along a shelf, each holding a pinch of ash. Your torch burns lower here, though there is no draught.",
+    "style": { "abbr": "NS", "color": "#8c9ccf" },
+    "boon": { "emphasis": "speed", "recoversHpMp": false }
+  },
+  {
+    "id": "fury-and-blood",
+    "name": "Fury and Blood",
+    "templeDescription": "Iron rings are set into every wall at shoulder height, the stone under each worn dark and smooth by hands. A trough runs the length of the floor to a drain, and the air smells of rust and tallow. The trough is dry along its whole length. The drain at its end is wet.",
+    "style": { "abbr": "FB", "color": "#e0603a" },
+    "boon": { "emphasis": "offense", "recoversHpMp": false }
+  }
+]

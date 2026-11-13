@@ -220,7 +220,7 @@ export async function playRun(options: RunOptions): Promise<RunResult> {
   const start = scenario ? `${scenario.name}, floor ${floorDepth}, level ${level}` : fresh ? "fresh run" : `floor ${floorDepth}, level ${level}`;
   const startRoomId = game.state.currentRoomId;
 
-  const policy = new TeamPolicy(team);
+  const policy = new TeamPolicy(team, rng);
   const stats: RunStats = { team: team.name, startDepth: floorDepth, rooms: 0, guards: [], samples: [], itemsUsed: 0, starvedTurns: 0 };
   const watch = { room: "", guard: null as number | null };
 

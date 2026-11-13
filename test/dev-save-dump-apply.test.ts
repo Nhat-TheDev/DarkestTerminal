@@ -105,4 +105,36 @@ describe("dev-save-dump applyDump", () => {
     expect(room.type).toBe("boss");
     expect(game.state.combat).not.toBeNull();
   });
+
+  test("landing in a temple puts the party in an uncleared temple entry, even when the floor rolled none", () => {
+    const game = new Game(13, PARTY);
+    const room = applyDump(game, { level: 10, floorDepth: 20, roomArg: "temple" });
+    expect(room.type).toBe("temple");
+    expect(room.cleared).toBe(false);
+    expect(game.state.floor.entryRoomId).toBe(room.id);
+    expect(game.state.currentRoomId).toBe(room.id);
+    expect(game.state.roomPath).toEqual([room.id]);
+    expect(game.state.combat).toBeNull();
+  });
+
+  test("a requested Faith is set, clamped to 0-100; without one Faith stays as it was", () => {
+    const set = (faith?: number) => {
+      const game = new Game(14, PARTY);
+      applyDump(game, { level: 10, floorDepth: 20, roomArg: "entry", faith });
+      return game.state.faith;
+    };
+    expect(set(35)).toBe(35);
+    expect(set(250)).toBe(100);
+    expect(set(-4)).toBe(0);
+    expect(set()).toBe(BALANCE.faith.initial);
+  });
+
+  test("a temple at a given Faith: the dump keeps the configured temple chance", () => {
+    const before = BALANCE.temple.chance;
+    const game = new Game(15, PARTY);
+    const room = applyDump(game, { level: 10, floorDepth: 20, roomArg: "temple", faith: 35 });
+    expect(room.type).toBe("temple");
+    expect(game.state.faith).toBe(35);
+    expect(BALANCE.temple.chance).toBe(before);
+  });
 });

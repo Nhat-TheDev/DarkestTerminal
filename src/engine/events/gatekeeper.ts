@@ -27,7 +27,7 @@ export function answerGatekeeper(state: GameState, answer: "paid" | "refused"): 
 
 /** Call on entry, before anything in the room happens. Returns the line to show when the blessing ends here. */
 export function countBlessedRoom(state: GameState, room: Room): string | null {
-  if (room.type === "rest") return null;
+  if (room.type === "rest" || room.type === "temple") return null;
   const hadRoomsLeft = state.blessingRoomsLeft > 0;
   if (!hadRoomsLeft && state.blessedRoomId === null) return null;
   if (room.type === "boss") {

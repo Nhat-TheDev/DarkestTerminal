@@ -1,10 +1,11 @@
-import type { EventDefinition, Floor, GameState, Room } from "../types";
+import type { EventDefinition, Floor, GameState, ReflectionStance, Room } from "../types";
 import type { EngineContext } from "./combat";
 import { startCombat } from "./combat";
-import { drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survival";
+import { drainFaithOnFirstEntry, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survival";
 import { getEvent, rollEvent } from "../data/events";
 import { rollArtifact, rollArtifactOrCursed } from "../data/artifacts";
-import { recomputeAllPartyStats } from "./party";
+import { boonMatches, recomputeAllPartyStats } from "./party";
+import { getReligion } from "../data/religions";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
 import { campReflectionTier, highestAnsweredCampReflectionTier } from "../data/loreExposure";
@@ -32,6 +33,18 @@ function roomHasLivingMonsters(room: Room, ctx: EngineContext): boolean {
   });
 }
 
+function recoverUnderBoon(state: GameState): void {
+  const boon = state.boon;
+  if (!boon || boon.depth !== state.floor.depth || !getReligion(boon.religionId).boon.recoversHpMp) return;
+  const { recoveryPerRoom, matchingMultiplier } = BALANCE.temple.boon;
+  for (const c of state.party) {
+    if (!c.isAlive) continue;
+    const share = boonMatches(c, boon) ? recoveryPerRoom * matchingMultiplier : recoveryPerRoom;
+    c.hp = Math.min(c.maxHp, c.hp + Math.round(c.maxHp * share));
+    c.mp = Math.min(c.maxMp, c.mp + Math.round(c.maxMp * share));
+  }
+}
+
 /** Also used by the dev save dump to jump to a room, so it gets the same side effects as a real arrival. */
 export function enterRoom(state: GameState, room: Room, ctx: EngineContext): void {
   delete room.hidden;
@@ -45,7 +58,7 @@ export function enterRoom(state: GameState, room: Room, ctx: EngineContext): voi
   }
 
   if (room.type === "rest" && !room.cleared) {
-    if (!state.pendingReflection && state.pendingCampReflectionTier === null) {
+    if (!state.pendingEventExit && state.pendingCampReflectionTier === null) {
       const tier = campReflectionTier(state.loreExposureCount);
       if (tier !== null && tier > highestAnsweredCampReflectionTier(state.campReflectionChoices)) {
         state.pendingCampReflectionTier = tier;
@@ -77,9 +90,12 @@ export function moveToRoom(state: GameState, targetRoomId: string, ctx: EngineCo
     return;
   }
 
+  const firstEntry = !state.roomPath.includes(targetRoomId);
   state.currentRoomId = targetRoomId;
   state.roomPath.push(targetRoomId);
   const room = getRoom(state.floor, targetRoomId);
+  drainFaithOnFirstEntry(state, room, firstEntry);
+  recoverUnderBoon(state);
   // Counted before the room's own effects, so a fight that starts on arrival is already blessed.
   const blessingNote = countBlessedRoom(state, room);
   enterRoom(state, room, ctx);
@@ -98,13 +114,13 @@ function pickCrossEventVariant(state: GameState, event: EventDefinition): string
   return undefined;
 }
 
-function dominantReflectionStance(state: GameState): "curious" | "wary" | "dismissive" | undefined {
-  const counts = { curious: 0, wary: 0, dismissive: 0 };
+function dominantReflectionStance(state: GameState): ReflectionStance | undefined {
+  const counts = new Map<ReflectionStance, number>();
   for (const stance of Object.values(state.eventReflectionStances)) {
-    if (stance) counts[stance]++;
+    if (stance) counts.set(stance, (counts.get(stance) ?? 0) + 1);
   }
-  const [best, second] = (Object.entries(counts) as ["curious" | "wary" | "dismissive", number][]).sort((a, b) => b[1] - a[1]);
-  if (!best || best[1] === 0 || best[1] === second?.[1]) return undefined;
+  const [best, second] = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  if (!best || best[1] === second?.[1]) return undefined;
   return best[0];
 }
 

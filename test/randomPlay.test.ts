@@ -4,6 +4,7 @@ import {
   findTextLeaks,
   findLongDecimals,
   findInvariantViolations,
+  findShownAnswerIssues,
   footerText,
   parseFooter,
   classifyKeyEffect,
@@ -12,11 +13,16 @@ import {
 } from "../tools/random-play/checks";
 import { spansToHtml, summarizeRuns } from "../tools/random-play/report";
 import { playRun, loopBreakKey, hasLeftFloor, GUARD_FLOORS, type RunStats } from "../tools/random-play/bot";
-import { TEAMS, FEAR_ACT_AT, BUFF_GAP_ROUNDS, allyOffenseGain, chooseRest, chooseRoom, defenseCut, mainStriker, newFightMemory, planTurn, skillPower, type TurnPlan } from "../tools/random-play/team";
+import { TEAMS, FEAR_ACT_AT, BUFF_GAP_ROUNDS, allyOffenseGain, chooseExit, chooseRest, chooseRoom, chooseTemple, defenseCut, mainStriker, newFightMemory, planTurn, skillPower, type TurnPlan } from "../tools/random-play/team";
+import { shownOptions } from "../src/engine/reflection";
 import { getRoom } from "../src/engine/dungeon";
 import { BOSS_FLOOR_INTERVAL } from "../src/data/levelGrowth";
 import type { Character, Room } from "../src/types";
 import { Rng } from "../src/engine/rng";
+import { RELIGIONS, religionOf } from "../src/data/religions";
+import { BALANCE } from "../src/data/balanceConfig";
+import { SATIETY_TARGET } from "../tools/random-play/curve";
+import { getEvent } from "../src/data/events";
 import { CLASSES, getEffectiveSkill, getSkill } from "../src/data/classes";
 import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { applyDump } from "../tools/dev-save-dump/applyDump";
@@ -70,6 +76,22 @@ describe("random-play checks", () => {
     expect(details).toContain("character.attack is NaN");
     expect(game.state.combat).not.toBeNull(); // seed 7 opens on an entry-room ambush
     expect(details).toContain("run is over but a combat is still open");
+  });
+
+  test("invariants catch a Faith outside 0-100, and a shown reflection answer whose requires fail", () => {
+    const game = new Game(7);
+    expect(findInvariantViolations(game.state, game.ctx).map((f) => f.detail)).toEqual([]);
+    game.state.faith = 101;
+    expect(findInvariantViolations(game.state, game.ctx).map((f) => f.detail)).toContain("faith 101 outside 0..100");
+    game.state.faith = -1;
+    expect(findInvariantViolations(game.state, game.ctx).map((f) => f.detail)).toContain("faith -1 outside 0..100");
+    game.state.faith = Number.NaN;
+    expect(findInvariantViolations(game.state, game.ctx).map((f) => f.detail)).toContain("faith is NaN");
+    game.state.faith = 50;
+    const answers = [{ requires: [{ lastGambleOutcome: "won" }] }, {}] as never[];
+    game.state.lastGamblingDenOutcome = "lost" as never;
+    expect(findShownAnswerIssues(game.state, answers).map((f) => f.detail)).toEqual(["a shown answer's requirements do not hold"]);
+    expect(findShownAnswerIssues(game.state, answers.slice(1))).toEqual([]);
   });
 
   test("footer is read from the rows below the last panel and parsed into pressable keys", () => {
@@ -135,6 +157,21 @@ describe("random-play bot", () => {
     expect(result.gallery.every((g) => g.size.endsWith("x70") || g.size === "150x45")).toBe(true);
     expect(result.gallery.some((g) => g.size === "150x45")).toBe(true);
     expect(result.failures).toEqual([]);
+  });
+
+  test("the temple and event-exit scenarios reach their screens with no failure, and end when the room is left", async () => {
+    const event = ROOM_EVENT_IDS.find((id) => getEvent(id).reflection)!;
+    const scenarios = [
+      { name: "temple", depth: 12, level: 20, roomArg: "temple", stopOnLeavingRoom: true },
+      { name: "exit", depth: 12, level: 20, roomArg: "event", forceEventId: event, stopOnLeavingRoom: true },
+    ];
+    for (const scenario of scenarios) {
+      const result = await playRun({ gameSeed: 3, botSeed: 11, maxSteps: 300, team: TEAMS[0]!, scenario });
+      expect(result.failures).toEqual([]);
+      expect(result.outcome).toBe("room left");
+      const kinds = result.gallery.map((g) => g.uiKind);
+      expect(kinds).toContain(scenario.name === "temple" ? "temple" : "eventExit");
+    }
   });
 
   test("a run counts as finished once the party leaves the floor it started on", () => {
@@ -399,6 +436,58 @@ describe("random-play teams", () => {
     (game.state.party[0] as Character).survival.fear = FEAR_ACT_AT;
     expect(chooseRoom(game)).toBe(2);
     expect(chooseRest(game)).toBe("2");
+  });
+
+  test("a rest room: pray when Faith is under 50 and Satiety is not low, otherwise eat or talk as before, and leave once rested", () => {
+    const game = new Game(7, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
+    const room = applyDump(game, { level: 10, floorDepth: 20, roomArg: "rest" });
+    game.state.satiety = SATIETY_TARGET + 20;
+    game.state.faith = 49;
+    expect(chooseRest(game)).toBe("3");
+    game.state.faith = 50;
+    expect(chooseRest(game)).toBe("1");
+    game.state.faith = 10;
+    game.state.satiety = SATIETY_TARGET;
+    expect(chooseRest(game)).toBe("1");
+    game.state.faith = 10;
+    game.state.satiety = SATIETY_TARGET + 20;
+    room.rested = true;
+    expect(chooseRest(game)).toBe("RETURN");
+  });
+
+  test("a temple: give blood whenever it can be given, give everyone's blood only when every living member is above the cost", () => {
+    const game = new Game(7, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
+    const room = applyDump(game, { level: 10, floorDepth: 20, roomArg: "temple" });
+    const party = game.state.party;
+    room.templeReligionId = religionOf(party[0]!).id;
+    expect(chooseTemple(game)).toBe("1");
+    for (const c of party) c.hp = 1;
+    expect(chooseTemple(game)).toBe("RETURN");
+
+    const outsider = RELIGIONS.find((r) => !party.some((c) => religionOf(c).id === r.id))!;
+    room.templeReligionId = outsider.id;
+    for (const c of party) c.hp = c.maxHp;
+    expect(chooseTemple(game)).toBe("1");
+    const cost = Math.round(party[0]!.maxHp * BALANCE.temple.giveAll.hpCost);
+    party[0]!.hp = cost;
+    expect(chooseTemple(game)).toBe("RETURN");
+    party[0]!.hp = cost + 1;
+    expect(chooseTemple(game)).toBe("1");
+  });
+
+  test("an exit scene: a random shown answer, or leaving without a word", () => {
+    const game = new Game(7, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
+    const eventId = ROOM_EVENT_IDS.find((id) => getEvent(id).reflection)!;
+    expect(chooseExit(game, new Rng(1))).toBe("RETURN");
+    game.state.pendingEventExit = { eventId, withReflection: true };
+    const shown = shownOptions(game.state, getEvent(eventId).reflection!.options).length;
+    const rng = new Rng(2);
+    const keys = new Set(Array.from({ length: 200 }, () => chooseExit(game, rng)));
+    expect(keys.has("RETURN")).toBe(true);
+    for (let n = 1; n <= shown; n++) expect(keys.has(String(n))).toBe(true);
+    expect(keys.size).toBe(shown + 1);
+    game.state.pendingEventExit = { eventId, withReflection: false };
+    expect(chooseExit(game, new Rng(3))).toBe("RETURN");
   });
 
   test("an unknown room is chosen by what the player sees, not by what is inside", () => {

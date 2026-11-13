@@ -2,7 +2,7 @@ import type { TextChunk } from "@opentui/core";
 import type { Monster } from "../types";
 import { BOSS_COLOR, ELITE_COLOR, plainChunk } from "./theme";
 import { getArchetype } from "../data/monsters";
-import { MAX_BOSS_HEIGHT } from "./sprites";
+import { MAX_BOSS_HEIGHT, renderSpriteInSlot, spriteHeight, type Sprite } from "./sprites";
 
 /** The smallest supported terminal width; panels are sized so their content fits at this width. */
 export const MIN_TERMINAL_WIDTH = 150;
@@ -26,6 +26,14 @@ export const ICON_BAND_ROWS = 2;
     holds. It is also what the panel has at the smallest supported terminal; any extra columns centre it. */
 export const BATTLEFIELD_CONTENT_WIDTH = 113;
 export const UNIT_BLOCK_HEIGHT = ICON_BAND_ROWS + MAX_BOSS_HEIGHT + 3;
+
+/** The divider between the two sides: the torch sprite, centred in the unit block below the icon band. */
+export function torchDividerBlock(torch: Sprite): TextChunk[][] {
+  const top = ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS - spriteHeight(torch)) / 2);
+  const bottom = UNIT_BLOCK_HEIGHT - top - spriteHeight(torch);
+  const blank = (): TextChunk[] => [plainChunk(" ".repeat(DIVIDER_WIDTH))];
+  return [...Array.from({ length: top }, blank), ...renderSpriteInSlot(torch, spriteHeight(torch), DIVIDER_WIDTH), ...Array.from({ length: bottom }, blank)];
+}
 
 export function centerText(text: string, width: number): string {
   if (text.length >= width) return text.slice(0, width);

@@ -1,5 +1,5 @@
-import type { StyledText, KeyEvent } from "@opentui/core";
-import type { Character, GameState } from "../../types";
+import type { StyledText, KeyEvent, TextChunk } from "@opentui/core";
+import type { Character, GameState, ReflectionOption } from "../../types";
 import type { Game } from "../../engine/game";
 import { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../../engine/game";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
@@ -7,11 +7,14 @@ import { getEvent } from "../../data/events";
 import { getRoom, pickEventText } from "../../engine/dungeon";
 import { getJournalEcho } from "../../data/journal";
 import { pickReflectionPrompt } from "../../engine/events/shared";
+import { shownOptions } from "../../engine/reflection";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
 import { ownedArtifactEntries } from "../state";
 import { digitHint } from "../keyHints";
+import { answerLines, formatEffectLine } from "../effectLine";
+import { PALETTE, boldColorChunk, colorChunk, joinLines } from "../theme";
 import { truncateText } from "../layout";
 import { paginate, PAGE_SIZE } from "../pagination";
 import type { ScreenContext } from "./context";
@@ -23,6 +26,11 @@ const GAMBLING_DEN_ROUNDS = BALANCE.events.gamblingDenRounds;
 const MERCHANT_REFRESH_COST_COINS = BALANCE.events.merchantRefreshCostCoins;
 const MERCHANT_MAX_REFRESHES = BALANCE.events.merchantMaxRefreshes;
 const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoins;
+
+export function pendingReflectionOptions(s: GameState): ReflectionOption[] {
+  const reflection = s.pendingEventExit?.withReflection ? getEvent(s.pendingEventExit.eventId).reflection : undefined;
+  return reflection ? shownOptions(s, reflection.options) : [];
+}
 
 export type EventUiState = Extract<
   UiState,
@@ -37,7 +45,7 @@ export type EventUiState = Extract<
   | { kind: "eventFortuneExchange" }
   | { kind: "eventFortuneExchangePickArtifact" }
   | { kind: "eventCombatReward" }
-  | { kind: "eventReflection" }
+  | { kind: "eventExit" }
 >;
 
 function partyHpPickerLines(party: Character[]): string[] {
@@ -223,13 +231,16 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       }
       break;
     }
-    case "eventReflection": {
-      const stances = ["curious", "wary", "dismissive"] as const;
-      const stance = digit !== null ? stances[digit - 1] : undefined;
-      if (stance) {
-        ctx.game.pickReflectionStance(stance);
-        ctx.syncUiToGameState();
+    case "eventExit": {
+      if (key.name === "return") {
+        ctx.game.leaveEventRoom();
+      } else if (digit !== null && digit <= pendingReflectionOptions(ctx.game.state).length) {
+        const outcome = ctx.game.pickReflectionAnswer(digit - 1);
+        if (outcome) ctx.logInfo(t("reflection.result", { effects: formatEffectLine(ctx.game.state, [outcome]) }));
+      } else {
+        break;
       }
+      ctx.syncUiToGameState();
       break;
     }
   }
@@ -375,15 +386,16 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       return lines.join("\n");
     }
 
-    case "eventReflection": {
-      const pending = s.pendingReflection;
+    case "eventExit": {
+      const pending = s.pendingEventExit;
       if (!pending) return "";
       const event = getEvent(pending.eventId);
-      if (!event.reflection) return "";
-      const room = getRoom(s.floor, s.currentRoomId);
-      const prompt = pickReflectionPrompt(s, room, event) ?? "";
-      const { curious, wary, dismissive } = event.reflection.options;
-      return [prompt, "", `  [1] ${curious}`, `  [2] ${wary}`, `  [3] ${dismissive}`].join("\n");
+      const lines: TextChunk[][] = [[boldColorChunk(event.name, PALETTE.title)]];
+      if (pending.withReflection) {
+        const prompt = pickReflectionPrompt(s, getRoom(s.floor, s.currentRoomId), event) ?? "";
+        lines.push([], [colorChunk(prompt, PALETTE.text)], [], ...answerLines(s, pendingReflectionOptions(s)));
+      }
+      return joinLines(lines);
     }
   }
 }
@@ -415,8 +427,8 @@ export function renderFooter(ui: EventUiState, game: Game, page = 0): string {
       return digitHint("ui.footerChoose", s.activeEvent?.offerArtifactIds.length ?? 0);
     case "eventInstantReward":
       return digitHint("ui.footerChoose", 1);
-    case "eventReflection":
-      return digitHint("ui.footerChoose", 3);
+    case "eventExit":
+      return digitHint("ui.footerEventExit", s.pendingEventExit?.withReflection ? pendingReflectionOptions(s).length : 0, "ui.footerEventLeave");
     case "eventCursedOffer":
     case "eventHpGamble":
     case "eventCoinGamble":

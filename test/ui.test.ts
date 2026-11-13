@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { KeyEvent, RGBA, type CapturedFrame } from "@opentui/core";
+import { KeyEvent, RGBA, type CapturedFrame, type StyledText } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App, type RunExit } from "../src/ui/app";
 import { Game } from "../src/engine/game";
@@ -22,6 +22,8 @@ import { showSlotSelect } from "../src/ui/saveSelect";
 import { t } from "../src/data/strings";
 import { renderFloorMap } from "../src/ui/floorMap";
 import { CLASSES } from "../src/data/classes";
+import { TORCH_SPRITES } from "../src/ui/sprites";
+import { EVENTS } from "../src/data/events";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import { BALANCE } from "../src/data/balanceConfig";
 import * as runnerScreen from "../src/ui/screens/runner";
@@ -29,8 +31,13 @@ import * as artifactsScreen from "../src/ui/screens/artifacts";
 import * as inventoryScreen from "../src/ui/screens/inventory";
 import * as artifactDecisionScreen from "../src/ui/screens/artifactDecision";
 import * as roomScreen from "../src/ui/screens/room";
+import * as templeScreen from "../src/ui/screens/temple";
+import { getReligion } from "../src/data/religions";
+import { digitHint } from "../src/ui/keyHints";
+import { withTempleChance } from "./setup";
 import * as eventsScreen from "../src/ui/screens/events";
 import * as campScreen from "../src/ui/screens/camp";
+import * as campReflectionScreen from "../src/ui/screens/campReflection";
 import * as abilityBuybackScreen from "../src/ui/screens/abilityBuyback";
 import { formatArtifactEffect } from "../src/data/artifacts";
 import { TROPHY_ICON } from "../src/ui/state";
@@ -610,12 +617,44 @@ describe("rest room options", () => {
     const original = { ...survival };
     Object.assign(survival, { eatDrinkRestoreFraction: 0.25, eatDrinkSatietyRestore: 35, chatRestoreFraction: 0.15, chatFearRelief: 12 });
     try {
-      const text = roomScreen.renderMain(game, { kind: "rest" }) as string;
-      expect(text).toContain("restore 25% max HP/MP and 35 satiety");
-      expect(text).toContain("restore 15% max HP/MP, reduce the party's fear by 12");
+      const out = roomScreen.renderMain(game, { kind: "rest" });
+      const text = typeof out === "string" ? out : out.chunks.map((c) => c.text).join("");
+      expect(text).toContain("HP +25%   ·   MP +25%   ·   Satiety +35");
+      expect(text).toContain("Fear −12   ·   HP +15%   ·   MP +15%");
     } finally {
       Object.assign(survival, original);
     }
+  });
+});
+
+describe("rest room effect lines", () => {
+  const renderRest = (game: Game): string => {
+    const out = roomScreen.renderMain(game, { kind: "rest" });
+    return typeof out === "string" ? out : out.chunks.map((c) => c.text).join("");
+  };
+
+  test("Pray shows Faith and Fear relief from the config", () => {
+    const game = new Game(1);
+    game.state.combat = null;
+    expect(renderRest(game)).toContain("      Faith +15   ·   Fear −5\n");
+  });
+
+  test("Chat shows its Faith only when the party shares a religion", () => {
+    const game = new Game(1);
+    game.state.combat = null;
+    const byReligion = new Map<string, string[]>();
+    for (const c of CLASSES) byReligion.set(c.religionId, [...(byReligion.get(c.religionId) ?? []), c.id]);
+    const groups = [...byReligion.values()];
+    const pair = groups.find((g) => g.length >= 2)!;
+    const singles = groups.filter((g) => g !== pair).map((g) => g[0]!);
+    const party = game.state.party;
+    party[0]!.classId = singles[0]!;
+    party[1]!.classId = singles[1]!;
+    for (const c of party.slice(2)) c.isAlive = false;
+    expect(renderRest(game)).toContain("Fear −20   ·   HP +10%   ·   MP +10%\n");
+    party[0]!.classId = pair[0]!;
+    party[1]!.classId = pair[1]!;
+    expect(renderRest(game)).toContain("Fear −20   ·   HP +10%   ·   MP +10%   ·   Faith +3\n");
   });
 });
 
@@ -929,7 +968,7 @@ describe("Rest room runner screens", () => {
     return { app, game, room, mockInput, renderOnce };
   }
 
-  test("the notice comes first, then the Rest choices with Trade, then the shop closes the room on leaving", async () => {
+  test("the notice comes first, then the Rest choices with Trade, then the shop returns to the Rest choices", async () => {
     const { app, game, room, mockInput, renderOnce } = await restApp({ runner: true, campReflection: true });
     expect(app.debugUiState.kind).toBe("runnerNotice");
 
@@ -938,7 +977,7 @@ describe("Rest room runner screens", () => {
     expect(app.debugUiState.kind).toBe("rest");
 
     game.state.coins = 100;
-    mockInput.pressKey("3");
+    mockInput.pressKey("4");
     await renderOnce();
     expect(app.debugUiState.kind).toBe("runnerShop");
 
@@ -953,10 +992,16 @@ describe("Rest room runner screens", () => {
     expect(game.state.coins).toBe(75);
     expect(app.debugUiState.kind).toBe("runnerShop");
 
-    mockInput.pressKey("RETURN"); // leave: trading replaces the rest action
+    mockInput.pressKey("RETURN"); // back to the rest menu: the room and its rest are still open
     await renderOnce();
-    expect(room.cleared).toBe(true);
-    expect(game.state.restRunner).toBeNull();
+    expect(room.cleared).toBe(false);
+    expect(room.rested).toBeFalsy();
+    expect(game.state.restRunner).not.toBeNull();
+    expect(app.debugUiState.kind).toBe("rest");
+
+    mockInput.pressKey("3"); // Pray: the rest action is taken, so Camp Reflection shows
+    await renderOnce();
+    expect(room.rested).toBe(true);
     expect(app.debugUiState.kind).toBe("campReflection");
   });
 
@@ -982,7 +1027,7 @@ describe("Rest room runner screens", () => {
     await renderOnce();
     game.state.inventory = { "rat-tail": 1 };
     game.state.coins = 0;
-    mockInput.pressKey("3");
+    mockInput.pressKey("4");
     await renderOnce();
     mockInput.pressKey("x");
     await renderOnce();
@@ -1008,7 +1053,7 @@ describe("Rest room runner screens", () => {
     game.state.restRunner!.barterOffers = [{ itemId: "rat-tail" }, { itemId: "warped-vambrace" }];
     mockInput.pressKey("RETURN");
     await renderOnce();
-    mockInput.pressKey("3");
+    mockInput.pressKey("4");
     await renderOnce();
     expect(runnerScreen.renderFooter({ kind: "runnerShop" }, game)).toContain("[t] Barter");
 
@@ -1046,7 +1091,7 @@ describe("Rest room runner screens", () => {
     const { app, game, room, mockInput, renderOnce } = await restApp({ runner: false, campReflection: true });
     expect(app.debugUiState.kind).toBe("rest");
 
-    mockInput.pressKey("3"); // no Trade option here
+    mockInput.pressKey("4"); // no Trade option here
     await renderOnce();
     expect(app.debugUiState.kind).toBe("rest");
     expect(room.cleared).toBe(false);
@@ -1088,7 +1133,7 @@ describe("a panel scrolled with the mouse wheel", () => {
 
     mockInput.pressKey("RETURN");
     await renderOnce();
-    mockInput.pressKey("3");
+    mockInput.pressKey("4");
     await renderOnce();
     expect(app.debugUiState.kind).toBe("runnerShop");
     expect(dungeon()).toContain("You have");
@@ -1096,7 +1141,9 @@ describe("a panel scrolled with the mouse wheel", () => {
     await renderOnce();
     expect(dungeon()).not.toContain("You have");
 
-    mockInput.pressKey("RETURN");
+    mockInput.pressKey("RETURN"); // back to the rest menu
+    await renderOnce();
+    mockInput.pressKey("RETURN"); // leave it
     await renderOnce();
     mockInput.pressKey("1");
     await renderOnce();
@@ -1113,7 +1160,7 @@ describe("a panel scrolled with the mouse wheel", () => {
     await renderOnce();
     mockInput.pressKey("RETURN");
     await renderOnce();
-    mockInput.pressKey("3");
+    mockInput.pressKey("4");
     await renderOnce();
     expect(app.debugUiState.kind).toBe("runnerShop");
     const top = dungeonOf(captureCharFrame());
@@ -1496,5 +1543,351 @@ describe("memory screen", () => {
     } finally {
       clearSlot(SLOT);
     }
+  });
+});
+
+describe("the torch on the Battlefield", () => {
+  const FLAME = RGBA.fromHex(TORCH_SPRITES["full"]!.palette["Y"]!);
+
+  function hasFlame(frame: CapturedFrame): boolean {
+    return frame.lines.some((line) => line.spans.some((span) => span.bg.r === FLAME.r && span.bg.g === FLAME.g && span.bg.b === FLAME.b));
+  }
+
+  async function openRoom(type: "combat" | "rest" | "event" | "treasure", faith: number) {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    if (type !== "combat") {
+      game.state.combat = null;
+      room.cleared = false;
+      room.type = type === "rest" ? "rest" : "event";
+      if (type === "event") room.rolledEventId = "merchant";
+      if (type === "treasure") {
+        const reward = EVENTS.find((e) => e.kind === "instantReward")!;
+        room.rolledEventId = reward.id;
+      }
+    }
+    game.state.faith = faith;
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    const app = new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    return { ...setup, game, app };
+  }
+
+  test("torch replaces vs in every room", async () => {
+    for (const type of ["combat", "rest", "event", "treasure"] as const) {
+      const { captureCharFrame, captureSpans, renderer } = await openRoom(type, 100);
+      const battlefield = captureCharFrame()
+        .split("\n")
+        .slice(1, 1 + UNIT_BLOCK_HEIGHT + 2)
+        .join("\n");
+      expect(battlefield, type).not.toContain(" vs ");
+      expect(hasFlame(captureSpans()), type).toBe(true);
+      renderer.destroy();
+    }
+  });
+
+  test("the flame is gone when Faith is out", async () => {
+    const { captureSpans, renderer } = await openRoom("combat", 0);
+    expect(hasFlame(captureSpans())).toBe(false);
+    renderer.destroy();
+  });
+
+  test("status shows faith", async () => {
+    const { captureCharFrame, renderer } = await openRoom("combat", 92.1);
+    expect(captureCharFrame()).toContain(`${t("ui.faithLabel")} 92`);
+    expect(captureCharFrame()).not.toContain(`${t("ui.faithLabel")} 92.1`);
+    renderer.destroy();
+  });
+});
+
+describe("Temple screen", () => {
+  const religionOfClass = (classId: string) => CLASSES.find((c) => c.id === classId)!.religionId;
+
+  async function templeApp(opts: { slot?: string; prepare?: (game: Game) => void } = {}) {
+    const classes = ["knight", "mage", "rogue", "acolyte"];
+    const game = withTempleChance(1, () => new Game(7, classes, undefined, undefined, false, opts.slot ?? null));
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    expect(room.type).toBe("temple");
+    room.templeReligionId = religionOfClass("knight");
+    for (const c of game.state.party) {
+      c.maxHp = 100;
+      c.hp = 100;
+    }
+    opts.prepare?.(game);
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    const app = new App(setup.renderer, game, { autoReveal: false });
+    await setup.renderOnce();
+    return { ...setup, game, app, room };
+  }
+
+  test("temple screen lists the matching actions", async () => {
+    const { app, game, captureCharFrame, renderer } = await templeApp();
+    expect(app.debugUiState.kind).toBe("temple");
+    const frame = captureCharFrame();
+    const religion = getReligion(religionOfClass("knight"));
+    expect(frame).toContain(religion.name);
+    expect(frame).toContain(religion.templeDescription.split(". ")[0]!);
+    expect(frame).toContain("[1] Give blood");
+    expect(frame).toContain("[2] Ask a boon");
+    expect(frame).toContain(digitHint("ui.footerTemple", 2));
+    expect(frame).not.toContain("{{");
+    expect(templeScreen.renderFooter(game)).toBe(digitHint("ui.footerTemple", 2));
+    renderer.destroy();
+  });
+
+  test.each([
+    { hp: 50, expectedHp: 5, faithGain: 15 },
+    { hp: 40, expectedHp: 5, faithGain: 5 },
+    { hp: 30, expectedHp: 5, faithGain: 5 },
+  ])("Give blood shows both HP bands before a follower at $hp HP gives", async ({ hp, expectedHp, faithGain }) => {
+    const { game, room, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({
+      prepare: (g) => {
+        g.state.faith = 50;
+        for (const c of g.state.party) if (religionOfClass(c.classId) === religionOfClass("knight")) c.hp = hp;
+      },
+    });
+    try {
+      const frame = captureCharFrame();
+      expect(frame).toContain("At least 50% HP");
+      expect(frame).toContain("30% to below 50% HP");
+      expect(frame).toContain("5 Faith");
+      expect(frame).toContain("below 30% HP: cannot give");
+      expect(frame).toContain("[2] Ask a boon");
+      expect(frame).toContain("[Enter] Leave");
+      expect(frame).not.toContain("{{");
+      const followers = game.state.party.filter((c) => religionOfClass(c.classId) === religionOfClass("knight"));
+      mockInput.pressKey("1");
+      await renderOnce();
+      expect(followers.every((c) => c.hp === expectedHp && c.isAlive)).toBe(true);
+      expect(game.state.faith).toBe(50 + followers.length * faithGain);
+      expect(room.cleared).toBe(true);
+    } finally {
+      renderer.destroy();
+    }
+  });
+
+  test("a temple no member follows offers Give everyone's blood", async () => {
+    const { game, room, app, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({
+      prepare: (g) => {
+        const unfollowed = CLASSES.find((c) => !g.state.party.some((p) => religionOfClass(p.classId) === c.religionId))!.religionId;
+        getRoom(g.state.floor, g.state.currentRoomId).templeReligionId = unfollowed;
+      },
+    });
+    expect(captureCharFrame()).toContain("[1] Give everyone's blood");
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(room.cleared).toBe(true);
+    expect(game.state.party.every((c) => c.hp === 40)).toBe(true);
+    expect(app.debugUiState.kind).toBe("room");
+    renderer.destroy();
+  });
+
+  test("locked give blood shows its reason", async () => {
+    const { game, app, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({
+      prepare: (g) => {
+        for (const c of g.state.party) if (religionOfClass(c.classId) === religionOfClass("knight")) c.hp = 20;
+      },
+    });
+    expect(captureCharFrame()).toContain(t("ui.templeTooWeak"));
+    const line = templeScreen.renderMain(game) as StyledText;
+    const dimmed = line.chunks.find((c) => c.text.includes("Give blood"))!;
+    const want = RGBA.fromHex(PALETTE.disabled);
+    expect([dimmed.fg!.r, dimmed.fg!.g, dimmed.fg!.b]).toEqual([want.r, want.g, want.b]);
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("temple");
+    renderer.destroy();
+  });
+
+  test("leaving the temple returns to the room screen", async () => {
+    const { room, app, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp();
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    expect(room.cleared).toBe(true);
+    expect(app.debugUiState.kind).toBe("room");
+    expect(captureCharFrame()).toContain(t("ui.pathsLabel"));
+    renderer.destroy();
+  });
+
+  test("advancing onto a temple floor drains no Faith and starts no fight", () => {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+    game.state.combat = null;
+    game.state.faith = 80;
+    withTempleChance(1, () => game.advanceToNextFloor());
+    expect(getRoom(game.state.floor, game.state.currentRoomId).type).toBe("temple");
+    expect(game.state.faith).toBe(80);
+    expect(game.state.combat).toBeNull();
+  });
+
+  test("a save keeps the temple's religion and reloads onto the temple screen", async () => {
+    const { game, room, renderer } = await templeApp({ slot: "slot1" });
+    renderer.destroy();
+    saveRun(game);
+    const loaded = gameFromSave(loadSave("slot1"), "slot1", 7);
+    expect(getRoom(loaded.state.floor, loaded.state.currentRoomId).templeReligionId).toBe(room.templeReligionId);
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    const app = new App(setup.renderer, loaded);
+    await setup.renderOnce();
+    expect(app.debugUiState.kind).toBe("temple");
+    setup.renderer.destroy();
+    clearSlot("slot1");
+  });
+});
+
+describe("Event exit scene", () => {
+  const classOfReligion = (religionId: string) => CLASSES.filter((c) => c.religionId === religionId).map((c) => c.id);
+  const LIGHT_AND_FURY_PARTY = [...classOfReligion("light-and-glory"), ...classOfReligion("fury-and-blood")].slice(0, 4);
+
+  async function exitApp(withReflection: boolean, eventId = "guardian-fight", party = LIGHT_AND_FURY_PARTY) {
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
+    const game = new Game(7, party);
+    game.state.combat = null;
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "event";
+    room.rolledEventId = eventId;
+    room.cleared = true;
+    game.state.pendingEventExit = { eventId, withReflection };
+    const app = new App(renderer, game);
+    await renderOnce();
+    return { app, game, mockInput, renderOnce };
+  }
+
+  const plain = (out: string | StyledText) => (typeof out === "string" ? out : out.chunks.map((c) => c.text).join(""));
+  const exitMain = (game: Game) => plain(eventsScreen.renderMain(game, { kind: "eventExit" }));
+  const exitFooter = (game: Game) => eventsScreen.renderFooter({ kind: "eventExit" }, game);
+
+  test("a reflection lists its answers and a digit picks one", async () => {
+    const { app, game, mockInput, renderOnce } = await exitApp(true);
+    expect(app.debugUiState.kind).toBe("eventExit");
+    mockInput.pressKey("4");
+    await renderOnce();
+    expect(game.state.pendingEventExit).not.toBeNull();
+    mockInput.pressKey("2");
+    await renderOnce();
+    expect(game.state.eventReflectionStances["guardian-fight"]).toBe("wary");
+    expect(game.state.pendingEventExit).toBeNull();
+    expect(app.debugUiState.kind).not.toBe("eventExit");
+  });
+
+  test("exit scene render: the event name, the prompt, each answer with its effect line, and the leave footer", async () => {
+    const { game } = await exitApp(true, "the-delay");
+    expect(exitMain(game)).toBe(
+      [
+        "The Delay",
+        "",
+        "In the far corner, water drips a beat after each step you take.",
+        "",
+        "[1] You pass a hand over the water once more and count the delay.",
+        "      Fear −10   ·   Faith −3",
+        "[2] You keep your eyes forward the rest of the way down.",
+        "      Fear −10   ·   MP −5%",
+        "[3] You rub your eyes and keep walking.",
+        "      Fear −5",
+      ].join("\n")
+    );
+    expect(exitFooter(game)).toBe("[1-3] Choose   [Enter] Leave without a word");
+  });
+
+  test("an exit without a reflection shows the event name and [Enter] Leave only, and Enter leaves with nothing recorded", async () => {
+    const { app, game, mockInput, renderOnce } = await exitApp(false, "open-chest");
+    expect(app.debugUiState.kind).toBe("eventExit");
+    expect(exitMain(game)).toBe("Open Chest");
+    expect(exitFooter(game)).toBe("[Enter] Leave");
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(game.state.pendingEventExit).not.toBeNull();
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    expect(game.state.pendingEventExit).toBeNull();
+    expect(game.state.eventReflectionStances).toEqual({});
+    expect(app.debugUiState.kind).not.toBe("eventExit");
+  });
+
+  test("Enter on a reflection leaves without a word: no effect and no stance", async () => {
+    const { app, game, mockInput, renderOnce } = await exitApp(true);
+    const faith = game.state.faith;
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    expect(game.state.pendingEventExit).toBeNull();
+    expect(game.state.eventReflectionStances).toEqual({});
+    expect(game.state.faith).toBe(faith);
+    expect(app.debugUiState.kind).not.toBe("eventExit");
+  });
+
+  test("picking an answer logs one line with the rolled branch", async () => {
+    const { app, mockInput, renderOnce } = await exitApp(true);
+    mockInput.pressKey("1");
+    await renderOnce();
+    const logged = app.debugRoomLog.map((e) => e.text);
+    expect(logged).toContain(t("reflection.result", { effects: "Faith +3   ·   Fear +5" }));
+  });
+
+  test("a hidden answer leaves contiguous digits, and a Night and Silence member brings the fourth with its label", async () => {
+    const without = await exitApp(true, "cursed-shrine");
+    expect(exitFooter(without.game)).toBe("[1-3] Choose   [Enter] Leave without a word");
+    expect(exitMain(without.game)).not.toContain("[4]");
+    without.mockInput.pressKey("4");
+    await without.renderOnce();
+    expect(without.game.state.pendingEventExit).not.toBeNull();
+    expect(without.game.state.eventReflectionStances).toEqual({});
+
+    const withMember = await exitApp(true, "cursed-shrine", [classOfReligion("night-and-silence")[0]!, ...LIGHT_AND_FURY_PARTY.slice(0, 3)]);
+    expect(exitFooter(withMember.game)).toBe("[1-4] Choose   [Enter] Leave without a word");
+    expect(exitMain(withMember.game)).toContain("[4] Night and Silence · You raise a hand at arm's length until it covers the open eye.\n      Faith +6   ·   Fear +5");
+    withMember.mockInput.pressKey("4");
+    await withMember.renderOnce();
+    expect(withMember.game.state.eventReflectionStances["cursed-shrine"]).toBe("devout");
+    expect(withMember.game.state.pendingEventExit).toBeNull();
+  });
+
+  test("a rolled answer renders both branches with their odds", async () => {
+    const { game } = await exitApp(true, "merchant");
+    expect(exitMain(game)).toContain("50%: Fear −5   ·   50%: Fear +10");
+  });
+});
+
+describe("Camp reflection screen", () => {
+  const plain = (out: string | StyledText) => (typeof out === "string" ? out : out.chunks.map((c) => c.text).join(""));
+  const healer = CLASSES.find((c) => c.religionId === "plague-and-healing")!.id;
+
+  async function campApp(party: string[]) {
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 100, height: 40 });
+    const game = new Game(7, party);
+    game.state.combat = null;
+    game.state.pendingCampReflectionTier = 3;
+    const app = new App(renderer, game);
+    await renderOnce();
+    return { app, game, mockInput, renderOnce };
+  }
+
+  test("tier 3 with a Plague and Healing member offers four answers, the fourth under its label", async () => {
+    const { app, game } = await campApp([healer, "knight", "viking", "acolyte"]);
+    expect(app.debugUiState.kind).toBe("campReflection");
+    expect(plain(campReflectionScreen.renderMain(game, { kind: "campReflection" }))).toBe(
+      [
+        "Whoever was closest paid today. At camp, the rest of you kept eating.",
+        "",
+        "[1] You put your bowl down and look at the one who paid.",
+        "      Faith +10   ·   Satiety −10",
+        "[2] You pass them the bread.",
+        "      HP +10% (most hurt)   ·   Satiety −5",
+        "[3] You look at your own hands, turning them over once.",
+        "      50%: Faith +6   ·   50%: Fear +10",
+        "[4] Plague and Healing · You clean and bind the hand of the one who paid.",
+        "      HP +20% (most hurt)   ·   MP −10% (Plague and Healing)",
+      ].join("\n")
+    );
+    expect(campReflectionScreen.renderFooter(game)).toBe("[1-4] Choose");
+  });
+
+  test("without that member tier 3 offers three answers and the fourth digit does nothing", async () => {
+    const { game, mockInput, renderOnce } = await campApp(["knight", "viking", "acolyte", "mage"]);
+    expect(campReflectionScreen.renderFooter(game)).toBe("[1-3] Choose");
+    mockInput.pressKey("4");
+    await renderOnce();
+    expect(game.state.pendingCampReflectionTier).toBe(3);
+    mockInput.pressKey("2");
+    await renderOnce();
+    expect(game.state.pendingCampReflectionTier).toBeNull();
   });
 });

@@ -319,9 +319,10 @@ D: `old-count`, `doubled-back`, `the-delay`, `waiting-supplies`, `vigil-candle`,
 
 ### B.3 — Reflection stance echo
 
-`12-world-bible.md` §12.13's direction — flavor only, never mechanical, never a strict classifier,
+`12-world-bible.md` §12.13's direction for the echo — flavor only, never a strict classifier,
 each stance readable more than one way — is `EventDefinition.stanceEcho?: { curious, wary,
-dismissive }`. `dominantReflectionStance()` (`src/engine/dungeon.ts`) reads the party's most-picked
+dismissive }`. The echo carries no effect; the effects a reflection answer carries are its own
+(`08-events.md` §8.6), and no stance is tied to one. `dominantReflectionStance()` (`src/engine/dungeon.ts`) reads the party's most-picked
 stance across `GameState.eventReflectionStances` (undefined if none recorded yet or tied) and
 appends the matching line to a `returnDescription` visit. Only `wandering-hermit` carries one: he's
 the 1 of the 3 recurring figures whose own backstory (§12.8) makes him plausible to notice a pattern
@@ -378,11 +379,11 @@ possession: agency (§12.5/§12.11) stays real, and the player is left to read w
 - Chain 1, tier 3 (per-id): `guardian-fight`: *"Claw marks run from the corner to the foot of the
   stairs, worn deep, back and forth."* · `desecrated-altar`: *"The spiral at the altar's base has
   been scored through with a blade, more than once. The cuts look like yours."*
-  Reflection: `guardian-fight`: *"You walk through the ash on the way out without slowing."* ·
-  `desecrated-altar`: *"The altar goes dark behind you. The stone dust in your blade's edge has packed into the old nicks."*
+  Reflection: `guardian-fight`: *"You cross the ash to the chest in three steps, the way you'd cross a puddle."* ·
+  `desecrated-altar`: *"The altar goes dark while you are still wiping your blade. The stone dust has packed into the old nicks."*
 - Chain 2, tier 3 (`sacrificial-circle`): *"Old dried blood traces a spiral across the stone. The
   worn places at its open end fit your knees exactly."*
-  Reflection: *"On the way out, someone asks how many that makes. Two of you give different
+  Reflection: *"Someone asks how many that makes. Two of you give different
   numbers."*
 - Chain 3, tier 3 (`blood-altar`): *"The liquid creeps toward the cup. Three of you have a scar in
   the same place on the left palm."*
@@ -429,7 +430,7 @@ found testimony that switching gets people killed.
 > into it, the same mark as on the goods you've traded for."
 
 ```
-reflection.prompt: "Outside the room, you check the seams of your own pack."
+reflection.prompt: "You catch yourself checking the seams of your own pack."
 curious: "You press a thumb against the wall. It gives, a little."
 wary: "You turn your marked goods face-in, at the bottom of the pack."
 dismissive: "You tug the pack straps tight and keep to the middle of the corridor."
@@ -478,7 +479,7 @@ scene describes rather than a random one (`07-items-artifacts.md`'s "Event-tied 
 > "A candle burns at the end of a long, dusty corridor with no footprints in it, its light steady enough to read by. The wax has pooled thick on the floor and set in layers, like the rings of a cut tree, but the flame is a new candle's height. A cloth lies folded beside it."
 
 ```
-reflection.prompt: "You left it burning."
+reflection.prompt: "The flame stands at the same height it was when you came in."
 curious: "You hold a hand near the flame. It's warm."
 wary: "Hands in your sleeves, well clear of the flame."
 dismissive: "Wax runs strangely sometimes. You leave it to burn."
@@ -498,7 +499,7 @@ readings are in B.1, entries 14-15. Same mechanics as `vigil-candle`, `guarantee
 > "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. Water has run down through the oldest. The last row stops mid-stroke."
 
 ```
-reflection.prompt: "On the way out, you glance back once at the half-finished mark."
+reflection.prompt: "Your eyes keep going back to the half-finished mark."
 curious: "You count the last full row before you go."
 wary: "You keep to the far side of the corridor, away from the wall."
 dismissive: "You shoulder your pack and take the next corridor down."
@@ -524,7 +525,7 @@ dismissive: "You scuff the last prints flat with your boot and move on."
 > "Still water pools at the edge of the room, black and flat, and the only sound is a slow drip from the ceiling into a far corner. The surface holds the torchlight like polished glass. Your reflection catches up to you a half-second late, every time you move."
 
 ```
-reflection.prompt: "Somewhere behind you, water drips a beat after each step."
+reflection.prompt: "In the far corner, water drips a beat after each step you take."
 curious: "You pass a hand over the water once more and count the delay."
 wary: "You keep your eyes forward the rest of the way down."
 dismissive: "You rub your eyes and keep walking."
@@ -606,7 +607,7 @@ only for a reader who's seen it asked before; for anyone else it is just two nod
 its several variants):
 
 ```
-prompt: "Whoever that was, they didn't ask your names, and you didn't offer them."
+prompt: "They haven't asked your names, and you haven't offered them."
 curious: "The whole way down, you listen for an answering voice."
 wary: "You don't look back to check if they're still where you left them."
 dismissive: "You step around their boots and take the stairs."

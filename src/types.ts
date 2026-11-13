@@ -346,6 +346,17 @@ export interface UnitStyle {
   color: string;
 }
 
+/** The stat a religion's boon leans on; `offense` is attack and magic power. */
+export type BoonStat = "offense" | "defense" | "speed";
+
+export interface Religion {
+  id: Id;
+  name: string;
+  templeDescription: string;
+  style: UnitStyle;
+  boon: { emphasis: BoonStat | null; recoversHpMp: boolean };
+}
+
 export interface CharacterClass {
   id: Id;
   name: string;
@@ -362,6 +373,8 @@ export interface CharacterClass {
   attackRange: AttackRange;
   /** Its hidden personality (`data/personalities.json`): what it notices, and when its bad side shows in the journal. */
   personalityId: Id;
+  /** Its religion (`data/religions.json`), shown at party select and on the character info screen. */
+  religionId: Id;
   /** Abilities the party-select screen marks as a good fit for this class. */
   recommendedAbilityIds: Id[];
   skills: SkillDefinition[];
@@ -749,7 +762,7 @@ export interface EventDefinition {
   /** Replaces `description` from the 2nd encounter on; the object form branches on the last visit's outcome. */
   returnDescription?: string | Record<"won" | "lost" | "declined", string>;
   /** Appended to `returnDescription` by the party's dominant reflection stance; flavor only. */
-  stanceEcho?: { curious: string; wary: string; dismissive: string };
+  stanceEcho?: Partial<Record<ReflectionStance, string>>;
   /** Appended to a `returnDescription` visit once `eventOutcomes["camp-reflection"]` is "unaware"; `crossEventVariants` only cover the first meeting. */
   campReflectionUnawareEcho?: string;
   /** Replaces `description` once `narrativeCounters.guardianFightsSkipped` reaches 2. */
@@ -776,8 +789,49 @@ export interface EventDefinition {
     escalatedPrompt?: string;
     escalated2Prompt?: string;
     escalated3Prompt?: string;
-    options: { curious: string; wary: string; dismissive: string };
+    options: ReflectionOption[];
   };
+}
+
+export type ReflectionStance = "curious" | "wary" | "dismissive" | "devout" | "defiant";
+
+export type ReflectionCondition =
+  | { religionInParty: Id }
+  | { counterAtLeast: { counter: keyof GameState["narrativeCounters"]; threshold: string } }
+  | { lastGambleOutcome: "won" | "lost" | "declined" };
+
+export type ReflectionEffectStat = "faith" | "fear" | "satiety" | "hp" | "mp";
+export type ReflectionEffectSize = "small" | "medium" | "large";
+
+export interface ReflectionEffect {
+  stat: ReflectionEffectStat;
+  size: ReflectionEffectSize;
+  sign: 1 | -1;
+  /** Defaults to the whole party; Faith and Satiety are always party-wide. */
+  target?: "party" | "mostAfraid" | "mostHurt" | { religion: Id };
+  /** The phrase of the answer text that shows this effect. */
+  readFrom: string;
+}
+
+export interface ReflectionOutcome {
+  /** Share of the roll; the plain outcomes of one answer sum to 1. */
+  chance?: number;
+  /** The first outcome whose conditions all hold is used; the plain ones are rolled otherwise. */
+  when?: ReflectionCondition[];
+  effects: ReflectionEffect[];
+}
+
+export interface ReflectionAnswer {
+  text: string;
+  /** All must hold for the answer to be shown. */
+  requires?: ReflectionCondition[];
+  /** The gesture eats or drinks; only then may an effect raise Satiety. */
+  feeds?: boolean;
+  outcomes: ReflectionOutcome[];
+}
+
+export interface ReflectionOption extends ReflectionAnswer {
+  stance: ReflectionStance;
 }
 
 export interface ActiveStatusEffect {
@@ -822,7 +876,13 @@ export interface RestRunner {
   barterOffers?: BarterOffer[];
 }
 
-export type RoomType = "combat" | "rest" | "boss" | "event";
+export interface ActiveBoon {
+  religionId: Id;
+  /** The floor depth it was asked on. */
+  depth: number;
+}
+
+export type RoomType = "combat" | "rest" | "boss" | "event" | "temple";
 
 export interface Room {
   id: Id;
@@ -833,9 +893,13 @@ export interface Room {
   connectedRoomIds: Id[];
   monsterIds: Id[];
   cleared: boolean;
+  /** A rest room whose rest action (Eat & Drink, Chat or Pray) has been taken; the room stays open for the runner until the party leaves. */
+  rested?: boolean;
   /** Shown as unknown until the party enters it; absent means visible. */
   hidden?: boolean;
   rolledEventId?: Id;
+  /** The religion this floor's temple belongs to; set only on a temple room. */
+  templeReligionId?: Id;
   chainVariant?: "buildup" | "forced" | "forced2" | "forced3";
   /** Index into `[event.description, ...event.descriptionVariants]`; undefined when the event has no variants. */
   descriptionVariantIndex?: number;
@@ -1181,6 +1245,10 @@ export interface GameState {
   inventory: Record<Id, number>;
   coins: number;
   satiety: number;
+  /** Party-wide, 0-100, one decimal. */
+  faith: number;
+  /** The boon asked at this floor's temple; cleared when the floor ends. */
+  boon: ActiveBoon | null;
   pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean } | null;
   /** Gambling Den's 2nd jackpot artifact, waiting until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;
@@ -1206,11 +1274,12 @@ export interface GameState {
     /** Resolved `freeTake` events. */
     freeRewardsTakenCount: number;
   };
-  pendingReflection?: { eventId: Id } | null;
-  eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>;
+  /** Set once an event room is cleared; the party leaves the room only after it is answered or left. */
+  pendingEventExit: { eventId: Id; withReflection: boolean } | null;
+  eventReflectionStances: Partial<Record<Id, ReflectionStance>>;
   /** Events resolved from `LORE_EXPOSURE_EVENT_IDS`; never decreases. */
   loreExposureCount: number;
-  /** Set on rest-room entry when a new tier exceeds the highest answered one; skipped while `pendingReflection` is set. */
+  /** Set on rest-room entry when a new tier exceeds the highest answered one; skipped while `pendingEventExit` is set. */
   pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
   /** The omen picked on a milestone-floor boss victory; cleared by `Game.dismissFloorMilestoneMessage()`. */
   pendingFloorMilestoneOmenId?: Id | null;
@@ -1240,7 +1309,7 @@ export interface GameState {
   journalEchoesFired: Id[];
   /** The echoes the ending showed, for the Last page. */
   journalEndingEchoIds: Id[];
-  campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
+  campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, number>>;
   /** Set once an event's defining choice resolves; most get the generic "resolved" from `closeEvent()`. */
   eventOutcomes: Partial<Record<Id, string>>;
   /** `onceLifetime` events already fired, plus every `removedOnFounderVictory` id once the founder falls; excluded from future rolls. */

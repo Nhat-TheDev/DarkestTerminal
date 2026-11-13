@@ -272,8 +272,16 @@ function laneRooms(startId: string, byId: Map<string, LayoutRoom>, incoming: Map
 }
 
 /** Checks every rule over the room graph rather than listing routes, since nested splits multiply them. */
-export function validateFloorLayout(rooms: LayoutRoom[]): void {
-  if (new Set(rooms.map((r) => r.id)).size !== rooms.length) throw new Error("room ids must be unique within the layout");
+export function validateFloorLayout(layout: LayoutRoom[]): void {
+  if (new Set(layout.map((r) => r.id)).size !== layout.length) throw new Error("room ids must be unique within the layout");
+  const rooms = layout[0]?.type === "temple" ? layout.slice(1) : layout;
+  if (rooms !== layout) {
+    const temple = layout[0]!;
+    const next = rooms[0];
+    if (temple.hidden || temple.next.length !== 1 || temple.next[0] !== next?.id || next?.type !== "combat" || next?.hidden) {
+      throw new Error("a temple entry must be visible and lead only to the visible combat entrance");
+    }
+  }
   const entry = rooms[0]!;
   if (entry.type !== "combat" || entry.hidden) throw new Error("the entrance must be a visible combat room");
   const ends = rooms.filter((r) => r.next.length === 0);

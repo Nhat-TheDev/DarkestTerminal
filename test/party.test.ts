@@ -7,7 +7,7 @@ describe("Knight passive: permanent stat buff", () => {
     const cls = getClass("knight");
     for (const level of [4, 5, 20, 35]) {
       const knight = createCharacter(`v${level}`, "Knight", cls, level);
-      recomputeCharacterStats(knight, 100);
+      recomputeCharacterStats(knight, 100, null);
       expect(knight.aggro).toBe(cls.baseAggro);
     }
   });
@@ -20,7 +20,7 @@ describe("Knight passive: permanent stat buff", () => {
       [35, 15, 14],
     ] as const) {
       const withPassive = createCharacter(`v-${level}`, "Knight", cls, level);
-      recomputeCharacterStats(withPassive, 100);
+      recomputeCharacterStats(withPassive, 100, null);
       const noPassive = createCharacter(`v-${level}-base`, "Knight", cls, level);
       // createCharacter never runs recomputeCharacterStats, so this is the passive-free base.
       expect(withPassive.maxHp).toBe(Math.round(noPassive.maxHp * (1 + hpPercent / 100)));

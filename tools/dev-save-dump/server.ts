@@ -56,6 +56,7 @@ interface GenerateRequestBody {
   level?: unknown;
   floor?: unknown;
   room?: unknown;
+  faith?: unknown;
   seed?: unknown;
   id?: unknown;
   party?: unknown;
@@ -247,6 +248,8 @@ async function handleGenerate(req: Request): Promise<Response> {
   if (!Number.isFinite(level)) return badRequest(`level must be a number, got "${body.level}".`);
   if (!Number.isFinite(floorDepth)) return badRequest(`floor must be a number, got "${body.floor}".`);
   if (!Number.isFinite(seed)) return badRequest(`seed must be a number, got "${body.seed}".`);
+  const faith = body.faith !== undefined && body.faith !== null && body.faith !== "" ? Number(body.faith) : undefined;
+  if (faith !== undefined && !Number.isFinite(faith)) return badRequest(`faith must be a number, got "${body.faith}".`);
   const roomArg = typeof body.room === "string" && body.room.length > 0 ? body.room : "entry";
   const saveId = typeof body.id === "string" && body.id.length > 0 ? body.id : firstFreeSlotId();
   if (saveId === null) return badRequest("All save slots are full — pass an explicit id (e.g. slot1) to overwrite one.");
@@ -277,7 +280,7 @@ async function handleGenerate(req: Request): Promise<Response> {
   if (eventResult?.eventOutcomes) Object.assign(game.state.eventOutcomes, eventResult.eventOutcomes);
 
   try {
-    const room = applyDump(game, { level, floorDepth, roomArg, forceEventId: eventResult?.forceEventId });
+    const room = applyDump(game, { level, floorDepth, roomArg, forceEventId: eventResult?.forceEventId, faith });
 
     members.forEach((member, i) => {
       game.state.party[i]!.equippedArtifactIds = [...member.artifactIds];

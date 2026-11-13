@@ -9,6 +9,11 @@ import { BALANCE } from "../src/data/balanceConfig";
 import { getItem } from "../src/data/items";
 import { addItem, applyDyingDamage } from "../src/engine/survival";
 import { makeCtx } from "./helpers";
+import { CLASSES } from "../src/data/classes";
+import { RELIGIONS } from "../src/data/religions";
+import { getRoom } from "../src/engine/dungeon";
+import { chatFaith } from "../src/engine/survival";
+import type { Id } from "../src/types";
 
 describe("Camp", () => {
   test("camp() consumes 1 Exploration Kit and restores satiety only, never HP/MP", () => {
@@ -194,5 +199,67 @@ describe("combat reward reveal sync", () => {
     for (let i = 0; i < firstRewardIndex; i++) {
       expect(log[i]!.partySnapshot).toBeUndefined();
     }
+  });
+});
+
+const classesOf = (religionIndex: number) => CLASSES.filter((c) => c.religionId === RELIGIONS[religionIndex]!.id).map((c) => c.id);
+
+function restPartyGame(spread: number[]): Game {
+  const game = new Game(1, ["knight", "mage", "viking", "plague-doctor"]);
+  spread.forEach((religion, i) => {
+    game.state.party[i]!.classId = classesOf(religion)[0]!;
+  });
+  game.state.combat = null;
+  const room = getRoom(game.state.floor, game.state.currentRoomId);
+  room.type = "rest";
+  room.cleared = false;
+  return game;
+}
+
+describe("Pray", () => {
+  test("pray raises faith and eases fear", () => {
+    const game = restPartyGame([0, 1, 2, 3]);
+    game.state.faith = 40;
+    for (const c of game.state.party) {
+      c.survival.fear = 30;
+      c.hp = 5;
+      c.mp = 5;
+    }
+    game.state.satiety = 50;
+    game.restAction("pray");
+    expect(game.state.faith).toBe(55);
+    for (const c of game.state.party) {
+      expect(c.survival.fear).toBe(25);
+      expect(c.hp).toBe(5);
+      expect(c.mp).toBe(5);
+    }
+    expect(game.state.satiety).toBe(50);
+  });
+});
+
+describe("Chat Faith by shared religion", () => {
+  const faithFor = (spread: number[]) => chatFaith(restPartyGame(spread).state.party);
+
+  test("chat faith by group", () => {
+    expect(faithFor([0, 1, 2, 3])).toBe(0);
+    expect(faithFor([0, 1, 2, 2])).toBe(BALANCE.rest.chat.faithByGroupSize["2"]);
+    expect(faithFor([0, 0, 1, 1])).toBe(2 * BALANCE.rest.chat.faithByGroupSize["2"]);
+    expect(faithFor([0, 1, 1, 1])).toBe(BALANCE.rest.chat.faithByGroupSize["3"]);
+    expect(faithFor([0, 0, 0, 0])).toBe(BALANCE.rest.chat.faithByGroupSize["4"]);
+  });
+
+  test("chat faith ignores dead members", () => {
+    const game = restPartyGame([0, 0, 1, 1]);
+    game.state.party[0]!.isAlive = false;
+    expect(chatFaith(game.state.party)).toBe(BALANCE.rest.chat.faithByGroupSize["2"]);
+  });
+
+  test("chat applies its faith with the existing recovery", () => {
+    const game = restPartyGame([0, 0, 1, 2]);
+    game.state.faith = 40;
+    game.state.party[2]!.survival.fear = 30;
+    game.restAction("chat");
+    expect(game.state.faith).toBe(43);
+    expect(game.state.party[2]!.survival.fear).toBe(30 - BALANCE.survival.chatFearRelief);
   });
 });

@@ -45,6 +45,7 @@ A floor is a sequence of rooms and *splits*. A split sends the route into 2 to
   with no shared room between. In the graph, every last room of the joining
   lanes links to every first room of the next split.
 - The entrance and the guard room are single rooms on every floor.
+- A floor may open with a temple room in front of the entrance (`temple.chance`). It is added after the layout and its monsters are built, so a seed's floor is the same with or without it; the temple's only exit is the visible combat entrance.
 
 How many splits a floor has, how many lanes each holds and how long each lane
 is are random (`splitChance`, `nestedSplitChance`); the generator builds no
@@ -86,7 +87,7 @@ holds for cross branches too: route bounds, edges, at most `maxLanesPerSplit`
 next rooms per room, lanes side by side per column (its rooms, plus the rooms
 whose lines run across it), at least `minLaneRooms` rooms on every lane a
 split opens before it reaches a room more than one route leads into,
-reachability, no dead ends, unique ids, a visible entrance and guard. The property test runs it over many seeds and depths.
+reachability, no dead ends, unique ids, a visible entrance (a temple in front of it is allowed) and guard. The property test runs it over many seeds and depths.
 
 ### Unknown rooms
 Some rooms show as `[?]` until the party enters them. A room's real type is
@@ -138,6 +139,18 @@ the plain panel background. Every other screen keeps the normal Battlefield.
 - Passed rooms and the lines into them are dimmed; the rooms the party can
   move to carry their key, matching the Paths list.
 
+### The temple before the entrance
+A floor may open on a temple (`temple.chance` in `data/balance-config.json`). `createFloor` rolls it
+after the layout and its monsters are built, from the same floor stream, and `prependTemple`
+(`src/data/floor.ts`) puts one extra room in front of the layout: a `temple` room whose only exit
+is the entrance the layout drew, and which becomes `Floor.entryRoomId`. The generator and its rules
+never see it, so a layout is the same with or without one, and the route rules above count the
+layout's own rooms only. The invariant that the entrance is a visible combat room still holds for
+the layout; the temple is the one allowed room in front of it, and it cannot be hidden, a guard or
+a fight. Anything that assumes "the entry room is the layout's entrance" (the ambush on arrival, the
+map, a dev-tool jump to `entry`) reads `Floor.entryRoomId` and treats a temple as a room that starts
+no fight. What the temple does is in `gameplay-decisions/13-faith-and-religion.md` §13.4.
+
 ### Storage & runtime
 `createFloor(rng, depth)` (`src/data/floor.ts`) calls `generateFloorLayout(rng,
 depth)` then `buildFloorFromLayout(layout, rng, depth)`: it builds `Room[]`
@@ -149,7 +162,7 @@ same floor) and randomly places a small number of monsters per combat room
 archetype, randomly picked — `gameplay-decisions/02-monster.md` §2,
 `gameplay-decisions/06-level-system.md` §6.11) for the `boss` room. A floor is
 generated whole when the party reaches it, deterministically for the run
-seed. `Game.advanceToNextFloor()` (`src/engine/game.ts`) calls `createFloor`
+seed, with the temple room (if one rolls) added last. `Game.advanceToNextFloor()` (`src/engine/game.ts`) calls `createFloor`
 again with `depth + 1` every time the guard room is cleared
 (`gameplay-decisions/06-level-system.md` §6.9).
 
