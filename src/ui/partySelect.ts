@@ -101,7 +101,7 @@ function statsPanel(cls: CharacterClass): TextChunk[][] {
   return [
     [boldColorChunk(` ${cls.name.toUpperCase()}`, PALETTE.title)],
     ...panelText(cls.roleTags.join(" · "), PALETTE.dim, STATS_WIDTH),
-    [colorChunk(` ${religion.name}`, religion.style.color)],
+    [colorChunk(` ${t("partySelect.religion", { name: religion.name })}`, religion.style.color)],
     [],
     [colorChunk(` ${t("partySelect.statsRow1", { hp: pad(cls.baseMaxHp), attack: pad(cls.baseAttack), magic: pad(cls.baseMagicPower), aggro: pad(cls.baseAggro) })}`, PALETTE.text)],
     [colorChunk(` ${t("partySelect.statsRow2", { mp: pad(cls.baseMaxMp), defense: pad(cls.baseDefense), speed: pad(cls.baseSpeed) })}`, PALETTE.text)],

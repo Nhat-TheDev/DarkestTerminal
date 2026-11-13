@@ -563,6 +563,7 @@
   "partySelect.emptySeat": "(empty)",
   "partySelect.seat": "{{name}} ({{ability}})",
   "partySelect.noAbility": "no ability",
+  "partySelect.religion": "Religion: {{name}}",
   "partySelect.statsRow1": "HP {{hp}}   ATK {{attack}}   MAG {{magic}}   AGGRO {{aggro}}",
   "partySelect.statsRow2": "MP {{mp}}   DEF {{defense}}   SPD {{speed}}",
   "partySelect.passiveLine": "Passive — {{name}}",
