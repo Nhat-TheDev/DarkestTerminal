@@ -323,6 +323,7 @@
   "ui.templeLocked": "  [{{n}}] {{label}} — {{reason}}",
   "ui.templeGiveBloodLabel": "Give blood",
   "ui.templeBoonLabel": "Ask a boon",
+  "ui.activeTempleBoon": "Boon: {{religion}}",
   "ui.runnerCoins": "You have {{coins}} {{coins|coin|coins}}.",
   "ui.runnerGoods": "The runner lays out:",
   "ui.runnerOfferLine": "  [{{i}}] {{name}} — costs {{price}} {{price|coin|coins}}",

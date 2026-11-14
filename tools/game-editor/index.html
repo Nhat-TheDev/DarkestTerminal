@@ -2104,7 +2104,7 @@ boot();
   const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15, temple: 15, torch: 15 };
   // Event/rest/treasure sprites render into a fixed-width slot (EMPTY_ENEMY_WIDTH in
   // src/ui/layout.ts) — going wider silently overflows the battlefield panel on a ~100-col terminal.
-  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 30, rest: 30, treasure: 30, temple: 30, torch: 3 };
+  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 30, rest: 30, treasure: 30, temple: 30, torch: 7 };
 
   const elId = (id) => $("#" + id);
   const categoryEl = elId("category");
@@ -2138,7 +2138,7 @@ boot();
     } else if (category === "rest") {
       text = `The "rest" room uses exactly 1 sprite in-game — the ID must be "${ROOM_SPRITE_ID.rest}" to take effect.`;
     } else if (category === "temple" || category === "torch") {
-      text = `The game reads only the ids already in this category: ${Object.keys(currentSection()).join(", ")}. A torch frame is picked by Faith (faith.torchFrameThresholds in data/balance-config.json), 3 columns wide.`;
+      text = `The game reads only the ids already in this category: ${Object.keys(currentSection()).join(", ")}. A torch frame is picked by Faith (faith.torchFrameThresholds in data/balance-config.json), 7 columns wide.`;
     }
     idHintEl.title = text;
     idHintEl.style.display = text ? "" : "none";
@@ -2464,7 +2464,7 @@ boot();
 
   async function saveHandler() {
     const rows = grid.map((r) => r.join(""));
-    const sprite = { rows, palette };
+    const sprite = { rows, palette: { ...palette } };
 
     const id = idInputEl.value.trim();
     if (!/^[a-z][a-z0-9-]*$/.test(id)) {
@@ -2494,7 +2494,7 @@ boot();
         return;
       }
       setStatus(`Saved "${id}" to data/sprites.json${unusedIdWarning}`, unusedIdWarning ? "error" : "ok");
-      await loadSpritesData();
+      currentSection()[id] = sprite;
       populateExistingIds();
       existingIdEl.value = id;
       idInputEl.value = id;

@@ -6,6 +6,7 @@ import { getArtifact } from "../data/artifacts";
 import { getAbility } from "../data/abilities";
 import { getClass, getSkill, getEffectiveSkill } from "../data/classes";
 import { getEvent } from "../data/events";
+import { getReligion } from "../data/religions";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
 import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
@@ -35,14 +36,16 @@ import {
   MAX_BOSS_HEIGHT,
   TOMBSTONE_SPRITE,
   torchFrameForFaith,
+  TORCH_SPRITES,
+  spriteHeight,
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
   TEMPLE_ALTAR_SPRITE,
 } from "./sprites";
-import { SLOT_WIDTH, SLOT_GAP, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, battlefieldInnerWidth, centerText, monsterStyle, mergeBlocksHorizontally, torchDividerBlock } from "./layout";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, battlefieldInnerWidth, centerText, monsterStyle, mergeBlocksHorizontally, torchDividerBlock } from "./layout";
 import { sceneById, type UnitShadow } from "../data/backdrops";
 import { backdropIdForRoomName } from "../data/roomNames";
-import { paintBackdrop, composeBattlefield, sameContent } from "./backdrop";
+import { paintBackdrop, paintTorchGlow, composeBattlefield, sameContent } from "./backdrop";
 import { renderFloorMap } from "./floorMap";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
 import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerReading, FOCUS_GLYPH, type BattlefieldUnit, type MarkerReading, type SummonFocus } from "./battlefieldFocus";
@@ -1102,6 +1105,10 @@ export class App implements ScreenContext {
     const abilityLines: TextChunk[][] = c.equippedAbilityId ? [[plainChunk("  "), colorChunk(`${ABILITY_ICON} ${getAbility(c.equippedAbilityId).name}`, PALETTE.title)]] : [];
     const artifactLines: TextChunk[][] = c.equippedArtifactIds.map((artifactId) => [plainChunk("  "), colorChunk(`${ARTIFACT_ICON} ${getArtifact(artifactId).name}`, PALETTE.title)]);
     const buffLines: TextChunk[][] = [];
+    if (this.game.state.boon) {
+      const religion = getReligion(this.game.state.boon.religionId);
+      buffLines.push([plainChunk("  "), colorChunk(t("ui.activeTempleBoon", { religion: religion.name }), religion.style.color)]);
+    }
     const debuffLines: TextChunk[][] = [];
     for (const eff of c.activeStatusEffects) {
       const def = getStatusEffect(eff.statusEffectId);
@@ -1210,12 +1217,19 @@ export class App implements ScreenContext {
         shadow: null,
       };
     }
-    const { rows, dimmed } = this.renderBattlefield(combat, hpOverride, focus);
+    const { rows, dimmed, torchLight } = this.renderBattlefield(combat, hpOverride, focus);
     const contentLeft = Math.max(0, Math.floor((width - BATTLEFIELD_CONTENT_WIDTH) / 2));
     const room = getRoom(s.floor, s.currentRoomId);
     const sceneId = s.pendingGatekeeper ? (getEvent(GATEKEEPER_EVENT_ID).backdrop ?? null) : backdropIdForRoomName(room.name);
     const { key, backdrop, shadow } = this.backdropFor(sceneId, width, contentLeft, dimmed);
-    return { battlefieldRows: rows, contentLeft, backdropKey: key, backdrop, shadow };
+    const litBackdrop = torchLight ? paintTorchGlow(backdrop, width, {
+      ...torchLight,
+      x: contentLeft + torchLight.x,
+      faith: s.faith,
+      color: TORCH_SPRITES["full"]!.palette["Y"]!,
+      dimFactor: dimmed ? (sceneById(sceneId)?.render.dimFactor ?? 1) : 1,
+    }) : backdrop;
+    return { battlefieldRows: rows, contentLeft, backdropKey: `${key}|torch:${torchLight ? s.faith : "hidden"}`, backdrop: litBackdrop, shadow };
   }
 
   private backdropFor(sceneId: string | null, width: number, contentLeft: number, dimmed: boolean): { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } {
@@ -1227,7 +1241,7 @@ export class App implements ScreenContext {
     return this.backdropCache;
   }
 
-  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): { rows: TextChunk[][]; dimmed: boolean } {
+  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null) {
     const s = this.game.state;
     let dimmed = false;
     const impact = focus !== null && !this.reveal.holding;
@@ -1291,9 +1305,15 @@ export class App implements ScreenContext {
       enemyBlock = this.buildEmptyEnemyBlock(message);
     }
 
-    const divider = torchDividerBlock(torchFrameForFaith(s.faith));
+    const torch = s.pendingGatekeeper ? null : torchFrameForFaith(s.faith);
+    const divider = torchDividerBlock(torch);
+    const partyWidth = Math.max(...partyBlock.map((row) => row.reduce((sum, chunk) => sum + chunk.text.length, 0)));
+    const torchLight = torch ? {
+      x: partyWidth + Math.floor(DIVIDER_WIDTH / 2),
+      y: ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS - spriteHeight(torch)) / 2) + 3,
+    } : null;
 
-    return { rows: mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP), dimmed };
+    return { rows: mergeBlocksHorizontally([partyBlock, divider, enemyBlock], 0), dimmed, torchLight };
   }
 
   /** The monsters a fight shows. A summoned add that has died stays as a tombstone only while the session it died in is on screen. */

@@ -18,7 +18,8 @@ export function battlefieldInnerWidth(terminalWidth: number): number {
 
 export const SLOT_WIDTH = 13;
 export const SLOT_GAP = 2;
-export const DIVIDER_WIDTH = 3;
+/** Includes the gutters beside the torch; unit-to-unit gaps stay separate. */
+export const DIVIDER_WIDTH = 7;
 export const EMPTY_ENEMY_WIDTH = 30;
 /** One icon row plus one blank row, so an icon never touches a sprite. */
 export const ICON_BAND_ROWS = 2;
@@ -28,7 +29,8 @@ export const BATTLEFIELD_CONTENT_WIDTH = 113;
 export const UNIT_BLOCK_HEIGHT = ICON_BAND_ROWS + MAX_BOSS_HEIGHT + 3;
 
 /** The divider between the two sides: the torch sprite, centred in the unit block below the icon band. */
-export function torchDividerBlock(torch: Sprite): TextChunk[][] {
+export function torchDividerBlock(torch: Sprite | null): TextChunk[][] {
+  if (!torch) return Array.from({ length: UNIT_BLOCK_HEIGHT }, () => [plainChunk(" ".repeat(DIVIDER_WIDTH))]);
   const top = ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS - spriteHeight(torch)) / 2);
   const bottom = UNIT_BLOCK_HEIGHT - top - spriteHeight(torch);
   const blank = (): TextChunk[] => [plainChunk(" ".repeat(DIVIDER_WIDTH))];

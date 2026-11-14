@@ -167,14 +167,20 @@ describe("compositeSpriteRow: overlap when a sprite is wider than its slot", () 
 });
 
 describe("the torch", () => {
-  test("torch frame follows thresholds", () => {
-    expect(torchFrameForFaith(100)).toBe(TORCH_SPRITES["full"]!);
-    expect(torchFrameForFaith(80)).toBe(TORCH_SPRITES["full"]!);
-    expect(torchFrameForFaith(60)).toBe(TORCH_SPRITES["strong"]!);
-    expect(torchFrameForFaith(30)).toBe(TORCH_SPRITES["low"]!);
-    expect(torchFrameForFaith(1)).toBe(TORCH_SPRITES["embers"]!);
-    expect(torchFrameForFaith(0.4)).toBe(TORCH_SPRITES["out"]!);
-    expect(torchFrameForFaith(0)).toBe(TORCH_SPRITES["out"]!);
+  test("torch has exactly four upright handheld frames", () => {
+    expect(Object.keys(TORCH_SPRITES).sort()).toEqual(["embers", "full", "low", "strong"]);
+    for (const frame of Object.values(TORCH_SPRITES)) {
+      expect(spriteWidth(frame)).toBe(6);
+      expect(spriteHeight(frame)).toBe(14);
+      expect(frame.rows.slice(7, 13)).toEqual(Array(6).fill("..BD.."));
+    }
+  });
+
+  test.each([
+    [100, "full"], [75, "full"], [74.9, "strong"], [50, "strong"],
+    [49.9, "low"], [25, "low"], [24.9, "embers"], [0, "embers"],
+  ] as const)("Faith %s selects the %s torch", (faith, frame) => {
+    expect(torchFrameForFaith(faith)).toBe(TORCH_SPRITES[frame]!);
   });
 });
 
@@ -189,7 +195,7 @@ describe("battlefield width (normal and elite fights)", () => {
   test("the battlefield fits the panel at 150 wide for normal and elite fights", () => {
     const party = sideWidth(widest(Object.values(CLASS_SPRITES), 4));
     const monsters = sideWidth(widest([...Object.values(MONSTER_SPRITES), ...Object.values(ELITE_SPRITES)], 3));
-    expect(party + SLOT_GAP + DIVIDER_WIDTH + SLOT_GAP + monsters).toBeLessThanOrEqual(BATTLEFIELD_CONTENT_WIDTH);
+    expect(party + DIVIDER_WIDTH + monsters).toBeLessThanOrEqual(BATTLEFIELD_CONTENT_WIDTH);
   });
 
   test("the torch fits the divider", () => {

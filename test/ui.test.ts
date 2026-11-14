@@ -32,7 +32,7 @@ import * as inventoryScreen from "../src/ui/screens/inventory";
 import * as artifactDecisionScreen from "../src/ui/screens/artifactDecision";
 import * as roomScreen from "../src/ui/screens/room";
 import * as templeScreen from "../src/ui/screens/temple";
-import { getReligion } from "../src/data/religions";
+import { getReligion, RELIGIONS } from "../src/data/religions";
 import { digitHint } from "../src/ui/keyHints";
 import { withTempleChance } from "./setup";
 import * as eventsScreen from "../src/ui/screens/events";
@@ -44,7 +44,7 @@ import { TROPHY_ICON } from "../src/ui/state";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { ITEMS, describeItemEffects, getItem } from "../src/data/items";
 import { getSummonArchetype, getSummonCast, getSummonSkill } from "../src/data/summons";
-import { UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
+import { UNIT_BLOCK_HEIGHT, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH } from "../src/ui/layout";
 import { PALETTE } from "../src/ui/theme";
 import { SAVE_DIR } from "../src/engine/paths";
 import { panelContentRows } from "../tools/random-play/checks";
@@ -1592,6 +1592,61 @@ describe("the torch on the Battlefield", () => {
     renderer.destroy();
   });
 
+  function pixels(frame: CapturedFrame): RGBA[][] {
+    return frame.lines.map((line) => line.spans.flatMap((span) => Array.from({ length: span.width }, () => span.bg)));
+  }
+
+  test("torch halo shrinks and fades continuously without changing the flame frame", async () => {
+    const { game, app, renderer, renderOnce, captureSpans, captureCharFrame } = await openRoom("combat", 100);
+    try {
+      const origin = captureCharFrame().split("\n").findIndex((line) => line.includes("Battlefield")) + 1;
+      const full = pixels(captureSpans());
+      const flameXs = full.slice(origin, origin + UNIT_BLOCK_HEIGHT).flatMap((row) => row.flatMap((c, x) => c && c.r === FLAME.r && c.g === FLAME.g && c.b === FLAME.b ? [x] : []));
+      expect(flameXs.length).toBeGreaterThan(0);
+      const x = Math.round((Math.min(...flameXs) + Math.max(...flameXs)) / 2);
+      const y = origin + 3;
+      const brightness = (c: RGBA) => c.r + c.g + c.b;
+      game.state.faith = 90;
+      app.tickReveal();
+      await renderOnce();
+      const lower = pixels(captureSpans());
+      expect(brightness(full[y]![x]!)).toBeGreaterThan(brightness(lower[y]![x]!));
+      game.state.faith = 0;
+      app.tickReveal();
+      await renderOnce();
+      const dark = pixels(captureSpans());
+      expect(brightness(lower[y]![x]!)).toBeGreaterThan(brightness(dark[y]![x]!));
+      expect(brightness(full[y]![x + 14]!)).toBeGreaterThan(brightness(dark[y]![x + 14]!));
+      game.state.faith = 25;
+      app.tickReveal();
+      await renderOnce();
+      expect(pixels(captureSpans())[y]![x + 14]!.equals(dark[y]![x + 14]!)).toBe(true);
+    } finally {
+      renderer.destroy();
+    }
+  });
+
+  test("Gatekeeper hides the torch and does not light the backdrop with Faith", async () => {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"], undefined, undefined, true);
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    const app = new App(setup.renderer, game, { autoReveal: false });
+    try {
+      while (app.debugRevealActive) app.tickReveal();
+      await setup.renderOnce();
+      expect(game.state.pendingGatekeeper).toBe(true);
+      expect(hasFlame(setup.captureSpans())).toBe(false);
+      const origin = setup.captureCharFrame().split("\n").findIndex((line) => line.includes("Battlefield")) + 1;
+      const before = pixels(setup.captureSpans()).slice(origin, origin + UNIT_BLOCK_HEIGHT).map((row) => row.slice(1, 1 + BATTLEFIELD_CONTENT_WIDTH));
+      game.state.faith = 0;
+      app.tickReveal();
+      await setup.renderOnce();
+      const after = pixels(setup.captureSpans()).slice(origin, origin + UNIT_BLOCK_HEIGHT).map((row) => row.slice(1, 1 + BATTLEFIELD_CONTENT_WIDTH));
+      expect(after.map((row) => row.map((c) => c?.toInts()))).toEqual(before.map((row) => row.map((c) => c?.toInts())));
+    } finally {
+      setup.renderer.destroy();
+    }
+  });
+
   test("status shows faith", async () => {
     const { captureCharFrame, renderer } = await openRoom("combat", 92.1);
     expect(captureCharFrame()).toContain(`${t("ui.faithLabel")} 92`);
@@ -1633,6 +1688,40 @@ describe("Temple screen", () => {
     expect(frame).not.toContain("{{");
     expect(templeScreen.renderFooter(game)).toBe(digitHint("ui.footerTemple", 2));
     renderer.destroy();
+  });
+
+  test.each(RELIGIONS)("$name boon shows its temple religion in the party and character details", async (religion) => {
+    const { app, game, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({
+      prepare: (g) => { getRoom(g.state.floor, g.state.currentRoomId).templeReligionId = religion.id; },
+    });
+    const label = `Boon: ${religion.name}`;
+    try {
+      expect(captureCharFrame()).not.toContain(label);
+      mockInput.pressKey("2");
+      await renderOnce();
+      expect(game.state.boon?.religionId).toBe(religion.id);
+      expect(captureCharFrame()).toContain(label);
+      mockInput.pressKey("b");
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("characterInfo");
+      const different = game.state.party.findIndex((c) => religionOfClass(c.classId) !== religion.id);
+      mockInput.pressKey(String(different + 1));
+      await renderOnce();
+      const details = captureCharFrame().split("\n").map((row) => row.slice(PARTY_PANEL_WIDTH, 150 - SIDE_PANEL_WIDTH)).join("\n");
+      expect(details).toContain(label);
+      expect(details).toContain(t("ui.characterInfoReligion", { name: getReligion(religionOfClass(game.state.party[different]!.classId)).name }));
+      game.state.combat = null;
+      withTempleChance(0, () => game.advanceToNextFloor());
+      app.syncUiToGameState();
+      app.tickReveal();
+      await renderOnce();
+      expect(captureCharFrame()).not.toContain(label);
+      mockInput.pressKey("b");
+      await renderOnce();
+      expect(captureCharFrame()).not.toContain(label);
+    } finally {
+      renderer.destroy();
+    }
   });
 
   test.each([

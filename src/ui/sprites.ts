@@ -38,7 +38,7 @@ export const TREASURE_SPRITES: Record<string, Sprite> = SPRITES.treasure;
 export const TEMPLE_SPRITES: Record<string, Sprite> = SPRITES.temple;
 export const TORCH_SPRITES: Record<string, Sprite> = SPRITES.torch;
 
-const TORCH_FRAME_ORDER = ["full", "strong", "low", "embers", "out"];
+const TORCH_FRAME_ORDER = ["full", "strong", "low", "embers"];
 
 export const TOMBSTONE_SPRITE: Sprite = {
   rows: [
@@ -100,7 +100,7 @@ export function assertMonsterSpritesConsistent(archetypes: MonsterArchetype[]): 
 
 assertMonsterSpritesConsistent(MONSTER_ARCHETYPES);
 
-/** The first threshold Faith meets picks the frame; Faith below every threshold, or 0, is the last frame. */
+/** The first threshold Faith meets picks the frame; Faith below every threshold uses the last frame. */
 export function torchFrameForFaith(faith: number): Sprite {
   const thresholds = BALANCE.faith.torchFrameThresholds;
   const index = thresholds.findIndex((threshold) => faith >= threshold);

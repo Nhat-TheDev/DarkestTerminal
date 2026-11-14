@@ -221,11 +221,13 @@ export function renderMain(game: Game, ui: CharacterInfoUiState): StyledText | s
 
   const cls = getClass(character.classId);
   const stats = characterStatBreakdown(character, game.state.satiety, game.state.boon);
+  const boonReligion = game.state.boon ? getReligion(game.state.boon.religionId) : null;
 
   const lines: TextChunk[][] = [
     ...picker,
     [colorChunk(t("ui.characterInfoHeading", { name: character.name, level: character.level, cls: cls.name }), PALETTE.title)],
     [colorChunk(t("ui.characterInfoReligion", { name: getReligion(cls.religionId).name }), getReligion(cls.religionId).style.color)],
+    ...(boonReligion ? [[colorChunk(t("ui.activeTempleBoon", { religion: boonReligion.name }), boonReligion.style.color)]] : []),
     [
       colorChunk(t("ui.characterInfoHp", { hp: character.hp, maxHp: character.maxHp }), hpColorFor(character.hp, character.maxHp)),
       colorChunk(t("ui.characterInfoMp", { mp: character.mp, maxMp: character.maxMp }), PALETTE.mp),

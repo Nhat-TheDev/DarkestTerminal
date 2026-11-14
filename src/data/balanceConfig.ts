@@ -48,12 +48,13 @@ interface BalanceConfig {
       faithCost: number;
       /** Percent added to Attack, Magic Power, Defense and Speed. */
       statPercent: number;
+      matchingStatPercent: number;
       /** Percent added to the stats the religion emphasises, instead of `statPercent`. */
       emphasisPercent: number;
+      matchingEmphasisPercent: number;
       /** Share of max HP and MP a recovering boon restores per room entered. */
       recoveryPerRoom: number;
-      /** Applied to the boon's stats and recovery for members of the temple's religion. */
-      matchingMultiplier: number;
+      matchingRecoveryPerRoom: number;
       /** Faith decay multiplier for the rest of the floor. */
       decayMultiplier: number;
     };

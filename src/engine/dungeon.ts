@@ -36,10 +36,10 @@ function roomHasLivingMonsters(room: Room, ctx: EngineContext): boolean {
 function recoverUnderBoon(state: GameState): void {
   const boon = state.boon;
   if (!boon || boon.depth !== state.floor.depth || !getReligion(boon.religionId).boon.recoversHpMp) return;
-  const { recoveryPerRoom, matchingMultiplier } = BALANCE.temple.boon;
+  const { recoveryPerRoom, matchingRecoveryPerRoom } = BALANCE.temple.boon;
   for (const c of state.party) {
     if (!c.isAlive) continue;
-    const share = boonMatches(c, boon) ? recoveryPerRoom * matchingMultiplier : recoveryPerRoom;
+    const share = boonMatches(c, boon) ? matchingRecoveryPerRoom : recoveryPerRoom;
     c.hp = Math.min(c.maxHp, c.hp + Math.round(c.maxHp * share));
     c.mp = Math.min(c.maxMp, c.mp + Math.round(c.maxMp * share));
   }

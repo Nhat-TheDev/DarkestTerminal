@@ -60,7 +60,7 @@ export function previewScene(file: BackdropsFile, sceneId: string, opts: Preview
     return { sprite: spriteForMonster(m.id, m.tier), label: style.abbr, color: style.color };
   });
 
-  const content = mergeBlocksHorizontally([sideBlock(party), torchDividerBlock(TORCH_SPRITES["full"]!), sideBlock(monsters)], SLOT_GAP);
+  const content = mergeBlocksHorizontally([sideBlock(party), torchDividerBlock(TORCH_SPRITES["full"]!), sideBlock(monsters)], 0);
   const backdrop = paintBackdrop(scene, BATTLEFIELD_CONTENT_WIDTH, 0, opts.dimmed);
   const shadow = opts.shadow === undefined ? scene.render.unitShadow : { ...scene.render.unitShadow, enabled: opts.shadow };
   const rows = composeBattlefield(content, backdrop, BATTLEFIELD_CONTENT_WIDTH, 0, shadow);

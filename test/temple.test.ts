@@ -14,8 +14,8 @@ const [RELIGION_A, RELIGION_B, RELIGION_C] = RELIGIONS.map((r) => r.id) as [Id, 
 const classOf = (religionId: Id) => CLASSES.filter((c) => c.religionId === religionId).map((c) => c.id);
 
 /** Party of two followers of A and two of B, in a temple of `templeReligion`; every member at 100/100 HP. */
-function templeGame(templeReligion: Id = RELIGION_A): { game: Game; a: Character[]; b: Character[] } {
-  const game = withTempleChance(1, () => new Game(1, [...classOf(RELIGION_A).slice(0, 2), ...classOf(RELIGION_B).slice(0, 2)]));
+function templeGame(templeReligion: Id = RELIGION_A, classes = [...classOf(RELIGION_A).slice(0, 2), ...classOf(RELIGION_B).slice(0, 2)]): { game: Game; a: Character[]; b: Character[] } {
+  const game = withTempleChance(1, () => new Game(1, classes));
   const room = getRoom(game.state.floor, game.state.currentRoomId);
   expect(room.type).toBe("temple");
   room.templeReligionId = templeReligion;
@@ -163,7 +163,8 @@ describe("the boon", () => {
   const religionWith = (pick: (boon: ReturnType<typeof emphasisOf>) => boolean) => RELIGIONS.find((r) => pick(r.boon))!.id;
 
   function boonedGame(templeReligion: Id) {
-    const { game } = templeGame(templeReligion);
+    const otherReligion = RELIGIONS.find((r) => r.id !== templeReligion)!.id;
+    const { game } = templeGame(templeReligion, [...classOf(templeReligion).slice(0, 2), ...classOf(otherReligion).slice(0, 2)]);
     const matching = game.state.party.filter((c) => religionOf(c).id === templeReligion);
     const other = game.state.party.filter((c) => religionOf(c).id !== templeReligion);
     const before = new Map(game.state.party.map((c) => [c.id, characterStatBreakdown(c, game.state.satiety, null)]));
@@ -171,19 +172,19 @@ describe("the boon", () => {
     return { game, matching, other, before };
   }
 
-  test("emphasis and matching multiplier", () => {
-    const religion = religionWith((b) => b.emphasis === "defense");
+  test.each(RELIGIONS.filter((r) => r.boon.emphasis !== null))("$name applies emphasis and matching rates", ({ id: religion, boon }) => {
     const { game, matching, other, before } = boonedGame(religion);
     expect(matching.length).toBeGreaterThan(0);
     expect(other.length).toBeGreaterThan(0);
-    for (const [members, multiplier] of [[other, 1], [matching, boonStats.matchingMultiplier]] as const) {
+    for (const [members, normal, emphasis] of [[other, 8, 15], [matching, 12, 20]] as const) {
       for (const c of members) {
         const base = before.get(c.id)!;
         const now = characterStatBreakdown(c, game.state.satiety, game.state.boon);
-        expect(now.defense.total).toBe(Math.round(base.defense.total * (1 + (boonStats.emphasisPercent * multiplier) / 100)));
-        expect(now.attack.total).toBe(Math.round(base.attack.total * (1 + (boonStats.statPercent * multiplier) / 100)));
-        expect(now.magicPower.total).toBe(Math.round(base.magicPower.total * (1 + (boonStats.statPercent * multiplier) / 100)));
-        expect(now.speed.total).toBe(Math.round(base.speed.total * (1 + (boonStats.statPercent * multiplier) / 100)));
+        const groups = { attack: "offense", magicPower: "offense", defense: "defense", speed: "speed" };
+        for (const stat of ["attack", "magicPower", "defense", "speed"] as const) {
+          const percent = groups[stat] === boon.emphasis ? emphasis : normal;
+          expect(now[stat].total).toBe(Math.round(base[stat].total * (1 + percent / 100)));
+        }
         expect(now.maxHp.total).toBe(base.maxHp.total);
         expect(c.defense).toBe(now.defense.total);
         expect(now.defense.boon).toBe(now.defense.total - base.defense.total);
@@ -194,12 +195,15 @@ describe("the boon", () => {
   test("a recovering boon raises the three stats evenly", () => {
     const religion = religionWith((b) => b.recoversHpMp);
     expect(emphasisOf(religion).emphasis).toBeNull();
-    const { game, other, before } = boonedGame(religion);
-    const c = other[0]!;
-    const base = before.get(c.id)!;
-    const now = characterStatBreakdown(c, game.state.satiety, game.state.boon);
-    for (const stat of ["attack", "defense", "magicPower", "speed"] as const) {
-      expect(now[stat].total).toBe(Math.round(base[stat].total * (1 + boonStats.statPercent / 100)));
+    const { game, other, matching, before } = boonedGame(religion);
+    for (const [members, percent] of [[other, 8], [matching, 12]] as const) {
+      for (const c of members) {
+        const base = before.get(c.id)!;
+        const now = characterStatBreakdown(c, game.state.satiety, game.state.boon);
+        for (const stat of ["attack", "defense", "magicPower", "speed"] as const) {
+          expect(now[stat].total).toBe(Math.round(base[stat].total * (1 + percent / 100)));
+        }
+      }
     }
   });
 
@@ -215,10 +219,11 @@ describe("the boon", () => {
     }
     const nextId = room(game).connectedRoomIds[0]!;
     game.move(nextId);
-    for (const [members, multiplier] of [[other.slice(0, 1), 1], [matching, boonStats.matchingMultiplier]] as const) {
+    expect(matching.length).toBeGreaterThan(0);
+    for (const [members, share] of [[other.slice(0, 1), 0.07], [matching, 0.10]] as const) {
       for (const c of members) {
-        expect(c.hp).toBe(10 + Math.round(c.maxHp * boonStats.recoveryPerRoom * multiplier));
-        expect(c.mp).toBe(Math.round(c.maxMp * boonStats.recoveryPerRoom * multiplier));
+        expect(c.hp).toBe(10 + Math.round(c.maxHp * share));
+        expect(c.mp).toBe(Math.round(c.maxMp * share));
       }
     }
     expect(dead.hp).toBe(0);

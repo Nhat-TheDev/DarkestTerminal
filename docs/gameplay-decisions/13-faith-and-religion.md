@@ -34,11 +34,11 @@ The percentage part is what makes the decay hold a band instead of a straight fa
 
 Every fear **gain** a character takes is multiplied by a factor that slides linearly with Faith, from `faith.fearGainMultiplierAtZero` (1.2) with the torch out to `faith.fearGainMultiplierAtFull` (0.5) at full Faith. The neutral point, where the factor is 1, falls a little under a third of the bar. The factor applies to gains only, never to relief (`04-fear-combat.md`), and stacks multiplicatively with a status's `fearResistPercent` inside `resistedFearGain`, which every fear-gain caller already runs before `adjustFear`. A fight reads the party's Faith at the start of each round; a reflection answer reads it as it was when the answer was picked, whatever order its effects list in.
 
-At 0 the torch is out. Nothing else happens beyond the fear penalty.
+At 0 the torch keeps a red ember but casts no halo. Nothing else happens beyond the fear penalty.
 
 ### The torch
 
-The battlefield divider between the party and the enemy block is the torch sprite, in every room, including rest, event, treasure and temple rooms. It has one frame per entry in `faith.torchFrameThresholds`, from full down to out, each used from its threshold upward; the sprites are in `data/sprites.json` (`torch`). The exact value, rounded down, also shows in the header beside Coins and Satiety, so the effect lines on the rest and reflection screens can be checked against it.
+The battlefield divider between the party and the enemy block is an upright wooden handheld torch, including in rest, event, treasure and temple rooms. The torch and its halo are hidden while the Gatekeeper scene is pending. It has four frames, from a large yellow flame through medium and small flames down to red embers, selected by `faith.torchFrameThresholds`; the sprites are in `data/sprites.json` (`torch`). A warm halo blends into the surrounding backdrop, fading with distance from the flame. Its brightness and radius decrease continuously with Faith, including within one sprite threshold; at zero Faith it disappears. The halo leaves sprite pixels and text unchanged and follows the backdrop's combat dimming. The exact Faith value, rounded down, also shows in the header beside Coins and Satiety, so the effect lines on the rest and reflection screens can be checked against it.
 
 ## 13.3 Religions
 
@@ -86,11 +86,11 @@ Give blood takes every eligible matching member at once; there is no picking. If
 
 ### The boon
 
-`GameState.boon` holds the religion and the floor depth it was asked on, and `advanceToNextFloor` clears it. Its effect is computed live in `recomputeCharacterStats`, as the Exhausted multiplier is, not stored as a status effect, so it shows in the stat screens as its own tag and ends with the floor without cleanup.
+`GameState.boon` holds the religion and the floor depth it was asked on, and `advanceToNextFloor` clears it. Its effect is computed live in `recomputeCharacterStats`, as the Exhausted multiplier is, not stored as a status effect. The party's buff list and character details show `Boon: <religion name>` in that religion's color, naming the temple's religion rather than the character's. Stat breakdowns show its contribution separately. The label and effect end with the floor.
 
-- Every boon raises attack, magic power, defense and speed by `temple.boon.statPercent` (5%).
-- A religion with an emphasis raises that stat by `temple.boon.emphasisPercent` (12%) instead: defense for one, speed for another, attack and magic power together for the third. The religion without one raises all three evenly and restores `temple.boon.recoveryPerRoom` (10%) of max HP and MP to each living member on every room entered for the rest of the floor.
-- A matching member multiplies all of it by `temple.boon.matchingMultiplier` (1.5).
+- Every boon raises attack, magic power, defense and speed by `temple.boon.statPercent` (8%), or `temple.boon.matchingStatPercent` (12%) for a member of the temple's religion.
+- A religion with an emphasis raises that stat by `temple.boon.emphasisPercent` (15%) instead, or `temple.boon.matchingEmphasisPercent` (20%) for a matching member: defense for one, speed for another, attack and magic power together for the third.
+- The religion without an emphasis raises all four stats evenly and restores `temple.boon.recoveryPerRoom` (7%) of max HP and MP to each living member on every room entered for the rest of the floor, or `temple.boon.matchingRecoveryPerRoom` (10%) for a matching member.
 - Faith decays more slowly for the rest of the floor (§13.2).
 
 The word is "boon" in code and docs: "blessing" is the gatekeeper's paid blessing, and the Runner's barter buff is its own thing.

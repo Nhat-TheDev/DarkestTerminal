@@ -113,8 +113,11 @@ function boonStatPercent(character: Character, stat: CharacterStat, boon: Active
   const group = BOON_STAT_GROUP[stat];
   if (!group || !boon) return 0;
   const config = BALANCE.temple.boon;
-  const percent = getReligion(boon.religionId).boon.emphasis === group ? config.emphasisPercent : config.statPercent;
-  return boonMatches(character, boon) ? percent * config.matchingMultiplier : percent;
+  const matching = boonMatches(character, boon);
+  if (getReligion(boon.religionId).boon.emphasis === group) {
+    return matching ? config.matchingEmphasisPercent : config.emphasisPercent;
+  }
+  return matching ? config.matchingStatPercent : config.statPercent;
 }
 
 /** Exhausted scales the base of every stat but maxHp/maxMp. Knight's passive multiplies maxHp/defense after
