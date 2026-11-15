@@ -1,5 +1,6 @@
 import type { BoonStat, Character, Id, Religion } from "../types";
 import religionsJson from "../../data/religions.json";
+import spritesJson from "../../data/sprites.json";
 import { CLASSES, getClass } from "./classes";
 
 const FILE = "data/religions.json";
@@ -12,6 +13,7 @@ export function validateReligions(religions: Religion[], classes: { id: Id; reli
     ids.add(r.id);
     if (!r.name) throw new Error(`${FILE}: "${r.id}" needs a "name"`);
     if (!r.templeDescription) throw new Error(`${FILE}: "${r.id}" needs a "templeDescription"`);
+    if (typeof r.templeSpriteId !== "string" || !Object.hasOwn(spritesJson.temple, r.templeSpriteId)) throw new Error(`${FILE}: "${r.id}" needs a "templeSpriteId" naming a temple sprite in data/sprites.json`);
     if (!/^#[0-9a-f]{6}$/i.test(r.style?.color ?? "") || !r.style.abbr) throw new Error(`${FILE}: "${r.id}" needs a "style" with an "abbr" and a "#rrggbb" "color"`);
     const emphasis = r.boon?.emphasis;
     if (emphasis !== null && !BOON_STATS.includes(emphasis as BoonStat)) {

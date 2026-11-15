@@ -3,6 +3,7 @@ import { plainChunk } from "./theme";
 import type { MonsterArchetype, MonsterTier } from "../types";
 import { MONSTER_ARCHETYPES } from "../data/monsters";
 import { BALANCE } from "../data/balanceConfig";
+import { getReligion } from "../data/religions";
 import spritesJson from "../../data/sprites.json";
 
 export interface Sprite {
@@ -62,7 +63,12 @@ export const TOMBSTONE_SPRITE: Sprite = {
 
 export const CAMPFIRE_SPRITE: Sprite = REST_SPRITES["campfire"]!;
 export const TREASURE_CHEST_SPRITE: Sprite = TREASURE_SPRITES["chest"]!;
-export const TEMPLE_ALTAR_SPRITE: Sprite = TEMPLE_SPRITES["altar"]!;
+export function spriteForTemple(religionId: string): Sprite {
+  const spriteId = getReligion(religionId).templeSpriteId;
+  const sprite = TEMPLE_SPRITES[spriteId];
+  if (!sprite) throw new Error(`No temple sprite: ${spriteId}`);
+  return sprite;
+}
 
 export function spriteForClass(classId: string): Sprite {
   const sprite = CLASS_SPRITES[classId];
@@ -193,6 +199,7 @@ export const ALL_SPRITES: { name: string; sprite: Sprite; maxHeight: number }[] 
   ...Object.entries(EVENT_SPRITES).map(([name, sprite]) => ({ name: `${name}-event`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
   ...Object.entries(REST_SPRITES).map(([name, sprite]) => ({ name: `${name}-rest`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
   ...Object.entries(TREASURE_SPRITES).map(([name, sprite]) => ({ name: `${name}-treasure`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
+  ...Object.entries(TEMPLE_SPRITES).map(([name, sprite]) => ({ name: `${name}-temple`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
   ...Object.entries(TORCH_SPRITES).map(([name, sprite]) => ({ name: `${name}-torch`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
   { name: "tombstone", sprite: TOMBSTONE_SPRITE, maxHeight: MAX_BOSS_HEIGHT },
 ];

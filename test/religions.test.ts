@@ -6,6 +6,7 @@ import { showPartySelect } from "../src/ui/partySelect";
 import { createCharacter } from "../src/engine/party";
 import { Game } from "../src/engine/game";
 import { renderMain } from "../src/ui/screens/characterInfo";
+import { TEMPLE_SPRITES } from "../src/ui/sprites";
 
 describe("religions", () => {
   test("every class has a known religion", () => {
@@ -34,11 +35,26 @@ describe("religions", () => {
   });
 
   test("the loader rejects an unknown class reference, a duplicate id and a bad emphasis", () => {
-    const ok = { id: "a", name: "A", templeDescription: "A room.", style: { abbr: "AA", color: "#ffffff" }, boon: { emphasis: null, recoversHpMp: false } };
+    const ok = { ...RELIGIONS[0]!, id: "a", name: "A", templeDescription: "A room.", style: { abbr: "AA", color: "#ffffff" }, boon: { emphasis: null, recoversHpMp: false } };
     expect(() => validateReligions([ok, { ...ok }], [])).toThrow(/twice/);
     expect(() => validateReligions([{ ...ok, boon: { emphasis: "luck" as never, recoversHpMp: false } }], [])).toThrow(/emphasis/);
     expect(() => validateReligions([ok], [{ id: "k", religionId: "nope" }])).toThrow(/unknown religion/);
     expect(() => validateReligions([{ ...ok, templeDescription: "" }], [])).toThrow(/templeDescription/);
+  });
+
+  test("each religion has a temple with its own silhouette", () => {
+    const silhouettes = RELIGIONS.map((religion) => {
+      const sprite = TEMPLE_SPRITES[religion.templeSpriteId];
+      expect(sprite, religion.id).toBeDefined();
+      return sprite!.rows.map((row) => row.replace(/[^.]/g, "#")).join("\n");
+    });
+    expect(new Set(silhouettes).size).toBe(RELIGIONS.length);
+  });
+
+  test("the loader rejects a missing or unknown temple sprite", () => {
+    for (const templeSpriteId of ["", "missing-temple"]) {
+      expect(() => validateReligions([{ ...RELIGIONS[0]!, templeSpriteId }], [])).toThrow(/templeSpriteId/);
+    }
   });
 
   test("party select shows the religion", async () => {

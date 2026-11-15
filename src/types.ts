@@ -353,6 +353,7 @@ export interface Religion {
   id: Id;
   name: string;
   templeDescription: string;
+  templeSpriteId: Id;
   style: UnitStyle;
   boon: { emphasis: BoonStat | null; recoversHpMp: boolean };
 }

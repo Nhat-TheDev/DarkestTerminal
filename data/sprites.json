@@ -1873,25 +1873,106 @@
     }
   },
   "temple": {
-    "altar": {
+    "sun-sanctuary": {
       "rows": [
-        "........Y........",
-        ".......YOY.......",
-        ".......YOY.......",
-        "......BBBBB......",
-        "....SSSSSSSSS....",
-        "...SDDDDDDDDDS...",
-        "...SDDDDDDDDDS...",
-        "...SDDDDDDDDDS...",
-        "..SSSSSSSSSSSSS..",
-        ".SSSSSSSSSSSSSSS."
+        "..........Y..........",
+        ".........GGG.........",
+        "......YGGGGGGGY......",
+        ".........GGG.........",
+        "..........G..........",
+        "...Y.............Y...",
+        "GGG.....SSSSS.....GGG",
+        ".G......SDDDS......G.",
+        ".S..SSSSSGGGSSSSS..S.",
+        ".S..SDDDDGGGDDDDS..S.",
+        ".S..SDDDDGGGDDDDS..S.",
+        ".S..SDDDDDGDDDDDS..S.",
+        "..SSSSSSSSSSSSSSSSS..",
+        "..SDDDDDDDDDDDDDDDS..",
+        "SSSSSSSSSSSSSSSSSSSSS"
       ],
       "palette": {
-        "Y": "#f2c14e",
-        "O": "#e2711d",
-        "B": "#3a352d",
-        "S": "#6b6a64",
-        "D": "#3f3e3a"
+        "Y": "#ffe2a0",
+        "G": "#d7aa42",
+        "S": "#77736a",
+        "D": "#46443f"
+      }
+    },
+    "herbal-sanctuary": {
+      "rows": [
+        "..........M..........",
+        ".........MMM.........",
+        ".......MMMLMMM.......",
+        ".....MMMLLMLLMMM.....",
+        "....MMMLLLMLLLMMM....",
+        "...MMMLLLLMLLLLMMM...",
+        ".MMMSSSSSSSSSSSSSMMM.",
+        ".SSSSSSSSSSSSSSSSSSS.",
+        "..LLL..DDDDDDD..LLL..",
+        "..LSL..DD...DD..LSL..",
+        "..LSL..D.....D..LSL..",
+        "..LSL..D.....D..LSL..",
+        "..LSL.....L.....LSL..",
+        "..LLLLLSSSSSSSLLLLL..",
+        "SSSSSSSSSSSSSSSSSSSSS"
+      ],
+      "palette": {
+        "M": "#627d3d",
+        "L": "#b5ad98",
+        "S": "#79766b",
+        "D": "#3a3935"
+      }
+    },
+    "silent-sanctuary": {
+      "rows": [
+        "..........P..........",
+        ".........PPP.........",
+        "........PPDPP........",
+        ".......PPD.DPP.......",
+        "......PPD...DPP......",
+        ".....PPD.....DPP.....",
+        "....PPD.......DPP....",
+        "...PPD.........DPP...",
+        "...PDL.........LDP...",
+        "...PDL.........LDP...",
+        "...PDL.........LDP...",
+        "...PDL..A.A.A..LDP...",
+        "...PDLSSSSSSSSSLDP...",
+        "...PPSSSSDDDSSSSPP...",
+        "PPSSSSSSSSSSSSSSSSSPP"
+      ],
+      "palette": {
+        "P": "#67556f",
+        "D": "#3c3544",
+        "L": "#77716e",
+        "A": "#a293a9",
+        "S": "#595553"
+      }
+    },
+    "iron-sanctuary": {
+      "rows": [
+        "..........R..........",
+        ".........RRR.........",
+        "........RRDRR........",
+        "......RRDDDDDRR......",
+        ".....RRDDDDDDDRR.....",
+        "...RRDDRDDRDDRDDRR...",
+        "..RRDDDDDDDDDDDDDRR..",
+        ".SSSSSSSSSSSSSSSSSSS.",
+        "..SDDDS..DDD..SDDDS..",
+        "..SDRDS.D...D.SDRDS..",
+        "..SIDIS.D...D.SIDIS..",
+        "..SI.IS.D...D.SI.IS..",
+        "..SDIDS.D...D.SDIDS..",
+        "...SSSSSSLLLSSSSSS...",
+        "SSSSSSSSSSSSSSSSSSSSS"
+      ],
+      "palette": {
+        "R": "#a34e38",
+        "D": "#3b3b39",
+        "S": "#6e6b62",
+        "I": "#b6ad95",
+        "L": "#918a79"
       }
     }
   },

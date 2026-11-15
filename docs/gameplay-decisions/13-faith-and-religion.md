@@ -42,7 +42,7 @@ The battlefield divider between the party and the enemy block is an upright wood
 
 ## 13.3 Religions
 
-Four religions, each a record in `data/religions.json`: `id`, `name`, `templeDescription`, a `style` (abbreviation and color) and a `boon` shape (`emphasis`: `offense`, `defense`, `speed` or null; `recoversHpMp`). Every class carries a fixed `religionId` in `data/classes.json`; the loader refuses a class that names an unknown one.
+Four religions, each a record in `data/religions.json`: `id`, `name`, `templeDescription`, `templeSpriteId`, a `style` (abbreviation and color) and a `boon` shape (`emphasis`: `offense`, `defense`, `speed` or null; `recoversHpMp`). Every class carries a fixed `religionId` in `data/classes.json`; the loader refuses a class that names an unknown one, or a religion whose `templeSpriteId` does not name a sprite in `data/sprites.json`'s `temple` section.
 
 <!-- docs:begin religions -->
 *Generated from `data/religions.json` and `data/classes.json` by `bun run docs:sync`. Do not edit.*
@@ -70,6 +70,12 @@ On the page: religion names appear in the UI as labels, not lore. A temple's des
 Each floor except the Founder encounter floor rolls a temple with chance `temple.chance` (80%), after its layout and monsters are built (`prependTemple`, `src/data/floor.ts`), so a seed's floor is the same with or without one. When it rolls, the temple is the floor's **entry room**: the party arrives in it, its only exit is the combat entrance the floor would have opened with, and its religion is drawn evenly from the four. The map shows it with its own glyph. Floor generation's invariant is that the entrance is a visible combat room; a temple in front of it is the one allowed exception (`technical-decisions.md` §1).
 
 The Founder encounter floor never rolls a temple; floors after it resume the normal temple roll. What already happens on arrival at other floors still happens first: the gatekeeper on a new run, the journal pickup and the ending checkpoint. The temple screen comes after them. The entrance ambush does not fire on a temple (it has no monsters); the next room starts its own fight as any room does. The gatekeeper's paid blessing skips a temple the way it skips a rest room, so entering one never spends a blessed room.
+
+### Temple sprites
+
+Each religion has its own temple sprite in `data/sprites.json`, linked by `templeSpriteId` in `data/religions.json`. The screen selects it from the room's `templeReligionId`, regardless of the party's religions. Each colored pixel occupies one terminal cell; previews use the same 1:2 width-to-height ratio.
+
+Light and Glory has a golden sun above a stepped altar with brass lamps. Plague and Healing has a moss-green roof, pale stone columns and an arched entrance. Night and Silence has a pointed violet hood, a dark recess and ash bowls. Fury and Blood has a rust-red roof, iron-clad pillars and iron rings. Their silhouettes and architectural details differ as well as their palettes. All four can be edited in the game editor's Religion temples category.
 
 ### The four actions
 

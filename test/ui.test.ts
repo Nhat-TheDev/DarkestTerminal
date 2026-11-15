@@ -22,7 +22,7 @@ import { showSlotSelect } from "../src/ui/saveSelect";
 import { t } from "../src/data/strings";
 import { renderFloorMap } from "../src/ui/floorMap";
 import { CLASSES } from "../src/data/classes";
-import { TORCH_SPRITES } from "../src/ui/sprites";
+import { TORCH_SPRITES, TEMPLE_SPRITES } from "../src/ui/sprites";
 import { EVENTS } from "../src/data/events";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import { BALANCE } from "../src/data/balanceConfig";
@@ -1674,6 +1674,28 @@ describe("Temple screen", () => {
     await setup.renderOnce();
     return { ...setup, game, app, room };
   }
+
+  test.each(RELIGIONS)("$name temple renders its own sprite regardless of the party's religions", async (religion) => {
+    const sprite = TEMPLE_SPRITES[religion.templeSpriteId];
+    expect(sprite, religion.id).toBeDefined();
+    const { captureCharFrame, captureSpans, renderer } = await templeApp({
+      prepare: (g) => { getRoom(g.state.floor, g.state.currentRoomId).templeReligionId = religion.id; },
+    });
+    try {
+      const label = t("ui.templeLabel");
+      const lines = captureCharFrame().split("\n");
+      const labelY = lines.findIndex((line) => line.includes(label));
+      expect(labelY).toBeGreaterThan(0);
+      const slotX = lines[labelY]!.indexOf(label) - Math.floor((30 - label.length) / 2);
+      const startY = labelY - 1 - sprite!.rows.length;
+      const pixels = captureSpans().lines.map((line) => line.spans.flatMap((span) => Array.from({ length: span.width }, () => span.bg)));
+      const cells = sprite!.rows.flatMap((row, y) => [...row].flatMap((key, x) => key === "." ? [] : [{ x, y, color: RGBA.fromHex(sprite!.palette[key]!) }]));
+      const starts = Array.from({ length: 30 - sprite!.rows[0]!.length + 1 }, (_, x) => slotX + x);
+      expect(starts.some((startX) => cells.every(({ x, y, color }) => pixels[startY + y]![startX + x]!.equals(color))), religion.id).toBe(true);
+    } finally {
+      renderer.destroy();
+    }
+  });
 
   test("temple screen lists the matching actions", async () => {
     const { app, game, captureCharFrame, renderer } = await templeApp();

@@ -40,7 +40,7 @@ import {
   spriteHeight,
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
-  TEMPLE_ALTAR_SPRITE,
+  spriteForTemple,
 } from "./sprites";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, battlefieldInnerWidth, centerText, monsterStyle, mergeBlocksHorizontally, torchDividerBlock } from "./layout";
 import { sceneById, type UnitShadow } from "../data/backdrops";
@@ -1170,8 +1170,8 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
-  private buildTempleBlock(): TextChunk[][] {
-    const lines = renderSpriteInSlot(TEMPLE_ALTAR_SPRITE, MAX_BOSS_HEIGHT, EMPTY_ENEMY_WIDTH);
+  private buildTempleBlock(religionId: Id): TextChunk[][] {
+    const lines = renderSpriteInSlot(spriteForTemple(religionId), MAX_BOSS_HEIGHT, EMPTY_ENEMY_WIDTH);
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
     lines.push([colorChunk(centerText(t("ui.templeLabel"), EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
@@ -1295,7 +1295,7 @@ export class App implements ScreenContext {
     } else if (isRestRoom) {
       enemyBlock = this.buildCampfireBlock();
     } else if (isTempleRoom) {
-      enemyBlock = this.buildTempleBlock();
+      enemyBlock = this.buildTempleBlock(room.templeReligionId!);
     } else if (isTreasureRoom) {
       enemyBlock = this.buildTreasureBlock();
     } else if (isEventRoom) {
