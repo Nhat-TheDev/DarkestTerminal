@@ -5,6 +5,7 @@ import { parseArgs } from "../dev-save-dump/args";
 
 // SAVE_DIR is read when the engine is first imported, so it must be set before anything from src/ loads.
 process.env.DARKEST_TERMINAL_SAVE_DIR = mkdtempSync(join(tmpdir(), "darkest-terminal-curve-saves-"));
+const { BALANCE } = await import("../../src/data/balanceConfig");
 const { benchRow, compareToBaseline, findCurveIssues, guardCases, pct } = await import("./bench");
 const { TEAMS } = await import("../random-play/team");
 const { table, escapeHtml, htmlPage } = await import("../random-play/report");
@@ -15,7 +16,7 @@ type LevelPick = import("./bench").LevelPick;
 const args = parseArgs(process.argv.slice(2).filter((a) => a !== "--check"));
 const check = process.argv.includes("--check");
 // The base's artifact is measured with the default options only, so a check compares like with like.
-if (check && ["only", "tier", "teams", "level", "precision", "max-fights"].some((k) => k in args)) {
+if (check && ["only", "tier", "teams", "level", "precision", "max-fights", "faith"].some((k) => k in args)) {
   throw new Error("--check runs every guard with the default options; drop the other flags");
 }
 
@@ -31,6 +32,8 @@ const teams = args.teams === undefined ? TEAMS : args.teams.split(",").map((name
 });
 const precision = Number(args.precision ?? 0.05);
 const maxFights = Number(args["max-fights"] ?? 1000);
+const faith = Number(args.faith ?? BALANCE.faith.typicalLevel);
+if (!Number.isFinite(faith) || faith < 0 || faith > 100) throw new Error(`--faith must be a number from 0 to 100, not "${args.faith}"`);
 const baselinePath = args.baseline ? resolve(args.baseline) : null;
 const baseline: BenchRow[] | null = baselinePath ? JSON.parse(readFileSync(baselinePath, "utf8")).rows : null;
 
@@ -40,7 +43,7 @@ if (cases.length === 0) throw new Error("no guard matches --only/--tier");
 const startedAt = performance.now();
 const rows: BenchRow[] = [];
 for (const guard of cases) {
-  const row = benchRow(guard, { teams, level, precision, maxFights });
+  const row = benchRow(guard, { teams, level, precision, maxFights, faith });
   rows.push(row);
   const byTeam = row.teams.map((t) => `${t.team.slice(0, 3)} ${pct(t.winRate)}`).join("  ");
   console.log(
@@ -63,7 +66,7 @@ if (changes) {
   }
 }
 
-const options = { level, precision, maxFights, teams: teams.map((t) => t.name), only: only ?? null, tier: tier ?? null };
+const options = { level, faith, precision, maxFights, teams: teams.map((t) => t.name), only: only ?? null, tier: tier ?? null };
 
 const outDir = args.out ? resolve(args.out) : mkdtempSync(join(tmpdir(), "darkest-terminal-curve-"));
 mkdirSync(outDir, { recursive: true });
@@ -74,7 +77,7 @@ writeFileSync(
     "Guard curve",
     "  .wrap { overflow-x:auto; } th, td { white-space:nowrap; }",
     `<h1>Guard curve</h1>
-<p class="meta">${escapeHtml(new Date().toISOString())} · ${rows.length} guards · ${fights} fights · ${durationSec.toFixed(0)} s · level ${level} · teams ${escapeHtml(options.teams.join(", "))}</p>
+<p class="meta">${escapeHtml(new Date().toISOString())} · ${rows.length} guards · ${fights} fights · ${durationSec.toFixed(0)} s · level ${level} · faith ${faith} · teams ${escapeHtml(options.teams.join(", "))}</p>
 <p class="meta">Real engine fights from full HP with the starting items and no artifacts, played by the random-play team policy. Rounds count won fights only.</p>
 ${changes ? `<h2>Against baseline</h2><div class="wrap">${table(
     ["Guard", "Win before", "Win now", "Hp lost change", "Rounds change"],

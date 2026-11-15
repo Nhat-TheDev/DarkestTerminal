@@ -1,7 +1,9 @@
-import type { EventDefinition, EventTier, GameState, Id } from "../types";
+import type { EventDefinition, EventTier, GameState, Id, ReflectionCondition } from "../types";
 import eventsJson from "../../data/events.json";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
+import { catalogRuleErrors } from "./reflectionCatalog";
+import { RELIGIONS } from "./religions";
 
 export const EVENTS = eventsJson as unknown as EventDefinition[];
 
@@ -16,6 +18,19 @@ const NARRATIVE_COUNTERS: ReadonlySet<string> = new Set<keyof GameState["narrati
   "freeRewardsTakenCount",
 ]);
 
+export function assertConditionValid(where: string, c: ReflectionCondition): void {
+  if ("religionInParty" in c) {
+    if (!RELIGIONS.some((r) => r.id === c.religionInParty)) throw new Error(`${where} names an unknown religion "${c.religionInParty}"`);
+  } else if ("counterAtLeast" in c) {
+    if (!NARRATIVE_COUNTERS.has(c.counterAtLeast.counter)) throw new Error(`${where} counter "${c.counterAtLeast.counter}" is not a narrative counter`);
+    if (typeof (BALANCE.events as Record<string, unknown>)[c.counterAtLeast.threshold] !== "number") {
+      throw new Error(`${where} threshold "${c.counterAtLeast.threshold}" is not a number in balance-config events`);
+    }
+  } else if (!["won", "lost", "declined"].includes(c.lastGambleOutcome)) {
+    throw new Error(`${where} lastGambleOutcome "${c.lastGambleOutcome}" is not won, lost or declined`);
+  }
+}
+
 export function assertEventDataConsistent(events: EventDefinition[]): void {
   for (const event of events) {
     if (event.escalation) {
@@ -28,6 +43,15 @@ export function assertEventDataConsistent(events: EventDefinition[]): void {
     }
     if (event.freeTake && (event.kind !== "instantReward" || event.noArtifactReward)) {
       throw new Error(`data/events.json: "${event.id}" sets freeTake but is not an instantReward that grants an artifact`);
+    }
+    if (event.reflection) {
+      const { options } = event.reflection;
+      if (!Array.isArray(options)) throw new Error(`data/events.json: "${event.id}" reflection options must be a list`);
+      for (const option of options) {
+        for (const c of [...(option.requires ?? []), ...option.outcomes.flatMap((o) => o.when ?? [])]) assertConditionValid(`data/events.json: "${event.id}" reflection condition`, c);
+      }
+      const errors = catalogRuleErrors(options);
+      if (errors.length > 0) throw new Error(`data/events.json: "${event.id}" reflection breaks the catalog rules: ${errors.join("; ")}`);
     }
     if (event.reflectionRequiresOutcome !== undefined) {
       if (!event.reflection) throw new Error(`data/events.json: "${event.id}" sets reflectionRequiresOutcome but has no reflection`);

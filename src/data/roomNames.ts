@@ -6,7 +6,7 @@ export interface RoomNameEntry {
   backdrop: string;
 }
 
-const ROOM_TYPES = ["combat", "rest", "boss", "event"] satisfies RoomType[];
+const ROOM_TYPES = ["combat", "rest", "boss", "event", "temple"] satisfies RoomType[];
 
 export function parseRoomNames(raw: unknown): Record<RoomType, RoomNameEntry[]> {
   const pools = (raw ?? {}) as Record<RoomType, unknown>;

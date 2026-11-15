@@ -135,11 +135,21 @@ function migrateToV1_2_1(state: GameState): void {
   for (const room of state.floor.rooms) room.name = V1_2_1_ROOM_RENAMES[room.name] ?? room.name;
 }
 
+/** Saves before 1.3.0, which added Faith and moved the pending reflection into the exit scene. */
+function migrateToV1_3_0(state: GameState & { pendingReflection?: { eventId: Id } | null }): void {
+  if (typeof state.faith !== "number") state.faith = BALANCE.faith.initial;
+  if (state.boon === undefined) state.boon = null;
+  const pending = state.pendingReflection;
+  if (pending && state.pendingEventExit === undefined) state.pendingEventExit = { eventId: pending.eventId, withReflection: true };
+  delete state.pendingReflection;
+}
+
 /** One step per release that changed what a saved value means, oldest first. */
 const VERSION_MIGRATIONS: { version: string; migrate: (state: GameState) => void }[] = [
   { version: "1.1.1", migrate: migrateToV1_1_1 },
   { version: "1.2.0", migrate: migrateToV1_2_0 },
   { version: "1.2.1", migrate: migrateToV1_2_1 },
+  { version: "1.3.0", migrate: migrateToV1_3_0 },
 ];
 
 /**
@@ -250,6 +260,7 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   if (typeof state.narrativeCounters.guardianGrudgeFiredCount !== "number") state.narrativeCounters.guardianGrudgeFiredCount = 0;
   if (typeof state.narrativeCounters.freeRewardsTakenCount !== "number") state.narrativeCounters.freeRewardsTakenCount = 0;
   if (!state.eventReflectionStances) state.eventReflectionStances = {};
+  if (state.pendingEventExit === undefined) state.pendingEventExit = null;
   if (!state.eventOutcomes) state.eventOutcomes = {};
   if (!Array.isArray(state.firedOnceEventIds)) state.firedOnceEventIds = [];
   if (typeof state.loreExposureCount !== "number") state.loreExposureCount = 0;

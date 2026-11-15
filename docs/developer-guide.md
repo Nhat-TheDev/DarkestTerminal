@@ -22,7 +22,7 @@ bun test        # unit tests for the engine (resolver, combat, aggro, level, flo
                  # headless smoke tests for the UI (simulated keyboard input via @opentui/core/testing)
 bun run typecheck
 bun run game-editor  # dev tool: sprite and backdrop editing, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (tools/game-editor/)
-bun run dump-save    # dev tool: web UI that writes a save at any level/floor/room/event (tools/dev-save-dump/, dev mode only)
+bun run dump-save    # dev tool: web UI that writes a save at any level/floor/room (a temple included)/Faith/event (tools/dev-save-dump/, dev mode only)
 bun run docs:sync    # rewrite the doc tables and numbers that mirror data/*.json (--check only verifies, --coverage lists unprotected numbers; bun test runs the check)
 bun run random-play  # dev tool: a bot plays seeded runs through the headless UI and writes report.html (tools/random-play/); --evidence captures every screen as PNG
 bun run curve        # dev tool: elite/boss fights on the engine, win rate per guard and team (tools/curve/); --check gates on the curve rules
@@ -53,7 +53,7 @@ guard unless the party is in danger. Below 35% MP a character conserves: outside
 spends MP only on heals and fear relief, and otherwise reaches for a recovery item, a damage item
 or the free basic attack, in that order. Mana potions wait for the guard, and a healer always keeps
 the MP for its cheapest heal. It takes a rest room when anyone is hurt, frightened, low on MP or
-satiety is at 50 or below, eats when hungry, talks when frightened, and camps on a kit when hungry.
+satiety is at 50 or below, camps on a kit when hungry, and at a rest eats when hungry, otherwise prays while Faith is below half (`PRAY_FAITH_BELOW`), otherwise talks when someone is frightened and eats if not (`chooseRest`). At a temple it gives blood whenever the temple will take it (giving everyone's blood only when every living member would survive the cost) and leaves otherwise; it never chooses the boon itself, which only the random footer keys can ask (`chooseTemple`). At an exit scene it leaves without a word one time in four (`LEAVE_SILENT_CHANCE`) and picks a shown answer at random otherwise (`chooseExit`). All of these are in `tools/random-play/team.ts`.
 
 Once the run has not changed for a while it stops following the policy, backs out of any screen that offers Esc and favours digits and
 Enter over the global keys, so it does not idle in the character sheet or the log. Every run plays
@@ -62,7 +62,7 @@ new screen is also redrawn once at the minimum supported size, 150×45. Along th
 reloads (more often mid-combat) and occasionally resizes. It reports:
 
 - **crash** — an exception, including one OpenTUI's key handler catches and only logs;
-- **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, two characters carrying one Ability…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
+- **invariant** — state that must never happen (a NaN stat, HP outside 0..max, two summons with one id, an open combat after the run ended, two characters carrying one Ability, Faith outside 0..100, a shown answer on the event exit scene whose requirements fail — Camp Reflection's shown answers are not checked…), see `findInvariantViolations` in `tools/random-play/checks.ts`;
 - **textLeak / longDecimal** — `undefined`, `NaN`, `{{template}}` or raw ANSI on screen, and numbers with three or more decimals;
 - **deadKey / hiddenKey** — a footer key that does nothing, or an unadvertised digit that changes the run;
 - **missingFooter / footerTruncated / panelMissing** — layout broken at the play sizes or at 150×45;
@@ -82,7 +82,7 @@ runs 5 fixed seeds per team this way (`.github/workflows/random-play.yml`).
 
 `bun run random-play --evidence` plays fixed scenarios instead, to capture every screen rather than
 find crashes: a fresh run with its opening scenes, a rest room, every room event (each forced into an
-event room with `applyDump`'s `forceEventId`, the run ending once the party leaves the room), an elite
+event room with `applyDump`'s `forceEventId`, the run ending once the party leaves the room, so each ends on its exit scene), a temple, an elite
 and a boss guard room, and a defeat. A scenario's seed and team come from its name, so adding an event
 leaves every other scenario's screens as they were, and a scenario plays at
 180×70 with no save round trips, resizes or hidden-key probes, so the same code captures the same
@@ -100,11 +100,11 @@ a link to the gallery. A change that sends the bot down another path also change
 it. The curve comment and this one each start with a marker that
 `.github/scripts/upsert-comment.sh` finds to edit them in place.
 
-`bun run curve` (`--only ID,ID --tier elite|boss --teams NAME,NAME --level min|avg|max --precision P
+`bun run curve` (`--only ID,ID --tier elite|boss --teams NAME,NAME --level min|avg|max --faith N --precision P
 --max-fights N --baseline FILE --out DIR`) measures elite and boss fights on the engine itself, with
 no UI. Each guard archetype is fought on every random-play start floor it can appear on, on its first
 elite and boss floors, and the final boss on its own floor. The party starts at full HP with the
-starting items and no artifacts, at that floor's average level from `simulateLevelByDepth`
+starting items and no artifacts, at `faith.typicalLevel` Faith (`--faith N` overrides it), at that floor's average level from `simulateLevelByDepth`
 (`--level min|max` takes the floor's lowest or highest instead), and every member plays the
 random-play team policy. Fights come in batches of 20 per team until the 95% Wilson interval of the
 win rate is within `--precision` (0.05) on each side, or `--max-fights` (1000) is reached; a fight
@@ -146,14 +146,15 @@ policy and bench, so a change to either shows in the comparison as well as a bal
 - **2-phase combat** (command all 4 characters → execute in speed order, monsters decide on the spot), weighted-random targeting mixed per `aiPattern` from aggro, low HP, fear and damage taken (`src/engine/monsterAI.ts`, `02-monster.md`), retarget/cancel rule when a target dies before its turn — `src/engine/combat.ts`
 - **One Elite/Boss kit per guard-room archetype** (all 10, plus the final boss, What's Left of Him, `the-founder`): data-declared skills with their own cooldowns, conditions, target rules and phases, plus a boss-only telegraph released by a meter; the elite tier runs a reduced subset of the boss kit. Built on a rules-aware monster AI and a few generic mechanics (summoning, riposte, a breakable shell, untargetable monsters) — `data/monster-skills.json`, `data/monsters.json`, `src/engine/monsterAI.ts`
 - **`SkillEffect` resolver** shared across skills/status-effects/items, buffs/debuffs via `modifyCombatStat`, DoT ticks at the end of every round — `src/engine/resolver.ts`
-- **Fear + Satiety survival stats**, HP=0 → true permadeath, fear affects combat back through 4 tiers — `src/engine/survival.ts`, `src/engine/resolver.ts`. Satiety is party-wide, draining once per room resolved (amount depends on room type); low satiety escalates through **Exhausted** (stats reduced) and **Dying** (a recurring HP tick on top of Exhausted). The rest room offers Eat and drink or Talk (or Skip, and Trade when the Merchant's Runner is there — `src/ui/screens/room.ts`), and **Camp** — a post-victory option paid for with an Exploration Kit item — restores satiety outside the rest room. Details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md)
+- **Faith, religions and temples** — `GameState.faith` (0-100, party-wide) starts full, decays on the first entry into each room (the entry room of floor 1 excepted) and lowers every fear gain the higher it stands. It is drawn as a torch between the party and the enemy in every room and shown, rounded down, in the header beside Coins and Satiety. Every class carries a fixed `religionId` (`data/religions.json`: four religions, each with a boon shape). Most floors open on a temple, the floor's entry room, where the party gives blood to raise Faith or pays Faith for a boon that lasts the floor. Pray and Talk at a rest room also raise it, and reflection answers can move it — `src/engine/survival.ts`, `src/engine/temple.ts`, `src/engine/party.ts` (the boon's stats), `src/data/religions.ts`, `src/ui/screens/temple.ts`, details in [`gameplay-decisions/13-faith-and-religion.md`](./gameplay-decisions/13-faith-and-religion.md)
+- **Fear + Satiety survival stats**, HP=0 → true permadeath, fear affects combat back through 4 tiers — `src/engine/survival.ts`, `src/engine/resolver.ts`. Satiety is party-wide, draining once per room resolved (amount depends on room type); low satiety escalates through **Exhausted** (stats reduced) and **Dying** (a recurring HP tick on top of Exhausted). The rest room offers Eat and drink, Talk (which also raises Faith for each religion with two or more living members) and Pray; one of the three can be taken per room, then Leave clears it (Trade is also offered when the Merchant's Runner is there and stays open after resting — `src/ui/screens/room.ts`), and **Camp** — a post-victory option paid for with an Exploration Kit item — restores satiety outside the rest room. Details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md)
 - **Level 1-100 system**: `attack`/`defense`/`maxHp`/`maxMp` grow through tapered tiers via `growthBonus()`, shared between characters (by `level`) and monsters (by `floorDepth`). Characters additionally apply their own class-specific `growthWeights` so the 12 classes don't converge to look the same at high levels. Character level (shared across the party, capped at 100, gained through EXP from killing monsters) is completely separate from dungeon floor level (`Floor.depth`, uncapped) — details in [`gameplay-decisions/06-level-system.md`](./gameplay-decisions/06-level-system.md)
 - **Consumable items + permanent, one-shot-decision Artifacts** — items dropped by monsters, usable only in combat (view-only outside it; `combatUsable: false` keeps one out of combat too, e.g. the Camp kit); artifacts are equipped on one specific character (max 3 per character) the instant they're picked up — the player decides equip-or-discard right then, with no free reassignment afterward (3 narrow exceptions) — effects only counting for whoever has it equipped — `src/data/items.ts`, `src/data/artifacts.ts`, `src/engine/artifacts.ts`, `src/engine/party.ts`, details in [`gameplay-decisions/07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md)
 - **Cursed Coins** — a party-wide currency dropped by every monster kill (amount by monster power tier), spent in the Merchant (coin prices + a paid Refresh), the Wandering Gambling Den (a 4-round escalating coin gamble), the Wandering Hermit's Exchange Fortune service, and the Merchant's Runner's shop (selling items back to him is a small coin source) — `src/data/currency.ts`, `src/engine/events/`, details in [`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)
-- **Merchant's Runner** — a 50% chance on entering a Rest room: a notice screen, then a fourth **Trade** option that replaces the room's rest action. He runs a coin shop of consumables (5 rotating offers, singly or as lots of 3, refreshable, with tier odds that climb with floor depth), buys consumables and trophies back at a fifth of the single price, and takes a number of one effect-less monster trophy kind for a buff that waits for the floor's elite/boss fight — `src/engine/events/runner.ts`, `src/engine/events/barter.ts`, `src/data/shopStock.ts`, `src/ui/screens/runner.ts`, details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md) (flow, shop odds, barter), [`09-currency.md`](./gameplay-decisions/09-currency.md) and [`07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md) (tiers, trophies)
-- **Event room** — a random event room rolling 1 of several event types when entered, split into 2 rarity tiers — `src/data/events.ts`, details in [`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)
+- **Merchant's Runner** — a 50% chance on entering a Rest room: a notice screen, then a fourth **Trade** option that sits beside the rest action: trading leaves the rest open, and resting leaves Trade open until the party leaves. He runs a coin shop of consumables (5 rotating offers, singly or as lots of 3, refreshable, with tier odds that climb with floor depth), buys consumables and trophies back at a fifth of the single price, and takes a number of one effect-less monster trophy kind for a buff that waits for the floor's elite/boss fight — `src/engine/events/runner.ts`, `src/engine/events/barter.ts`, `src/data/shopStock.ts`, `src/ui/screens/runner.ts`, details in [`gameplay-decisions/03-survival-stats.md`](./gameplay-decisions/03-survival-stats.md) (flow, shop odds, barter), [`09-currency.md`](./gameplay-decisions/09-currency.md) and [`07-items-artifacts.md`](./gameplay-decisions/07-items-artifacts.md) (tiers, trophies)
+- **Event room** — a random event room rolling 1 of several event types when entered, split into 2 rarity tiers. Every event room ends on an exit scene (`eventExit`): a reflection whose answers carry visible effects, with `[Enter] Leave without a word`, or plain `[Enter] Leave` when the event has no reflection — `src/data/events.ts`, `src/engine/reflection.ts`, `src/ui/effectLine.ts`, details in [`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)
 - **The Gatekeeper** — every new run opens at the cave mouth with the one `kind: "scripted"` event, before floor 1's entry room (whose ambush waits for `Game.enterDungeon`). Paying `gatekeeper.tollCoins` (50) coins blesses the next `gatekeeper.blessingRooms` (5) rooms the party enters, rest rooms not counted: a fight in one opens with the `gatekeeper.blessingStatusId` status on every living member, and the guard room ends the blessing. Refusing costs nothing. The party then takes the map and moves in — `src/engine/events/gatekeeper.ts`, `src/ui/screens/gatekeeper.ts`, details in [`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md) §8.7
-- **Camp Reflection + lore exposure** — each resolved event that counts as lore (not `noLoreExposure`, not the scripted one; `LORE_EXPOSURE_EVENT_IDS`) raises `GameState.loreExposureCount`. Entering an uncleared rest room once the count reaches a tier above the highest one answered (`survival.campReflectionTier1Threshold` up to `survival.campReflectionTier4Threshold`) opens a 3-choice reflection (`campReflection`); the choices are kept in `campReflectionChoices` — `src/data/loreExposure.ts`, `src/engine/dungeon.ts`, `src/ui/screens/campReflection.ts`
+- **Camp Reflection + lore exposure** — each resolved event that counts as lore (not `noLoreExposure`, not the scripted one; `LORE_EXPOSURE_EVENT_IDS`) raises `GameState.loreExposureCount`. Entering an uncleared rest room once the count reaches a tier above the highest one answered (`survival.campReflectionTier1Threshold` up to `survival.campReflectionTier4Threshold`) opens a reflection (`campReflection`) whose answers carry visible effects, a fourth one showing for a religion in the party; the choices are kept in `campReflectionChoices` — `src/data/loreExposure.ts`, `src/engine/dungeon.ts`, `src/ui/screens/campReflection.ts`
 - **Floor-milestone omens** — winning the guard room on a floor that is a multiple of the `interval` in `data/floor-milestones.json` shows one omen line (`floorMilestone`), never repeated in a run and due by its `maxFloor`; an omen can also grant a journal fragment — `src/data/floorMilestones.ts` (`pickFloorMilestoneOmen`), `Game.clearFinishedCombat`, `src/ui/screens/floorMilestone.ts`
 - **Endings** — clearing floor `endings.checkpointFloorDepth` (100) opens the ending checkpoint (`endingCheckpoint`). `endingCheckpointMode` picks its options: Leave alone when the run's event history triggers it (ambushed, or escaped with an `escapesLeaveAmbush` artifact equipped), Stay or Let go otherwise, plus Continue once Camp Reflection has reached tier 4. Stay retires a living character into the slot profile. Continue carries on to floor `endings.founderFloorDepth` (120), where the founder dialogue leads into the final boss fight — `src/data/endings.ts`, `Game.pickEndingChoice`, `src/ui/screens/ending.ts`, `src/ui/screens/founderDialogue.ts`
 - **Dev mode** — `DEV_MODE` (`src/engine/devMode.ts`) is true everywhere except the release binary, where `bun run build` bakes `__DEV__=false` in at compile time. `writeDevDumpSave` (used by `bun run dump-save`) marks a save `devDump: true`, and `isDevDumpAllowed` (`src/engine/save.ts`) refuses to load such a save outside dev mode, even when its file is copied into a release install
@@ -186,11 +187,13 @@ of the code doesn't need to know the data comes from JSON.
 | `data/journal.json` | Journal pages (lines with a `subject`, optional `requires`/`minDepth`, and at least 2 directions: `label`, `speech`, optional `personalities` with a `good` and `bad` line each, optional `requires`) and fragments (`text`, `lineIds`, `sources`, optional `remark`) | `src/data/journal.ts` |
 | `data/barter.json` | What each trophy costs and buys when bartered to the Merchant's Runner: item, number needed, and buff effects | `src/data/barter.ts` |
 | `data/artifacts.json` | Equippable artifacts (multiple rarity tiers, multiple effect types, incl. Cursed ones) | `src/data/artifacts.ts` |
-| `data/events.json` | Events for the event room (2 rarity tiers) | `src/data/events.ts` |
+| `data/events.json` | Events for the event room (2 rarity tiers), each with its reflection: prompts and answers with their stance, conditions, outcomes and effects | `src/data/events.ts` |
+| `data/camp-reflections.json` | The four Camp Reflection tiers: prompt and answer strings (by `data/strings.json` key) with each answer's conditions, outcomes and effects | `src/data/loreExposure.ts` |
+| `data/religions.json` | The four religions: `id`, `name`, `templeDescription`, a `style` (abbreviation and color) and the `boon` shape (`emphasis`, `recoversHpMp`). Each class names its religion in `religionId` in `data/classes.json` | `src/data/religions.ts` |
 | `data/room-names.json` | Room-name pools per room type (combat, rest, boss, event); each name links to the backdrop scene drawn behind its Battlefield | `src/data/roomNames.ts` |
 | `data/backdrops.json` | Battlefield backdrops: the global render settings, the wall/floor `bases`, the `props`, and one `scenes` entry per room name (a base plus placed props) | `src/data/backdrops.ts` |
 | `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` + `maxLevel` | `src/data/levelGrowth.ts` |
-| `data/balance-config.json` | Shared balancing constants (drop rates, weights, thresholds, Cursed Coin amounts...) | `src/data/balanceConfig.ts` |
+| `data/balance-config.json` | Shared balancing constants (drop rates, weights, thresholds, Cursed Coin amounts, Faith, temples, the rest room, reflection effect sizes...) | `src/data/balanceConfig.ts` |
 | `data/sprites.json` | Pixel-art (character grid + palette) for every class + every monster role (normal→`monsters`, elite→`elites`, boss→`bosses`; guard-only ships elite+boss only, final boss ships boss only) | `src/ui/sprites.ts` |
 | `data/strings.json` | All text displayed in the UI. `{{name}}` inserts a value; `{{name\|one\|many}}` writes `one` when that value is 1 and `many` otherwise, so a count reads "1 turn" / "2 turns" | `src/data/strings.ts` |
 | `data/abilities.json` | Player-purchasable abilities (ability-buyback screen) | `src/data/abilities.ts` |
@@ -631,7 +634,9 @@ screen contributes.
 | `ui.kind` | Contextual footer |
 | --- | --- |
 | `room` | `[1-n] Move   [i] Items   [a] Artifacts` — n = exits from this room; `[i]` drops when the bag is empty (`ui.footerRoomNoItems`) |
-| `rest` | `[1-2] Choose   [Enter] Skip` — `[1-3]` when the Merchant's Runner is there (Trade) |
+| `rest` | `[1-3] Choose   [Enter] Leave` — `[1-4]` when the Merchant's Runner is there (Trade); once the rest action is taken, `[Enter] Leave`, or `[4] Trade   [Enter] Leave` with the runner |
+| `temple` | `[1-2] Choose   [Enter] Leave` — Give blood or Give everyone's blood, and Ask a boon; a locked action keeps its digit and refuses it |
+| `eventExit` | `[1-n] Choose   [Enter] Leave without a word` — n = the answers shown; `[Enter] Leave` alone when the event has no reflection this visit |
 | `runnerNotice` | `[Enter] Continue` |
 | `runnerShop` | `[1-n] Buy   [r] Refresh   [x] Sell   [t] Barter   [Enter] Leave` — n = offers left; `[r]` drops once refreshes run out, `[x]` when nothing is sellable, `[t]` when no trophy trade is left |
 | `runnerBarter` | `[1-n] Trade   [Esc] Back` — n = trophy trades left |
@@ -656,7 +661,7 @@ screen contributes.
 | `eventHpGamblePickPayer` | `[1-n] Character` — n = party size |
 | `eventFortuneExchangePickArtifact` | `[1-n] Artifact` — n = artifacts on this page |
 | other `event*` | `[1-n] Choose` — n counts the options that event actually offers (a forced guardian fight drops to `[1]`) |
-| `campReflection` | `[1-3] Choose` |
+| `campReflection` | `[1-n] Choose` — n = the answers shown (3, or 4 when a conditional answer applies) |
 | `floorMilestone` | `[Enter] Continue` |
 | `endingCheckpoint` | `[1-n] Choose` — 1, 2 or 3 by `endingCheckpointMode` |
 | `founderDialogue` | `[1] Continue` |
@@ -740,6 +745,8 @@ data/                  # design data as JSON — see "Design data" above
   items.json
   artifacts.json
   events.json
+  camp-reflections.json
+  religions.json
   room-names.json
   backdrops.json
   floor-milestones.json
@@ -769,6 +776,8 @@ src/
     shopStock.ts         # rollShopOffers/rollBarterOffers — the Runner's stock and barter offers, tier odds by floor depth
     artifacts.ts         # data/artifacts.json loader — getArtifact, rollArtifact/rollArtifactWithMinRarity/rollArtifactOrCursed, rollArtifactRarity + pickArtifactOfRarity; rarity weights come from `artifacts.anchorWeights` in balance-config, shifted by depth (artifactRarityWeights over the shared tierWeightsByDepth curve)
     events.ts            # data/events.json loader — getEvent, rollEvent
+    religions.ts         # data/religions.json loader — getReligion, religionOf(character); refuses a class naming an unknown religion
+    reflectionCatalog.ts # the reflection catalog rules (catalogRuleErrors, stanceSpreadErrors) and effectAmount; the event and Camp Reflection loaders run them
     floor.ts             # createFloor(rng, depth) — builds a Floor from a generated layout + spawns rooms/monsters
     floorPatterns.ts     # generateFloorLayout(rng, depth) — floor shape, room types and unknown rooms; validateFloorLayout checks every rule
     levelGrowth.ts        # growthBonus(stat, level)/growthBonusForDepth by tier + elite/boss coefficients + expTiers
@@ -781,11 +790,13 @@ src/
     summons.ts            # data/summons.json loader — getSummonArchetype, getSummonSkill, getSummonCast, assertSummonDataConsistent
     monsterRaces.ts       # data/monster-races.json + data/monster-traits.json loader — resolveRaceProfile (race + subRace + traits), assertRaceDataConsistent
     growthWeights.ts      # data/growth-weights.json loader — GROWTH_WEIGHTS (per-class growth multipliers)
-    loreExposure.ts       # LORE_EXPOSURE_EVENT_IDS, campReflectionTier (thresholds from balance-config), the Camp Reflection prompt/options
+    loreExposure.ts       # LORE_EXPOSURE_EVENT_IDS, campReflectionTier (thresholds from balance-config), the Camp Reflection prompt/answers from data/camp-reflections.json
     endings.ts            # ending checkpoint and founder floor depths, endingCheckpointMode, leaveTriggered
   engine/              # pure logic (rng, party, resolver, combat, survival, dungeon, floorGraph, artifacts, save, migration, game) — testable without the UI
     party.ts             # character creation/stats, the Artifact equip/discard/replace decision flow (grantArtifact, resolveArtifactEquip, discardPendingArtifact)
-    survival.ts           # fear + satiety mechanics: room-entry drain, Exhausted/Dying, Camp, rest room actions
+    survival.ts           # fear, satiety and Faith mechanics: room-entry drain and Faith decay, the Faith factor on fear gains, Exhausted/Dying, Camp, rest room actions (Eat and drink, Talk, Pray)
+    temple.ts             # the temple room's actions: Give blood, Give everyone's blood, Ask a boon, Leave; templeActionsAvailable
+    reflection.ts         # reflection answers: conditions, shown answers, rolling an outcome, applying effects (the catalog rules are re-exported from data/reflectionCatalog.ts)
     journal.ts            # journal rules: conditions, fragment grants (no rng), the deduction queue, auto-strike, tear-out on a wipe
     migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts). A save loads if its version is an x.y.z version from `OLDEST_LOADABLE_SAVE_VERSION` (`save.ts`) up to the current app version. `VERSION_MIGRATIONS` holds one step per release that changed what a saved value means, oldest first; a save runs every step newer than its own version, in order, before the shape backfills (1.1.1 and 1.2.0 each rescale `partyExp` to that release's EXP curve, keeping the level and the share of the way to the next one, so a release that changes `expTiers[]` freezes its curve in `migration.ts` and adds a step, and `test/save.test.ts` fails until it does; 1.2.0 also remaps the class id `vanguard` to `knight`, renaming a character still carrying the old class name and the retired-character class; 1.2.1 renames two rooms on the saved floor, whose backdrop is found by name). A release that changes a saved value's meaning adds its step there; a release that changes nothing needs no step. Renamed ids are not remapped by default: whatever a loaded save still holds under an id that has left the catalog (inventory counts, statuses on units and in log snapshots, summons of an unknown archetype, queued actions, cooldown/use counters) is dropped, not carried over, so a release that renames an id an allowed version can hold remaps it in its step
     events/               # 1 file per event room (merchant, bloodAltar, cursedShrine, twinAltars, sacrifice, gamblingDen, hermit, collapsedFloor, guardianFight, openChest) + shared.ts (helpers shared across event rooms)
@@ -814,14 +825,15 @@ src/
   ui/floorMap.ts        # the whole-floor map the Battlefield shows on the room screen, drawn from the room graph (the `[p]` viewer reuses it without exit digits)
   ui/targetPicker.ts    # the target list rows: coloured HP/MP/fear, the stats a buff raises, the most-hurt `*`
   ui/pagination.ts      # listCountFor/pageSizeFor and the shared paged-list helpers
+  ui/effectLine.ts      # the effect-line formatter shared by the rest room, exit scene and Camp Reflection: statEffectText, formatEffectLine, answerLines
   ui/state.ts           # UiState union + the state shared across screens
   ui/app.ts            # OpenTUI: layout + keyboard input, only reads/writes through Game
-  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, runner, characterInfo, context, ending, floorMilestone, founderDialogue, memory, floorMapView, monsterInfo, gatekeeper, journal) — handleKey/renderMain/renderFooter
+  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, temple, runner, characterInfo, context, ending, floorMilestone, founderDialogue, memory, floorMapView, monsterInfo, gatekeeper, journal) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → partySelect/saveSelect → App)
 tools/
   game-editor/          # dev tool: sprites, backdrops, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)
   docs-sync/            # dev tool (bun run docs:sync): keeps the docs in step with data/*.json — pairs (checked against data/balance-config.json), generated blocks, the reference check and the --coverage check
-  dev-save-dump/        # dev tool (bun run dump-save, dev mode only): server.ts + index.html write a devDump save at any level/floor/room/event; applyDump.ts (also used by random-play to start runs mid-dungeon)
+  dev-save-dump/        # dev tool (bun run dump-save, dev mode only): server.ts + index.html write a devDump save at any level/floor/room (the Room list takes `temple`, which rolls the floor with the temple chance raised to certain)/Faith/event; applyDump.ts (also used by random-play to start runs mid-dungeon)
   curve/                # dev tool (bun run curve): bench.ts (guard cases, real engine fights, statistics, comparison with another run, the check's rules), run.ts (CLI, --check), comment.ts (the pull request comment)
   random-play/          # dev tool (bun run random-play): bot plays seeded runs through the headless UI — checks.ts (pure checks), team.ts (teams and their key policy), curve.ts (level by depth, first guard floors, guard and survival tallies), bot.ts (one run), evidence.ts (screen keys, PNGs, manifest and the evidence comment), report.ts (report.html), run.ts (CLI)
 test/
@@ -846,5 +858,10 @@ test/
   viewers.test.ts      # the viewers: [p] floor map on the Battlefield, [v] monster info and bestiary in the Dungeon panel, the profile's seen-monster list
   levelGrowth.test.ts  # monsterDepthBuffPercent: its floor brackets, the increment that keeps applying past the last one, and the per-stat coefficients
   docsSync.test.ts     # the real docs against the real data: red after a rebalance until `bun run docs:sync` has rewritten them
-  docsSyncTool.test.ts # the docs-sync tool itself (pairs, blocks, references, the shop-odds generator) on made-up data
+  faith.test.ts        # Faith: decay on first entry, the fear-gain factor, header and torch
+  religions.test.ts    # the religions' data shape and every class naming one
+  temple.test.ts       # the temple room: placement, actions, the boon's stats and recovery
+  reflection.test.ts   # reflection effects, conditions, rolls, shown answers and the catalog rules over every event
+  campReflection.test.ts # Camp Reflection tiers, answers and effects
+  docsSyncTool.test.ts # the docs-sync tool itself (pairs, blocks, references, the shop-odds and religions generators) on made-up data
 ```

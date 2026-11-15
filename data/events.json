@@ -41,8 +41,45 @@
       "prompt": "The guardian's ashes smell of incense.",
       "escalatedPrompt": "You came down the stairs with your weapon drawn.",
       "escalated2Prompt": "Someone is cleaning their blade before the ash has settled.",
-      "escalated3Prompt": "You walk through the ash on the way out without slowing.",
-      "options": { "curious": "You pinch up some of the ash and smell it again.", "wary": "You knock the ash off your boots before going on.", "dismissive": "You kick the ash off the chest lid and open it." }
+      "escalated3Prompt": "You cross the ash to the chest in three steps, the way you'd cross a puddle.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You pinch up some of the ash and smell it again.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "pinch up some of the ash" },
+                { "stat": "fear", "size": "small", "sign": 1, "readFrom": "smell it again" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You knock the ash off your boots before going on.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "knock the ash off" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "knock the ash off" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You kick the ash off the chest lid and open it.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "kick the ash" },
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "open it" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "combatReward",
     "tier": "common"
@@ -67,7 +104,49 @@
     "returnDescription": "A hooded figure bows over a cloth of new wares, its hands folded at the same height, the bow dipping to the same depth.",
     "reflection": {
       "prompt": "The hooded figure never once lifted the hood, not even to count your coin.",
-      "options": { "curious": "You look into the dark under the hood for a face until the bow is over.", "wary": "Your eyes stay off the hood the whole time.", "dismissive": "You pack the wares away before the lamp is out of sight." }
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You look into the dark under the hood for a face until the bow is over.",
+          "outcomes": [
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "look into the dark under the hood for a face" }
+              ]
+            },
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "look into the dark under the hood for a face" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You keep your eyes off the hood all through his bow.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "keep your eyes off the hood" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "all through his bow" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You pack the wares away before the lamp is out of sight.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "before the lamp is out of sight" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "artifactShop",
     "tier": "common"
@@ -99,9 +178,46 @@
     "reflection": {
       "prompt": "The glow is still there, faint, where your hand was.",
       "escalatedPrompt": "You stepped into the red light without testing it first.",
-      "escalated2Prompt": "Your hands smell of scorched stone. You wipe them on your trousers and keep going.",
-      "escalated3Prompt": "The altar goes dark behind you. The stone dust in your blade's edge has packed into the old nicks.",
-      "options": { "curious": "You trace the closed spiral with a finger before you leave.", "wary": "You keep your hands well away from the base on the way past.", "dismissive": "You turn your back on the glow and check the way down." }
+      "escalated2Prompt": "Your hands smell of scorched stone. You wipe them on your trousers and reach for your pack.",
+      "escalated3Prompt": "The altar goes dark while you are still wiping your blade. The stone dust has packed into the old nicks.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You trace the closed spiral with a finger before you leave.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "trace the closed spiral" },
+                { "stat": "fear", "size": "small", "sign": 1, "readFrom": "with a finger" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You keep your hands well away from the base on the way past.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "away from the base" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "hands well away" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You turn your back on the glow and check the way down.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "check the way down" },
+                { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "turn your back on the glow" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "combatReward",
     "tier": "common"
@@ -137,7 +253,72 @@
       "escalatedPrompt": "The cut went where the last one did.",
       "escalated2Prompt": "The cut is the same length as the others, to the hair.",
       "escalated3Prompt": "There's a callus now where the cuts go.",
-      "options": { "curious": "You hold the cut up to the light and measure it against a finger joint.", "wary": "You wrap the cut tight and keep the hand inside your coat.", "dismissive": "You flex the hand twice and pick up your pack." }
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You hold the cut up to the light and measure it against a finger joint.",
+          "outcomes": [
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "measure it" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "hold the cut up to the light" }
+              ]
+            },
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "measure it" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "hold the cut up to the light" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You wrap the cut tight and keep the hand inside your coat.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "hp", "size": "small", "sign": 1, "target": "mostHurt", "readFrom": "wrap the cut tight" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "keep the hand inside your coat" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You flex the hand twice and pick up your pack.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "flex the hand twice" },
+                { "stat": "hp", "size": "small", "sign": -1, "target": "mostHurt", "readFrom": "flex the hand twice" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "devout",
+          "text": "You press the cut back against the stone until it stops bleeding.",
+          "requires": [{ "religionInParty": "fury-and-blood" }],
+          "outcomes": [
+            {
+              "when": [{ "counterAtLeast": { "counter": "altarPaymentsCount", "threshold": "bloodDebtThreshold" } }],
+              "effects": [
+                { "stat": "faith", "size": "large", "sign": 1, "readFrom": "press the cut back against the stone" },
+                { "stat": "hp", "size": "small", "sign": -1, "target": "mostHurt", "readFrom": "until it stops bleeding" }
+              ]
+            },
+            {
+              "effects": [
+                { "stat": "faith", "size": "medium", "sign": 1, "readFrom": "press the cut back against the stone" },
+                { "stat": "hp", "size": "small", "sign": -1, "target": "mostHurt", "readFrom": "until it stops bleeding" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "hpGamble",
     "tier": "rare"
@@ -159,7 +340,63 @@
     ],
     "reflection": {
       "prompt": "From the doorway, you can still see which eye is open.",
-      "options": { "curious": "You count the shut eyes again on your way out.", "wary": "You keep the statue at the edge of your sight until the corridor bends.", "dismissive": "It's carved stone. You turn your back on it." }
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You count the shut eyes again on your way out.",
+          "outcomes": [
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "count the shut eyes again" }
+              ]
+            },
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "count the shut eyes again" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You keep the statue at the edge of your sight until the corridor bends.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "at the edge of your sight" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "until the corridor bends" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "It's carved stone. You turn your back on it.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "turn your back on it" },
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "It's carved stone" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "devout",
+          "text": "You raise a hand at arm's length until it covers the open eye.",
+          "requires": [{ "religionInParty": "night-and-silence" }],
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "medium", "sign": 1, "readFrom": "raise a hand" },
+                { "stat": "fear", "size": "small", "sign": 1, "readFrom": "until it covers the open eye" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "cursedOffer",
     "tier": "rare"
@@ -181,7 +418,44 @@
     ],
     "reflection": {
       "prompt": "Dust from the broken pedestal is still settling on your boots.",
-      "options": { "curious": "You pocket a chip of the broken one.", "wary": "You don't go back to look at the other pedestal.", "dismissive": "You step over the pieces without looking down." }
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You pocket a chip of the broken one.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "medium", "sign": 1, "readFrom": "pocket a chip" },
+                { "stat": "fear", "size": "small", "sign": 1, "readFrom": "of the broken one" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You don't go back to look at the other pedestal.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "don't go back to look" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "the other pedestal" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You step over the pieces without looking down.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "without looking down" },
+                { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "step over the pieces" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "pairedOffer",
     "tier": "rare",
@@ -209,8 +483,57 @@
       "prompt": "The circle goes quiet. The gap at its open end is the width of a hand.",
       "escalatedPrompt": "Your knee finds the worn spot in front of the circle.",
       "escalated2Prompt": "You set the offering down on the pale square the last one left in the dust, edge to edge.",
-      "escalated3Prompt": "On the way out, someone asks how many that makes. Two of you give different numbers.",
-      "options": { "curious": "You set your hand in the gap. It fits.", "wary": "You mark the room on your map as one to avoid.", "dismissive": "You weigh the new artifact in your hand and stow it." }
+      "escalated3Prompt": "Someone asks how many that makes. Two of you give different numbers.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You set your hand in the gap. It fits.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "medium", "sign": 1, "readFrom": "set your hand in the gap" },
+                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "It fits" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You mark the room on your map as one to avoid.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "one to avoid" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "mark the room on your map" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You weigh the new artifact in your hand and stow it.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "stow it" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "defiant",
+          "text": "You scuff the open end of the circle shut with your heel.",
+          "requires": [{ "counterAtLeast": { "counter": "artifactsSacrificed", "threshold": "circleRemembersThreshold" } }],
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "scuff the open end of the circle shut" },
+                { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "with your heel" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "artifactSacrifice",
     "tier": "rare"
@@ -236,8 +559,71 @@
       "declined": "The stranger sets the three cups mouth-down without looking up. 'Changed your mind? Show me the face that walked away.'"
     },
     "reflection": {
-      "prompt": "Behind you, the cups start clicking again.",
-      "options": { "curious": "You watch his hands through two more rounds, trying to follow the right cup.", "wary": "You keep a hand on your purse until the clicking fades.", "dismissive": "You count what's left in your purse and walk on." }
+      "prompt": "The cups start clicking again before you've closed your purse.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You watch his hands through two more rounds, trying to follow the right cup.",
+          "outcomes": [
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "large", "sign": -1, "readFrom": "trying to follow the right cup" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "two more rounds" }
+              ]
+            },
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "trying to follow the right cup" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "two more rounds" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You keep a hand on your purse until the clicking fades.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "a hand on your purse" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "until the clicking fades" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You count what's left in your purse and walk on.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "walk on" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "defiant",
+          "text": "You stand over the crate and wait for him to look up.",
+          "requires": [{ "lastGambleOutcome": "lost" }],
+          "outcomes": [
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "wait for him to look up" }
+              ]
+            },
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "wait for him to look up" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "coinGamble",
     "tier": "rare"
@@ -281,7 +667,44 @@
     },
     "reflection": {
       "prompt": "His eyes stayed shut for the whole trade. His hands never missed the coins.",
-      "options": { "curious": "You look at the mark on his forearm until he turns the arm over.", "wary": "You keep the talk to the price and nothing else.", "dismissive": "You tuck the coins away and pick up the pace." }
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You look at the mark on his forearm until he turns the arm over.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "the mark on his forearm" },
+                { "stat": "fear", "size": "small", "sign": 1, "readFrom": "until he turns the arm over" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You keep your eyes on his shut ones until you reach the door.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "keep your eyes on his shut ones" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "until you reach the door" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You tuck the coins away and pick up the pace.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "pick up the pace" },
+                { "stat": "satiety", "size": "small", "sign": -1, "readFrom": "pick up the pace" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "fortuneExchange",
     "tier": "rare"
@@ -335,8 +758,44 @@
     "chainEscalatedDescription": "Tally marks, hundreds, in neat rows. Your eyes go to the floor under them first, for whatever was left behind.",
     "instantRewardActionLabel": "  [1] Move on",
     "reflection": {
-      "prompt": "On the way out, you glance back once at the half-finished mark.",
-      "options": { "curious": "You count the last full row before you go.", "wary": "You keep to the far side of the corridor, away from the wall.", "dismissive": "You shoulder your pack and take the next corridor down." }
+      "prompt": "Your eyes keep going back to the half-finished mark.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You count the last full row before you go.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "count the last full row before you go" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "count the last full row" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You keep to the far side of the corridor, away from the wall.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "away from the wall" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You shoulder your pack and take the next corridor down.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "take the next corridor down" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "shoulder your pack" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "instantReward",
     "tier": "common"
@@ -362,7 +821,44 @@
     "instantRewardActionLabel": "  [1] Move on",
     "reflection": {
       "prompt": "You check the walls for a door. The stone is solid all the way round.",
-      "options": { "curious": "Your boot hovers over the last print, then steps around it.", "wary": "You leave the way you came, stepping in your own prints.", "dismissive": "You scuff the last prints flat with your boot and move on." }
+      "options": [
+        {
+          "stance": "curious",
+          "text": "Your boot hovers over the last print, then steps around it.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "hovers over the last print" },
+                { "stat": "fear", "size": "small", "sign": 1, "readFrom": "steps around it" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You leave the way you came, stepping in your own prints.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "stepping in your own prints" },
+                { "stat": "satiety", "size": "small", "sign": -1, "readFrom": "leave the way you came" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You scuff the last prints flat with your boot and move on.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "scuff the last prints flat" },
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "move on" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "instantReward",
     "tier": "common"
@@ -374,8 +870,57 @@
     "instantRewardActionLabel": "  [1] Move on",
     "noArtifactReward": true,
     "reflection": {
-      "prompt": "Somewhere behind you, water drips a beat after each step.",
-      "options": { "curious": "You pass a hand over the water once more and count the delay.", "wary": "You keep your eyes forward the rest of the way down.", "dismissive": "You rub your eyes and keep walking." }
+      "prompt": "In the far corner, water drips a beat after each step you take.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You pass a hand over the water once more and count the delay.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "count the delay" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "count the delay" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You keep your eyes forward the rest of the way down.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "eyes forward" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "the rest of the way down" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You rub your eyes and keep walking.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "keep walking" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "devout",
+          "text": "You feel each of the others' foreheads for a fever.",
+          "requires": [{ "religionInParty": "plague-and-healing" }],
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "target": "mostAfraid", "readFrom": "feel each of the others' foreheads for a fever" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "feel each of the others' foreheads" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "instantReward",
     "tier": "common"
@@ -398,7 +943,60 @@
     "guaranteedItems": [{ "itemId": "exploration-kit", "count": 3 }],
     "reflection": {
       "prompt": "You took half the bundle and tied the rest up again, the way you found it.",
-      "options": { "curious": "You tie their knot again from memory, on a strap of your own.", "wary": "You eat from your own rations tonight and leave their bundle tied.", "dismissive": "You cinch your pack shut over the extra rations." }
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You tie their knot again from memory, on a strap of your own.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "medium", "sign": 1, "readFrom": "their knot" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "from memory" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You eat from your own rations tonight and leave their bundle tied.",
+          "feeds": true,
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "satiety", "size": "small", "sign": 1, "readFrom": "eat from your own rations" },
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "leave their bundle tied" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You cinch your pack shut over the extra rations.",
+          "feeds": true,
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "satiety", "size": "medium", "sign": 1, "readFrom": "extra rations" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "cinch your pack shut over" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You take the rest of the bundle too, and tie the cord your own way.",
+          "requires": [{ "counterAtLeast": { "counter": "freeRewardsTakenCount", "threshold": "freeTakenThreshold" } }],
+          "feeds": true,
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "satiety", "size": "large", "sign": 1, "readFrom": "take the rest of the bundle" },
+                { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "tie the cord your own way" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "instantReward",
     "tier": "common"
@@ -414,8 +1012,58 @@
     "minFloorDepth": 15,
     "onceLifetime": true,
     "reflection": {
-      "prompt": "You left it burning.",
-      "options": { "curious": "You hold a hand near the flame. It's warm.", "wary": "Hands in your sleeves, well clear of the flame.", "dismissive": "Wax runs strangely sometimes. You leave it to burn." }
+      "prompt": "The flame stands at the same height it was when you came in.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You hold a hand near the flame. It's warm.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "hp", "size": "small", "sign": 1, "readFrom": "It's warm" },
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "It's warm" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "Hands in your sleeves, well clear of the flame.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "well clear of the flame" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "Hands in your sleeves" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "Wax runs strangely sometimes. You leave it to burn.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "leave it to burn" },
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "Wax runs strangely sometimes" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "devout",
+          "text": "You cup both hands round the flame until it stands straight.",
+          "requires": [{ "religionInParty": "light-and-glory" }],
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "large", "sign": 1, "readFrom": "cup both hands round the flame" },
+                { "stat": "hp", "size": "small", "sign": -1, "readFrom": "until it stands straight" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "instantReward",
     "tier": "rare"
@@ -450,8 +1098,65 @@
     "minFloorDepth": 15,
     "onceLifetime": true,
     "reflection": {
-      "prompt": "You keep your torch on the open hatch until you're out of the room.",
-      "options": { "curious": "You look for scratch marks on the inside of the hatch.", "wary": "You give the torn chain a wide berth.", "dismissive": "Old damage. You step past the hatch and check your map for the stairs." }
+      "prompt": "Wherever you stand, the open hatch is at the edge of your sight.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You look for scratch marks on the inside of the hatch.",
+          "outcomes": [
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "scratch marks on the inside of the hatch" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "look for scratch marks" }
+              ]
+            },
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "scratch marks on the inside of the hatch" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "look for scratch marks" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You give the torn chain a wide berth.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "wide berth" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "Old damage. You step past the hatch and check your map for the stairs.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "Old damage" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "Old damage" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "defiant",
+          "text": "You kick the hatch on your way past, hard enough to hear it echo below.",
+          "requires": [{ "religionInParty": "fury-and-blood" }],
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "kick the hatch" },
+                { "stat": "hp", "size": "small", "sign": -1, "readFrom": "hard enough to hear it echo below" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "instantReward",
     "tier": "rare"
@@ -469,7 +1174,56 @@
     "onceLifetime": true,
     "reflection": {
       "prompt": "The last stroke runs off the end of the word and down the wall.",
-      "options": { "curious": "Twice you read the last word, then the blank after it.", "wary": "You read it once and walk on fast.", "dismissive": "Scratch marks on a wall. You've walked past a hundred." }
+      "options": [
+        {
+          "stance": "curious",
+          "text": "Twice you read the last word, then the blank after it.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "Twice you read the last word" },
+                { "stat": "fear", "size": "small", "sign": 1, "readFrom": "the blank after it" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You read it once and walk on fast.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "walk on fast" },
+                { "stat": "satiety", "size": "small", "sign": -1, "readFrom": "walk on fast" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "Scratch marks on a wall. You've walked past a hundred.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "walked past a hundred" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "defiant",
+          "text": "You grind the last word off the wall with the flat of your knife.",
+          "requires": [{ "religionInParty": "night-and-silence" }],
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "grind the last word off the wall" },
+                { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "grind the last word off the wall" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "instantReward",
     "tier": "rare"
@@ -484,8 +1238,57 @@
     "onceLifetime": true,
     "noArtifactReward": true,
     "reflection": {
-      "prompt": "Outside the room, you check the seams of your own pack.",
-      "options": { "curious": "You press a thumb against the wall. It gives, a little.", "wary": "You turn your marked goods face-in, at the bottom of the pack.", "dismissive": "You tug the pack straps tight and keep to the middle of the corridor." }
+      "prompt": "You catch yourself checking the seams of your own pack.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "You press a thumb against the wall. It gives, a little.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "It gives, a little" },
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "press a thumb against the wall" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You turn your marked goods face-in, at the bottom of the pack.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "face-in, at the bottom of the pack" },
+                { "stat": "faith", "size": "small", "sign": -1, "readFrom": "your marked goods" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You tug the pack straps tight and keep to the middle of the corridor.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "keep to the middle of the corridor" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "devout",
+          "text": "You make the others scrub their hands with vinegar before anyone eats.",
+          "requires": [{ "religionInParty": "plague-and-healing" }],
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "target": "mostAfraid", "readFrom": "scrub their hands with vinegar" },
+                { "stat": "satiety", "size": "small", "sign": -1, "readFrom": "vinegar" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "instantReward",
     "tier": "rare"
@@ -509,8 +1312,62 @@
     "minFloorDepth": 10,
     "noArtifactReward": true,
     "reflection": {
-      "prompt": "Whoever that was, they didn't ask your names, and you didn't offer them.",
-      "options": { "curious": "The whole way down, you listen for an answering voice.", "wary": "You don't look back to check if they're still where you left them.", "dismissive": "You step around their boots and take the stairs." }
+      "prompt": "They haven't asked your names, and you haven't offered them.",
+      "options": [
+        {
+          "stance": "curious",
+          "text": "The whole way down, you listen for an answering voice.",
+          "outcomes": [
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "listen for an answering voice" }
+              ]
+            },
+            {
+              "chance": 0.5,
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": 1, "readFrom": "listen for an answering voice" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "wary",
+          "text": "You don't look back to check if they're still where you left them.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "don't look back" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "to check if they're still where you left them" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "dismissive",
+          "text": "You step around their boots and take the stairs.",
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "fear", "size": "small", "sign": -1, "readFrom": "take the stairs" }
+              ]
+            }
+          ]
+        },
+        {
+          "stance": "devout",
+          "text": "You leave a lit candle stub on the floor beside them.",
+          "requires": [{ "religionInParty": "light-and-glory" }],
+          "outcomes": [
+            {
+              "effects": [
+                { "stat": "faith", "size": "small", "sign": 1, "readFrom": "a lit candle stub" }
+              ]
+            }
+          ]
+        }
+      ]
     },
     "kind": "instantReward",
     "tier": "rare"

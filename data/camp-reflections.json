@@ -1,0 +1,174 @@
+{
+  "1": {
+    "prompt": "ui.campReflectionTier1Prompt",
+    "options": [
+      {
+        "text": "ui.campReflectionTier1Option1",
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "go to sleep" },
+              { "stat": "faith", "size": "small", "sign": -1, "readFrom": "the same way" }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "ui.campReflectionTier1Option2",
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "fear", "size": "small", "sign": -1, "readFrom": "write the number down" },
+              { "stat": "mp", "size": "small", "sign": -1, "readFrom": "count what's left" }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "ui.campReflectionTier1Option3",
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "fear", "size": "small", "sign": 1, "readFrom": "in the dark" },
+              { "stat": "faith", "size": "medium", "sign": 1, "readFrom": "watch their hand" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "2": {
+    "prompt": "ui.campReflectionTier2Prompt",
+    "options": [
+      {
+        "text": "ui.campReflectionTier2Option1",
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "the same way" },
+              { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "the same way" }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "ui.campReflectionTier2Option2",
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "faith", "size": "medium", "sign": 1, "readFrom": "add a mark" },
+              { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "the room that nearly killed you" }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "ui.campReflectionTier2Option3",
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "fear", "size": "medium", "sign": -1, "readFrom": "shortest way" },
+              { "stat": "mp", "size": "small", "sign": -1, "readFrom": "trace tomorrow's route" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "3": {
+    "prompt": "ui.campReflectionTier3Prompt",
+    "options": [
+      {
+        "text": "ui.campReflectionTier3Option1",
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "faith", "size": "large", "sign": 1, "readFrom": "look at the one who paid" },
+              { "stat": "satiety", "size": "medium", "sign": -1, "readFrom": "put your bowl down" }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "ui.campReflectionTier3Option2",
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "hp", "size": "medium", "sign": 1, "target": "mostHurt", "readFrom": "pass them the bread" },
+              { "stat": "satiety", "size": "small", "sign": -1, "readFrom": "the bread" }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "ui.campReflectionTier3Option3",
+        "outcomes": [
+          {
+            "chance": 0.5,
+            "effects": [
+              { "stat": "faith", "size": "medium", "sign": 1, "readFrom": "look at your own hands" }
+            ]
+          },
+          {
+            "chance": 0.5,
+            "effects": [
+              { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "look at your own hands" }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "ui.campReflectionTier3Option4",
+        "requires": [{ "religionInParty": "plague-and-healing" }],
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "hp", "size": "large", "sign": 1, "target": "mostHurt", "readFrom": "clean and bind the hand" },
+              { "stat": "mp", "size": "medium", "sign": -1, "target": {"religion":"plague-and-healing"}, "readFrom": "clean and bind" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "4": {
+    "prompt": "ui.campReflectionTier4Prompt",
+    "options": [
+      {
+        "text": "ui.campReflectionTier4Option1",
+        "feeds": true,
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "satiety", "size": "large", "sign": 1, "readFrom": "hold out your bowl" },
+              { "stat": "faith", "size": "large", "sign": -1, "readFrom": "wipe the knife on your sleeve" }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "ui.campReflectionTier4Option2",
+        "feeds": true,
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "satiety", "size": "small", "sign": 1, "readFrom": "ask for the salt" },
+              { "stat": "faith", "size": "medium", "sign": -1, "readFrom": "start to tell them about today, then ask for the salt" }
+            ]
+          }
+        ]
+      },
+      {
+        "text": "ui.campReflectionTier4Option3",
+        "outcomes": [
+          {
+            "effects": [
+              { "stat": "faith", "size": "large", "sign": 1, "readFrom": "look at the knife" },
+              { "stat": "satiety", "size": "medium", "sign": -1, "readFrom": "asks if you're going to eat" }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

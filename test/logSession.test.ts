@@ -11,10 +11,11 @@ import { getStatusEffect } from "../src/data/statusEffects";
 import { noteAffected, noteBasicAttack, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "../src/engine/logSession";
 import { expireStatusEffect, statusRole, type Actor } from "../src/engine/resolver";
 import type { Character, CombatantRef, CombatState, SkillDefinition, SkillEffect, Summon } from "../src/types";
-import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
+import { makeCtx, NEUTRAL_FAITH, pinCombatBalance, spawnInto } from "./helpers";
 
 function setup() {
   const { ctx } = makeCtx(5);
+  ctx.faith = NEUTRAL_FAITH;
   const goblin = spawnInto(ctx, "goblin");
   const goblin2 = spawnInto(ctx, "goblin");
   const combat = startCombat("r1", [goblin.id, goblin2.id], ctx, false);

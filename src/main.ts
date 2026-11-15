@@ -50,11 +50,11 @@ let activeRenderer: CliRenderer | undefined;
 async function main() {
   const renderer = await createCliRenderer({
     exitOnCtrlC: true,
-    backgroundColor: PALETTE.bg,
     // OpenTUI waits 100 ms after a resize before redrawing; until then the old frame sits clipped at the new edge.
     debounceDelay: 1,
   });
   activeRenderer = renderer;
+  renderer.setBackgroundColor(PALETTE.bg);
   migrateLegacyProfile();
 
   for (;;) {

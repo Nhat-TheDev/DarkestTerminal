@@ -9,7 +9,7 @@ import { MERCHANT_PRICE_COINS } from "../src/engine/events/merchant";
 import { spawnEventGuardianMonsters } from "../src/data/floor";
 import { spawnMonster } from "../src/data/monsters";
 import { Game } from "../src/engine/game";
-import { maybeTriggerReflection, pickReflectionPrompt } from "../src/engine/events/shared";
+import { armEventExit, pickReflectionPrompt } from "../src/engine/events/shared";
 import { makeCtx } from "./helpers";
 import { BALANCE } from "../src/data/balanceConfig";
 import { getItem } from "../src/data/items";
@@ -763,11 +763,11 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
 });
 
 describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events.md)", () => {
-  test("maybeTriggerReflection is a no-op until the room is actually cleared", () => {
+  test("armEventExit is a no-op until the room is actually cleared", () => {
     const game = new Game(60);
     forceEventRoom(game, "wandering-hermit"); // forceEventRoom leaves cleared: false
-    maybeTriggerReflection(game.state, game.ctx);
-    expect(game.state.pendingReflection).toBeFalsy();
+    armEventExit(game.state, game.ctx);
+    expect(game.state.pendingEventExit?.withReflection).toBeFalsy();
   });
 
   test("always triggers on the 1st encounter with an in-scope event; ~50% on repeat encounters", () => {
@@ -775,8 +775,8 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
     const game = new Game(61);
     forceEventRoom(game, "merchant");
     getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
-    maybeTriggerReflection(game.state, game.ctx);
-    expect(game.state.pendingReflection).toEqual({ eventId: "merchant" });
+    armEventExit(game.state, game.ctx);
+    expect(game.state.pendingEventExit).toEqual({ eventId: "merchant", withReflection: true });
 
     let sawTriggered = false;
     let sawSkipped = false;
@@ -785,8 +785,8 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
       g.state.eventReflectionStances["merchant"] = "curious"; // already reflected once before
       forceEventRoom(g, "merchant");
       getRoom(g.state.floor, g.state.currentRoomId).cleared = true;
-      maybeTriggerReflection(g.state, g.ctx);
-      if (g.state.pendingReflection) sawTriggered = true;
+      armEventExit(g.state, g.ctx);
+      if (g.state.pendingEventExit?.withReflection) sawTriggered = true;
       else sawSkipped = true;
     }
     expect(sawTriggered).toBe(true);
@@ -798,8 +798,8 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
       const game = new Game(62);
       forceEventRoom(game, eventId);
       getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
-      maybeTriggerReflection(game.state, game.ctx);
-      expect(game.state.pendingReflection).toBeFalsy();
+      armEventExit(game.state, game.ctx);
+      expect(game.state.pendingEventExit?.withReflection).toBeFalsy();
     }
   });
 
@@ -838,15 +838,15 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
     expect(prompt).not.toBe(event.reflection!.prompt);
   });
 
-  test("pickReflectionStance records the chosen stance and clears pendingReflection", () => {
+  test("pickReflectionAnswer records the chosen stance and clears pendingEventExit", () => {
     const game = new Game(64);
     forceEventRoom(game, "merchant");
     getRoom(game.state.floor, game.state.currentRoomId).cleared = true;
-    maybeTriggerReflection(game.state, game.ctx);
-    expect(game.state.pendingReflection).toEqual({ eventId: "merchant" });
+    armEventExit(game.state, game.ctx);
+    expect(game.state.pendingEventExit).toEqual({ eventId: "merchant", withReflection: true });
 
-    game.pickReflectionStance("wary");
-    expect(game.state.pendingReflection).toBeNull();
+    game.pickReflectionAnswer(1);
+    expect(game.state.pendingEventExit).toBeNull();
     expect(game.state.eventReflectionStances["merchant"]).toBe("wary");
   });
 
@@ -857,21 +857,21 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
     game.state.coins = BALANCE.events.wanderingHermitExchangeCostCoins;
     forceEventRoom(game, "wandering-hermit");
     expect(game.hermitExchangeFortune("scholars-insight")).toBeNull();
-    expect(game.state.pendingReflection).toEqual({ eventId: "wandering-hermit" });
+    expect(game.state.pendingEventExit).toEqual({ eventId: "wandering-hermit", withReflection: true });
   });
 
   test("leaving wandering-hermit without trading doesn't trigger a reflection — nothing happened to reflect on", () => {
     const game = new Game(65);
     forceEventRoom(game, "wandering-hermit");
     game.hermitLeave();
-    expect(game.state.pendingReflection).toBeFalsy();
+    expect(game.state.pendingEventExit?.withReflection).toBeFalsy();
   });
 
   test("declining blood-altar (or failing to afford it) doesn't trigger a reflection", () => {
     const game = new Game(66);
     forceEventRoom(game, "blood-altar");
     game.bloodAltarLeave();
-    expect(game.state.pendingReflection).toBeFalsy();
+    expect(game.state.pendingEventExit?.withReflection).toBeFalsy();
     expect(game.state.eventOutcomes["blood-altar"]).toBe("declined");
   });
 
@@ -881,14 +881,14 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
     c.hp = c.maxHp;
     forceEventRoom(game, "blood-altar");
     expect(game.bloodAltarPay(c.id)).toBeNull();
-    expect(game.state.pendingReflection).toEqual({ eventId: "blood-altar" });
+    expect(game.state.pendingEventExit).toEqual({ eventId: "blood-altar", withReflection: true });
   });
 
   test("leaving sacrificial-circle without ever sacrificing doesn't trigger a reflection", () => {
     const game = new Game(67);
     forceEventRoom(game, "sacrificial-circle");
     game.sacrificeLeave();
-    expect(game.state.pendingReflection).toBeFalsy();
+    expect(game.state.pendingEventExit?.withReflection).toBeFalsy();
   });
 
   test("skipping guardian-fight doesn't trigger a reflection written for having fought", () => {
@@ -899,7 +899,7 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
     room.rolledEventId = "guardian-fight";
     moveToRoom(game.state, target.id, game.ctx);
     expect(game.skipGuardianFight()).toBeNull();
-    expect(game.state.pendingReflection).toBeFalsy();
+    expect(game.state.pendingEventExit?.withReflection).toBeFalsy();
     expect(game.state.eventOutcomes["guardian-fight"]).toBe("skipped");
   });
 
@@ -914,7 +914,7 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
       game.gamblingDenEnter();
       if (game.state.activeEvent?.gambleState) {
         sawContinue = true;
-        expect(game.state.pendingReflection).toBeFalsy(); // pot doubled, visit still open
+        expect(game.state.pendingEventExit).toBeFalsy(); // pot doubled, visit still open
       }
     }
     expect(sawContinue).toBe(true);
@@ -1341,8 +1341,8 @@ describe("Part E: The Wanderer (10-event-narrative.md)", () => {
     const game = new Game(130);
     const room = forceEventRoom(game, "the-wanderer");
     game.openChest();
-    maybeTriggerReflection(game.state, game.ctx);
-    expect(game.state.pendingReflection).toEqual({ eventId: "the-wanderer" });
+    armEventExit(game.state, game.ctx);
+    expect(game.state.pendingEventExit).toEqual({ eventId: "the-wanderer", withReflection: true });
     const event = EVENTS.find((e) => e.id === "the-wanderer")!;
     expect(pickReflectionPrompt(game.state, room, event)).toBe(event.reflection!.prompt);
   });

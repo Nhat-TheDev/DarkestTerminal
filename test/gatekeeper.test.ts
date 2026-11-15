@@ -14,6 +14,7 @@ import { Rng } from "../src/engine/rng";
 import { saveRun, loadSave, gameFromSave } from "../src/engine/save";
 import { CLASSES } from "../src/data/classes";
 import type { Room, RoomType } from "../src/types";
+import { withTempleChance } from "./setup";
 
 const BLESSED = BALANCE.gatekeeper.blessingStatusId;
 const PARTY = CLASSES.slice(0, BALANCE.party.size).map((c) => c.id);
@@ -238,5 +239,34 @@ describe("the Gatekeeper screen", () => {
     expect(infoText).toContain("- Blessed (∞)");
     expect(getRoom(game.state.floor, game.state.currentRoomId).id).toBe(game.state.floor.entryRoomId);
     renderer.destroy();
+  });
+});
+
+describe("a temple entry", () => {
+  const templeRun = (withGatekeeper: boolean) => {
+    for (let seed = 1; seed < 200; seed++) {
+      const game = withTempleChance(1, () => new Game(seed, PARTY, undefined, undefined, withGatekeeper));
+      if (getRoom(game.state.floor, game.state.currentRoomId).type === "temple") return game;
+    }
+    throw new Error("no seed rolled a temple");
+  };
+
+  test("no ambush on arrival; the entrance fight starts in the next room", () => {
+    const game = templeRun(false);
+    expect(game.state.combat).toBeNull();
+    game.move(game.connectedRoomChoices()[0]!.id);
+    expect(game.state.combat).not.toBeNull();
+  });
+
+  test("the gatekeeper's blessing skips the temple and is spent on the first combat room", () => {
+    const game = templeRun(true);
+    game.answerGatekeeper("paid");
+    game.enterDungeon();
+    expect(game.state.combat).toBeNull();
+    expect(game.state.blessingRoomsLeft).toBe(BALANCE.gatekeeper.blessingRooms);
+    expect(game.state.blessedRoomId).toBeNull();
+    game.move(game.connectedRoomChoices()[0]!.id);
+    expect(game.state.blessingRoomsLeft).toBe(BALANCE.gatekeeper.blessingRooms - 1);
+    expect(game.state.blessedRoomId).toBe(game.state.currentRoomId);
   });
 });

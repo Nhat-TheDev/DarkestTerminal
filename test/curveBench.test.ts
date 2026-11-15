@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { benchRow, compareToBaseline, findCurveIssues, guardCases, guardFight, quantile, wilson, MAX_ROUNDS, BATCH_PER_TEAM, MIN_GUARD_WIN_RATE, BOSS_HP_LOST_TOLERANCE, FOUNDER_WIN_RATE_SLACK, type BenchRow, type TeamStats } from "../tools/curve/bench";
 import { curveComment } from "../tools/curve/comment";
 import { TEAMS, type Team } from "../tools/random-play/team";
+import { BALANCE } from "../src/data/balanceConfig";
 import { getClass } from "../src/data/classes";
 import { FINAL_BOSS_ARCHETYPE, MONSTER_ARCHETYPES } from "../src/data/monsters";
 import { BOSS_FLOOR_INTERVAL } from "../src/data/levelGrowth";
@@ -51,6 +52,14 @@ describe("guard bench cases", () => {
     expect(result.hpLost).toBeLessThanOrEqual(1);
     expect(result.won && result.timedOut).toBe(false);
     expect(guardFight(guard, TEAMS[0]!, 3, 5)).toEqual(result);
+  });
+
+  test("a fight takes a Faith: the party ends with more fear at 0 than at 100, and the default is the configured typical level", () => {
+    const guard = cases.find((c) => c.id === "skeleton-guard" && c.depth === 15)!;
+    const team = TEAMS[0]!;
+    const fearAt = (faith: number) => guardFight(guard, team, 3, 10, faith).fear;
+    expect(fearAt(0)).toBeGreaterThan(fearAt(100));
+    expect(guardFight(guard, team, 3, 10)).toEqual(guardFight(guard, team, 3, 10, BALANCE.faith.typicalLevel));
   });
 
   test("a wiped party counts as a loss, not as a fight that ran out of rounds", () => {

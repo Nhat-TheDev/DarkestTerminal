@@ -160,7 +160,7 @@ function openScene(state: GameState, journal: SlotJournal, item: { lineId: Id; f
   for (const voice of voices) {
     if (voice.face !== "bad") continue;
     for (const other of state.party) {
-      if (other.isAlive && other.id !== voice.characterId) adjustFear(other, resistedFearGain(other, BALANCE.journal.badFaceFearCost));
+      if (other.isAlive && other.id !== voice.characterId) adjustFear(other, resistedFearGain(other, BALANCE.journal.badFaceFearCost, state.faith));
     }
   }
 }

@@ -281,6 +281,9 @@ has looked like on two people who aren't the party, and never will be.
   occasionally balancing it with something that could just as easily read as weakening — the point
   isn't 50/50 coverage, it's making sure escalating danger never quietly becomes a de facto answer
   to a question meant to stay open.
+- Whether any of the four religions' gods exists, hears, or answers (§12.13). Who built their
+  temples in the dungeon stays open with it: pilgrims of those faiths who came down before, or the
+  place repeating a shape the people walking it carry in their heads.
 - **What "permanently" means for a character who dies here.** There is no evidence that anything
   comes back. That's the strongest claim this bible makes about it, and the strongest claim it
   should ever need to make — not "the character dissolves into the dreaming matter permanently,"
@@ -383,8 +386,10 @@ event description, reflection, Camp Reflection prompt and option, and outcome li
   time" or "before you decided". Evidence leaves the choosing with the party, which is what keeps
   "agency stays real" (above) true on the page.
 - **Options are gestures, not opinions.** A reflection or Camp Reflection option says what the hand
-  does next (pockets a chip, wraps the cut, passes the bread). The three options stay three
-  distinct readings of the same moment.
+  does next (pockets a chip, wraps the cut, passes the bread). The open answers stay distinct
+  readings of the same moment, and a conditional answer (a religion, a history) is an addition to
+  them, never a replacement. Write each from the character's place in the one moment: in the room,
+  after the event, before leaving, so no answer needs "you go back".
 - **End on an object or an action.** At most one ending built on a negation per event, and no
   closers that start with "Nobody…".
 - **No aphorism or summary endings, no "not X, Y" construction**, and no runs of clipped fragments.
@@ -440,7 +445,7 @@ mechanical: **the dream doesn't read why a cost was paid, only that it was.** Do
 to whatever in the dream is counting, they're the same act, and this bible should keep saying so
 consistently, not just where it's convenient.
 
-## 12.13 Chain escalation tiers and reflection stances, resolved
+## 12.13 Chain escalation tiers, reflection stances and the four religions, resolved
 
 **Deeper chain escalation tiers** — a tier-2 escalation (past a chain's first threshold,
 §8.5) should read as a further step down §12.5's drift, from dependence toward unawareness, shown
@@ -452,10 +457,12 @@ one detail, per the writing-voice rules in §12.11. Concrete draft lines per cha
 live; this section only needs to state the direction, not the wording. Exact thresholds are a
 balance decision, not a lore one.
 
-**Does a reflection stance ever pay off?** — Yes, as flavor only, never as a mechanical effect
-(§8.6's "purely characterization" rule is unchanged). Per §12.11, this is a *leaning*, not a
-classifier — and each stance should be able to echo toward more than one place, so that no single
-stance quietly reads as the "wrong" one to pick:
+**Does a reflection stance ever pay off?** — In later *text*, as a flavor echo, and never as a
+classifier. A reflection answer does carry a mechanical effect (`08-events.md` §8.6), shown on the
+screen before it is picked, but the stance behind it is not a verdict on the party: the effect
+belongs to the gesture in that room, not to the temperament, and the same stance helps in one room
+and costs in the next. Per §12.11 an echo is a *leaning*, and each stance should be able to echo
+toward more than one place, so that no single stance quietly reads as the "wrong" one to pick:
 
 - Consistently **dismissive** can read, in later text, like the Stranger's protective flatness —
   or, just as easily, like a party that's stopped caring about its own choices entirely, which is
@@ -468,12 +475,26 @@ stance quietly reads as the "wrong" one to pick:
   communion reading (§12.6): wanting to understand, not just wanting more.
 
 No stance should consistently point toward only the frightening reading or only the sympathetic
-one. If a future implementation ever makes one stance reliably "the bad one," that asymmetry is a
-bug in the writing, not a reflection of anything true about curiosity, wariness, or dismissal. The
-trigger mechanics are implemented: `dominantReflectionStance()` (`src/engine/dungeon.ts`) reads the
+one, and none may be reliably "the bad one" in what it costs. That asymmetry would be a bug in the
+writing, not a reflection of anything true about curiosity, wariness, or dismissal; the catalog
+rules in §8.6 (no answer simply worse, no stance tied to a Faith direction) hold the effects to it. The
+echo itself is implemented: `dominantReflectionStance()` (`src/engine/dungeon.ts`) reads the
 party's most-picked stance across `GameState.eventReflectionStances` and appends the matching
 `EventDefinition.stanceEcho` line to a `returnDescription` visit — see `10-event-narrative.md`
 Part B.3 for the full mechanical writeup.
+
+**The four religions and their temples.** The world has one organised faith, the spiral-marked
+group that formed after the descents (§12.6). The four religions the party carries (the labels
+on the character-select screen, `13-faith-and-religion.md` §13.3) are not that group and are not
+offshoots of it. They are faiths of the world above, older than any descent, that people bring
+down with them. Their temples stand in the dungeon anyway. Who built them is left open (§12.9):
+pilgrims of those faiths who came down before, or the place repeating a shape the people walking
+it carry in their heads. So is whether any of the four gods exists, hears, or answers. On the
+page this means three things. Religion names appear in the interface as labels, not as lore.
+Temple descriptions are physical scenes in the house style (§12.11), never a spiral, never a
+mention of the split, and never anything in the room that responds to the party's faith. And
+Faith is always "the torch", never a god's favor: the dungeon never answers a prayer, a gift of
+blood or a boon, and a temple's effect is the party's own doing.
 
 ## 12.14 The Counter
 

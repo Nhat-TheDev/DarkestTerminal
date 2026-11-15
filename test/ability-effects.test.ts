@@ -31,7 +31,7 @@ describe("Abilities: stat boosts", () => {
     const c = ctx.party[0]!;
     const baseAttack = c.attack;
     c.equippedAbilityId = "battle-instinct";
-    recomputeCharacterStats(c, 100);
+    recomputeCharacterStats(c, 100, null);
     expect(c.attack).toBe(baseAttack + expectedAbilityStatBoost("battle-instinct", "attack", baseAttack));
   });
 
@@ -41,12 +41,12 @@ describe("Abilities: stat boosts", () => {
     c.level = 100;
     const base = characterBaseStats(c);
     c.equippedAbilityId = null;
-    recomputeCharacterStats(c, 0);
+    recomputeCharacterStats(c, 0, null);
     const exhaustedAttack = c.attack;
     expect(exhaustedAttack).toBeLessThan(base.attack);
 
     c.equippedAbilityId = "battle-instinct";
-    recomputeCharacterStats(c, 0);
+    recomputeCharacterStats(c, 0, null);
     expect(c.attack - exhaustedAttack).toBe(expectedAbilityStatBoost("battle-instinct", "attack", base.attack));
   });
 
@@ -58,15 +58,15 @@ describe("Abilities: stat boosts", () => {
     const baseMagicPower = c.magicPower;
 
     c.equippedAbilityId = "lodestone"; // autoDamage + statBoost aggro
-    recomputeCharacterStats(c, 100);
+    recomputeCharacterStats(c, 100, null);
     expect(c.aggro).toBe(baseAggro + expectedAbilityStatBoost("lodestone", "aggro", baseAggro));
 
     c.equippedAbilityId = "restless-vigor"; // statBoost speed
-    recomputeCharacterStats(c, 100);
+    recomputeCharacterStats(c, 100, null);
     expect(c.speed).toBe(baseSpeed + expectedAbilityStatBoost("restless-vigor", "speed", baseSpeed));
 
     c.equippedAbilityId = "arcane-aptitude"; // statBoost magicPower
-    recomputeCharacterStats(c, 100);
+    recomputeCharacterStats(c, 100, null);
     expect(c.magicPower).toBe(baseMagicPower + expectedAbilityStatBoost("arcane-aptitude", "magicPower", baseMagicPower));
   });
 
@@ -521,7 +521,7 @@ describe("Abilities: run entry", () => {
     expect(mage!.attack).toBe(mageAttack + expectedAbilityStatBoost("battle-instinct", "attack", mageAttack));
 
     // `recomputeCharacterStats` only clamps hp down, so the bonus must survive it.
-    recomputeCharacterStats(knight!, game.state.satiety);
+    recomputeCharacterStats(knight!, game.state.satiety, null);
     expect(knight!.hp).toBe(knight!.maxHp);
   });
 

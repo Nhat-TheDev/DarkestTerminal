@@ -169,6 +169,8 @@ export interface ResolveContext {
   isMagic?: boolean;
   /** Required for a `modifyStat` on satiety, which is party-wide. */
   gameState?: GameState;
+  /** The party's Faith, which scales a fear gain. */
+  faith?: number;
   /** The caller's own crit roll. Undefined with `rollDamage` set: the base crit chance is rolled here. */
   isCrit?: boolean;
   executeBonus?: { hpPercentThreshold: number; bonusDamagePercent?: number; bonusDamageFlat?: number };
@@ -367,7 +369,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       }
       if (!isCharacter(target)) return 0;
       const amount = withPercentOfCurrent(effect, target.survival.fear);
-      const delta = adjustFear(target, amount > 0 ? resistedFearGain(target, amount) : amount);
+      const delta = adjustFear(target, amount > 0 ? resistedFearGain(target, amount, ctx.faith ?? BALANCE.faith.initial) : amount);
       if (delta !== 0) {
         const verb = delta < 0 ? t("resolver.verbDecrease") : t("resolver.verbIncrease");
         ctx.log.push({

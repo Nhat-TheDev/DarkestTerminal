@@ -24,7 +24,7 @@ import {
 import { fearGainForRound, fearGainForHit, applyRoundFear, applyHitFear, adjustFear, formatFear, applyVictoryFearRelief, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT, isPartyExhausted, isPartyDying } from "../src/engine/survival";
 import { Game } from "../src/engine/game";
 import type { CombatantRef, SkillDefinition } from "../src/types";
-import { makeCtx, spawnInto, pickAnyAction } from "./helpers";
+import { makeCtx, spawnInto, pickAnyAction, NEUTRAL_FAITH } from "./helpers";
 
 describe("artifacts", () => {
   test("artifactRarityWeights: the anchor step returns the configured anchor, every step sums to 100", () => {
@@ -195,23 +195,23 @@ describe("artifacts", () => {
   test("fearGainForRound: base amount at depth 1, no fearResist", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    expect(fearGainForRound(c, 1)).toBe(2);
+    expect(fearGainForRound(c, 1, NEUTRAL_FAITH)).toBe(2);
   });
 
   test("fearGainForRound: low-HP amount replaces (not adds to) the base amount", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.hp = Math.floor(c.maxHp * 0.59);
-    expect(fearGainForRound(c, 1)).toBe(4);
+    expect(fearGainForRound(c, 1, NEUTRAL_FAITH)).toBe(4);
   });
 
   test("fearGainForRound: scales +5%/floor depth, capped separately for base vs low-HP", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    expect(fearGainForRound(c, 11)).toBe(3);
-    expect(fearGainForRound(c, 100)).toBe(5);
+    expect(fearGainForRound(c, 11, NEUTRAL_FAITH)).toBe(3);
+    expect(fearGainForRound(c, 100, NEUTRAL_FAITH)).toBe(5);
     c.hp = Math.floor(c.maxHp * 0.59);
-    expect(fearGainForRound(c, 100)).toBe(10);
+    expect(fearGainForRound(c, 100, NEUTRAL_FAITH)).toBe(10);
   });
 
   test("fearGainForRound: reduced by fearResist artifacts", () => {
@@ -219,34 +219,34 @@ describe("artifacts", () => {
     const c = ctx.party[0]!;
     c.hp = Math.floor(c.maxHp * 0.59);
     c.equippedArtifactIds.push("pendant-of-calm");
-    expect(fearGainForRound(c, 1)).toBe(3.6);
+    expect(fearGainForRound(c, 1, NEUTRAL_FAITH)).toBe(3.6);
     c.equippedArtifactIds.push("vigil-cloth", "bundle-of-undelivered-letters");
-    expect(fearGainForRound(c, 1)).toBe(2.4);
+    expect(fearGainForRound(c, 1, NEUTRAL_FAITH)).toBe(2.4);
   });
 
   test("applyRoundFear adds the gain and skips dead characters", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.survival.fear = 10;
-    expect(applyRoundFear(c, 1)).toBe(2);
+    expect(applyRoundFear(c, 1, NEUTRAL_FAITH)).toBe(2);
     expect(c.survival.fear).toBe(12);
 
     c.isAlive = false;
-    expect(applyRoundFear(c, 1)).toBe(0);
+    expect(applyRoundFear(c, 1, NEUTRAL_FAITH)).toBe(0);
     expect(c.survival.fear).toBe(12);
   });
 
   test("fearGainForHit: 1 per hit at depth 1, scaled by depth up to its cap, reduced by fearResist", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
-    expect(fearGainForHit(c, 1)).toBe(1);
-    expect(fearGainForHit(c, 11)).toBe(1.5);
-    expect(fearGainForHit(c, 100)).toBe(3);
+    expect(fearGainForHit(c, 1, NEUTRAL_FAITH)).toBe(1);
+    expect(fearGainForHit(c, 11, NEUTRAL_FAITH)).toBe(1.5);
+    expect(fearGainForHit(c, 100, NEUTRAL_FAITH)).toBe(3);
     c.equippedArtifactIds.push("pendant-of-calm");
-    expect(fearGainForHit(c, 1)).toBe(0.9);
+    expect(fearGainForHit(c, 1, NEUTRAL_FAITH)).toBe(0.9);
     c.equippedArtifactIds.push("vigil-cloth", "bundle-of-undelivered-letters");
-    expect(fearGainForHit(c, 1)).toBe(0.6);
-    expect(fearGainForHit(c, 100)).toBe(1.8);
+    expect(fearGainForHit(c, 1, NEUTRAL_FAITH)).toBe(0.6);
+    expect(fearGainForHit(c, 100, NEUTRAL_FAITH)).toBe(1.8);
   });
 
   test("adjustFear keeps one decimal place with no float drift, clamps to 0-100 and returns the real change", () => {
@@ -288,12 +288,12 @@ describe("artifacts", () => {
     const { ctx } = makeCtx();
     const c = ctx.party[0]!;
     c.survival.fear = 99;
-    expect(applyHitFear(c, 100)).toBe(1);
+    expect(applyHitFear(c, 100, NEUTRAL_FAITH)).toBe(1);
     expect(c.survival.fear).toBe(100);
-    expect(applyHitFear(c, 1)).toBe(0);
+    expect(applyHitFear(c, 1, NEUTRAL_FAITH)).toBe(0);
     c.survival.fear = 10;
     c.isAlive = false;
-    expect(applyHitFear(c, 1)).toBe(0);
+    expect(applyHitFear(c, 1, NEUTRAL_FAITH)).toBe(0);
     expect(c.survival.fear).toBe(10);
   });
 
@@ -363,10 +363,10 @@ describe("artifacts", () => {
     c.equippedArtifactIds.push("iron-gauntlet"); // +3 attack
     const baseAttack = statsForLevel(getClass(c.classId), c.level).attack;
 
-    recomputeCharacterStats(c, 100);
+    recomputeCharacterStats(c, 100, null);
     expect(c.attack).toBe(baseAttack + 3);
 
-    recomputeCharacterStats(c, 29); // Exhausted threshold
+    recomputeCharacterStats(c, 29, null); // Exhausted threshold
     expect(c.attack).toBe(Math.round(baseAttack * (2 / 3)) + 3);
     expect(c.maxHp).toBe(statsForLevel(getClass(c.classId), c.level).maxHp);
   });
@@ -512,11 +512,11 @@ describe("artifacts", () => {
     const cls = getClass(c.classId);
     const baseMagic = statsForLevel(cls, c.level).magicPower;
     c.equippedArtifactIds.push("resonant-tuning-fork", "runners-ankle-cord"); // +8 magicPower, +2 speed
-    recomputeCharacterStats(c, 100);
+    recomputeCharacterStats(c, 100, null);
     expect(c.magicPower).toBe(baseMagic + 8);
     expect(c.speed).toBe(cls.baseSpeed + 2);
 
-    recomputeCharacterStats(c, 29);
+    recomputeCharacterStats(c, 29, null);
     expect(c.magicPower).toBe(Math.round(baseMagic * (2 / 3)) + 8);
     expect(c.speed).toBe(Math.round(cls.baseSpeed * (2 / 3)) + 2);
   });

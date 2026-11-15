@@ -100,7 +100,7 @@ Every time the player clears the boss/guard room of a floor whose depth is a mul
 shows one atmospheric line, dismissed with Enter — deliberately never stating "monsters got
 stronger" outright, matching this game's flavor-text tone. `GameState.pendingFloorMilestoneOmenId`
 / `Game.clearFinishedCombat()` / `Game.dismissFloorMilestoneMessage()` drive it; it takes priority
-in `syncUiToGameState()` the same way `pendingReflection`/`pendingCampReflectionTier` do.
+in `syncUiToGameState()` the same way `pendingEventExit`/`pendingCampReflectionTier` do.
 
 The lines live in `data/floor-milestones.json`, each with an `id`, a `maxFloor` and its `text`, and are
 banded by depth (each band shares one `maxFloor`, in order: mild physical oddities first, then
