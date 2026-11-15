@@ -1596,6 +1596,31 @@ describe("the torch on the Battlefield", () => {
     return frame.lines.map((line) => line.spans.flatMap((span) => Array.from({ length: span.width }, () => span.bg)));
   }
 
+  test("a valid edited torch without palette Y still renders with positive Faith", async () => {
+    const torch = TORCH_SPRITES["full"]!;
+    const originalRows = torch.rows;
+    const originalPalette = torch.palette;
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    try {
+      torch.rows = torch.rows.map((row) => row.replaceAll("Y", "."));
+      torch.palette = { ...torch.palette };
+      delete torch.palette.Y;
+      const game = new Game(7, ["knight", "mage", "rogue", "acolyte"]);
+      game.state.faith = 100;
+      const app = new App(setup.renderer, game, { autoReveal: false });
+      await setup.renderOnce();
+      expect(setup.captureCharFrame()).toContain(`${t("ui.faithLabel")} 100`);
+      game.state.faith = 50;
+      app.tickReveal();
+      await setup.renderOnce();
+      expect(setup.captureCharFrame()).toContain(`${t("ui.faithLabel")} 50`);
+    } finally {
+      torch.rows = originalRows;
+      torch.palette = originalPalette;
+      setup.renderer.destroy();
+    }
+  });
+
   test("torch halo shrinks and fades continuously without changing the flame frame", async () => {
     const { game, app, renderer, renderOnce, captureSpans, captureCharFrame } = await openRoom("combat", 100);
     try {

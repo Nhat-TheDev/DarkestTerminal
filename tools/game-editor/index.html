@@ -2488,22 +2488,26 @@ boot();
               ? ` (Warning: the game only reads id "${ROOM_SPRITE_ID[category]}" for ${category} rooms — "${id}" won't be used.)`
               : "";
 
+    const savedCategory = category;
+    const section = currentSection();
     try {
       const res = await fetch("/api/sprites", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ category, id, sprite }),
+        body: JSON.stringify({ category: savedCategory, id, sprite }),
       });
       const data = await res.json();
       if (!data.ok) {
         setStatus("Error: " + data.error, "error");
         return;
       }
-      setStatus(`Saved "${id}" to data/sprites.json${unusedIdWarning}`, unusedIdWarning ? "error" : "ok");
-      currentSection()[id] = sprite;
-      populateExistingIds();
-      existingIdEl.value = id;
-      idInputEl.value = id;
+      section[id] = sprite;
+      if (category === savedCategory && idInputEl.value.trim() === id) {
+        populateExistingIds();
+        existingIdEl.value = id;
+        idInputEl.value = id;
+        setStatus(`Saved "${id}" to data/sprites.json${unusedIdWarning}`, unusedIdWarning ? "error" : "ok");
+      }
     } catch (e) {
       setStatus("Connection error: " + e.message, "error");
     }

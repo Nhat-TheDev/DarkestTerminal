@@ -1226,7 +1226,7 @@ export class App implements ScreenContext {
       ...torchLight,
       x: contentLeft + torchLight.x,
       faith: s.faith,
-      color: TORCH_SPRITES["full"]!.palette["Y"]!,
+      color: TORCH_SPRITES["full"]!.palette["Y"] ?? PALETTE.title,
       dimFactor: dimmed ? (sceneById(sceneId)?.render.dimFactor ?? 1) : 1,
     }) : backdrop;
     return { battlefieldRows: rows, contentLeft, backdropKey: `${key}|torch:${torchLight ? s.faith : "hidden"}`, backdrop: litBackdrop, shadow };

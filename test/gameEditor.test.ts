@@ -40,6 +40,41 @@ test.each(["during", "after"])("sprite cache retains the submitted palette when 
   expect(statuses).toEqual(['Saved "full" to data/sprites.json']);
 });
 
+test.each(["category", "sprite"])("saving preserves the original cache and selection after switching %s", async (change) => {
+  const sections: Record<string, Record<string, Sprite>> = {
+    torch: { full: { rows: ["A"], palette: { A: "#79502d" } } },
+    temple: { shrine: { rows: ["B"], palette: { B: "#ffffff" } } },
+  };
+  const templeBefore = structuredClone(sections.temple);
+  const requests: { category: string; id: string; sprite: Sprite }[] = [];
+  let populated = 0;
+  const editorState = {
+    grid: [["A"]], palette: { A: "#ffff00" }, category: "torch",
+    idInputEl: { value: "full" }, existingIdEl: { value: "full" },
+    currentSection: (): Record<string, Sprite> => sections[editorState.category]!,
+    populateExistingIds: () => { populated++; },
+    setStatus: () => {},
+    fetch: async (_url: string, options: { body: string }) => {
+      requests.push(JSON.parse(options.body));
+      return { json: async () => ({ ok: true }) };
+    },
+  };
+  const saving = runInNewContext(`${saveSource}\nsaveHandler()`, editorState) as Promise<void>;
+  editorState.category = change === "category" ? "temple" : "torch";
+  editorState.idInputEl.value = change === "category" ? "shrine" : "embers";
+  editorState.existingIdEl.value = editorState.idInputEl.value;
+  const selection = editorState.idInputEl.value;
+  await saving;
+  expect(requests).toHaveLength(1);
+  expect(requests[0]!.category).toBe("torch");
+  expect(requests[0]!.id).toBe("full");
+  expect(sections.torch!.full).toEqual(requests[0]!.sprite);
+  expect(sections.temple).toEqual(templeBefore);
+  expect(editorState.idInputEl.value).toBe(selection);
+  expect(editorState.existingIdEl.value).toBe(selection);
+  expect(populated).toBe(0);
+});
+
 test("a full backdrop preview keeps every enemy pixel at its in-game position", () => {
   const party = ["knight", "plague-doctor", "viking", "paladin"];
   const monsters = Array.from({ length: 3 }, () => ({ id: "vampire-lord", tier: "elite" as const }));
