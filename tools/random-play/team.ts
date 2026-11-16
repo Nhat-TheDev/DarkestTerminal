@@ -1,7 +1,7 @@
 import type { App } from "../../src/ui/app";
 import type { Game } from "../../src/engine/game";
 import { getActorByRef, channelStatus, checkSkillUsable, coinFlipWinChance, isCommandSkill } from "../../src/engine/combat";
-import { templeActionsAvailable } from "../../src/engine/temple";
+import { bloodGift, templeActionsAvailable } from "../../src/engine/temple";
 import type { Rng } from "../../src/engine/rng";
 import { pendingReflectionOptions } from "../../src/ui/screens/events";
 import { getRoom } from "../../src/engine/dungeon";
@@ -328,6 +328,8 @@ export function chooseRoom(game: Game): number {
 
 /** Below this Faith the party prays at a rest, unless it is hungry. */
 export const PRAY_FAITH_BELOW = 50;
+/** A donor the bot picks keeps more than this share of max HP after giving. */
+export const TEMPLE_KEEP_HP_FRACTION = 0.3;
 /** Chance to leave an exit scene without answering. */
 export const LEAVE_SILENT_CHANCE = 0.25;
 
@@ -340,14 +342,21 @@ export function chooseRest(game: Game): "1" | "2" | "3" | "RETURN" {
   return s.party.some((c) => c.isAlive && c.survival.fear >= FEAR_ACT_AT) ? "2" : "1";
 }
 
-/** Gives blood whenever the temple takes it, which is what raises Faith; the boon costs Faith, so it is left to the random keys. Giving everyone's blood needs every living member above its cost. */
+function keepsTempleHp(game: Game, character: Character): boolean {
+  const gift = bloodGift(game.state, character);
+  return gift !== null && gift.hpAfter > character.maxHp * TEMPLE_KEEP_HP_FRACTION;
+}
+
+/** Gives blood when some member would keep more than `TEMPLE_KEEP_HP_FRACTION` of max HP, which is what raises Faith; the boon costs Faith, so it is left to the random keys. */
 export function chooseTemple(game: Game): "1" | "RETURN" {
-  const available = templeActionsAvailable(game.state);
-  if (available.giveAll) {
-    const cost = (c: Character) => Math.round(c.maxHp * BALANCE.temple.giveAll.hpCost);
-    return game.state.party.every((c) => !c.isAlive || c.hp > cost(c)) ? "1" : "RETURN";
-  }
-  return available.giveBlood === "open" ? "1" : "RETURN";
+  return templeActionsAvailable(game.state).giveBlood === "open" && game.state.party.some((c) => keepsTempleHp(game, c)) ? "1" : "RETURN";
+}
+
+/** Picks every member who keeps more than `TEMPLE_KEEP_HP_FRACTION` of max HP after giving, then gives; with no such member it backs out. */
+export function chooseTempleDonors(game: Game, selectedIds: readonly Id[]): string {
+  const next = game.state.party.findIndex((c) => keepsTempleHp(game, c) && !selectedIds.includes(c.id));
+  if (next >= 0) return String(next + 1);
+  return selectedIds.length > 0 ? "RETURN" : "ESCAPE";
 }
 
 /** A random shown answer, or leaving without a word. */
@@ -408,6 +417,8 @@ export class TeamPolicy {
         return chooseRest(game);
       case "temple":
         return chooseTemple(game);
+      case "templeDonors":
+        return chooseTempleDonors(game, ui.selectedIds);
       case "eventExit":
         return chooseExit(game, this.rng);
       case "campPrompt":

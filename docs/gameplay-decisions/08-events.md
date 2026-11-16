@@ -84,6 +84,8 @@ EventDefinition {
 
 Every Artifact granted by any event in this section — whether revealed up front or rolled blind then revealed — goes through the same **decision flow** described in `07-items-artifacts.md` §7.2: Equip (any character, replacing 1 of their own ordinary artifacts if full) or Discard (unless Cursed/`forceEquip`, which skips straight to a forced Equip). None of the per-event sections below repeat that flow — they only describe what's specific to that room.
 
+On every event screen except the exit scene, each choice that costs or gives something shows it in up to two dim lines under the choice: `Cost:` (coins, HP, an artifact, a fight) and `Result:` (what the party gets, or its odds). A line is left out when there is nothing to show, so Leave and Decline have none. Every figure in them is read from `data/balance-config.json` (`events`) or the event's own record (`guaranteedArtifactId`, `guaranteedItems`, `noArtifactReward`) when the screen is drawn, and the choice labels themselves name only the action. The lines are built in `renderMain` (`src/ui/screens/events.ts`) with `optionDetailLines` (`src/ui/effectLine.ts`). A choice that spends the visit also asks for a second press of its key (`developer-guide.md`, "Key hints", R7).
+
 ---
 
 ## 8.2 Shared Worldview — the Sleeper & the Covenant

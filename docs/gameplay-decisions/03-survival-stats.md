@@ -119,7 +119,7 @@ Entering a rest room, the party takes **one** rest action (`Game.restAction`: `e
 |---|---|
 | **Eat and drink** (`restEatDrink`) | `hp`/`mp` restored by `survival.eatDrinkRestoreFraction` (30%) of max, **plus** `survival.eatDrinkSatietyRestore` (40) satiety, all in 1 action |
 | **Talk** (`restChat`, the `chat` action) | `hp`/`mp` restored by `survival.chatRestoreFraction` of max, plus `fear` reduced by `survival.chatFearRelief` — doesn't touch satiety (satiety recovery is tied to "eating"). It also raises Faith by the shared-religion bonus below |
-| **Pray** (`restPray`) | Raises Faith by `rest.pray.faith` (15) and reduces every living member's fear by `rest.pray.fearRelief` (5); no HP/MP or satiety |
+| **Pray** (`restPray`) | Raises Faith by `rest.pray.faith` (20) and reduces every living member's fear by `rest.pray.fearRelief` (5); no HP/MP or satiety |
 | **Leave** | Ends the room. If the party never rested, the room still counts as cleared and nothing happens |
 
 **Talk's Faith** (`chatFaith`, `src/engine/survival.ts`) is summed per religion with at least two **living** followers in the party. Each such group adds the value `rest.chat.faithByGroupSize` lists for its size (2, 3 or 4, larger groups count as 4), so a party with no shared religion gets none and the Talk line shows no Faith. The line is computed for the current party, so it changes as members die.

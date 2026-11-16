@@ -52,7 +52,7 @@ import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHe
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, combatInventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, ITEM_PAGE_SIZE, pageCount, clampPage } from "./pagination";
-import { canOpenJournal, canOpenMap, canOpenMemory, canOpenMonsters, composeFooter } from "./keyHints";
+import { GROUP_SEP, canOpenJournal, canOpenMap, canOpenMemory, canOpenMonsters, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
 import * as roomScreen from "./screens/room";
@@ -107,6 +107,13 @@ const FLOOR_MAP_BACKDROP_KEY = "floor-map";
 
 export type RunExit = "newRun" | "menu";
 
+const CONFIRM_KEY_LABELS: Record<string, string> = { return: "Enter", escape: "Esc" };
+
+function withConfirmPrompt(main: string | StyledText): StyledText {
+  const chunks = typeof main === "string" ? [plainChunk(main)] : main.chunks;
+  return new StyledText([colorChunk(t("ui.confirmPending"), PALETTE.title), plainChunk("\n\n"), ...chunks]);
+}
+
 export class App implements ScreenContext {
   game: Game;
   private ui: UiState = { kind: "room" };
@@ -115,6 +122,7 @@ export class App implements ScreenContext {
   private battlefield: TextRenderable;
   private party: TextRenderable;
   private main: TextRenderable;
+  private mainBox: BoxRenderable;
   private monsters: TextRenderable;
   private log: TextRenderable;
   private logScroll: ScrollBoxRenderable;
@@ -155,6 +163,9 @@ export class App implements ScreenContext {
   private pendingFloorAdvance = false;
   private pendingCampOffer = false;
   private listPage = 0;
+  /** The key a screen asked to have pressed again, and the screen it was pressed on. */
+  private armedConfirm: { key: string; ui: UiState } | null = null;
+  private confirmedKey: string | null = null;
   private onExit: ((next: RunExit) => void) | undefined;
   private exited = false;
   /** The run as last written to its slot; a key that leaves it unchanged writes nothing. */
@@ -227,6 +238,8 @@ export class App implements ScreenContext {
     body.add(partyBox);
 
     const mainBox = new BoxRenderable(renderer, { id: "main-box", ...panel, flexGrow: 1, title: t("ui.panelMain") });
+    this.mainBox = mainBox;
+    mainBox.onMouseScroll = () => this.showMainScroll();
     this.main = new TextRenderable(renderer, { id: "main", content: "", fg: PALETTE.text });
     mainBox.add(this.main);
     body.add(mainBox);
@@ -325,6 +338,21 @@ export class App implements ScreenContext {
 
   get debugLastRender() {
     return this.lastRender;
+  }
+
+  /** True on the second press of `keyName` in a row on the same screen; the first press only asks for confirmation. */
+  confirm(keyName: string): boolean {
+    if (this.confirmedKey === keyName) {
+      this.confirmedKey = null;
+      return true;
+    }
+    this.armedConfirm = { key: keyName, ui: this.ui };
+    this.main.scrollY = 0;
+    return false;
+  }
+
+  private confirmPending(): string | null {
+    return this.armedConfirm && this.armedConfirm.ui === this.ui ? this.armedConfirm.key : null;
   }
 
   setUi(next: UiState): void {
@@ -480,6 +508,16 @@ export class App implements ScreenContext {
       this.quit();
       return;
     }
+    const pending = this.confirmPending();
+    this.armedConfirm = null;
+    this.confirmedKey = null;
+    if (pending !== null) {
+      if (key.name !== pending) {
+        this.render();
+        return;
+      }
+      this.confirmedKey = pending;
+    }
     if (this.ui.kind === "fullLog") {
       if (key.name === "escape") {
         this.ui = this.ui.previous;
@@ -533,6 +571,11 @@ export class App implements ScreenContext {
         return;
       }
     }
+    if (key.shift && (key.name === "up" || key.name === "down") && this.main.maxScrollY > 0) {
+      this.main.scrollY += key.name === "down" ? 1 : -1;
+      this.render();
+      return;
+    }
     // The log panel claims left/right, up/down, h/k, pageup/pagedown and home/end, so any of those a screen needs must be handled above this. `j` and `l` are taken above.
     if (this.logScroll.handleKeyPress(key)) {
       this.render();
@@ -572,6 +615,9 @@ export class App implements ScreenContext {
         break;
       case "temple":
         templeScreen.handleKey(this, key, digit);
+        break;
+      case "templeDonors":
+        templeScreen.handleDonorKey(this, this.ui, key, digit);
         break;
       case "runnerNotice":
       case "runnerShop":
@@ -673,11 +719,15 @@ export class App implements ScreenContext {
         gameoverScreen.handleKey(this, key);
         break;
     }
+    this.confirmedKey = null;
     this.render();
   }
 
   private goBack(): boolean {
     switch (this.ui.kind) {
+      case "templeDonors":
+        this.ui = { kind: "temple" };
+        return true;
       case "pickSkill":
       case "pickItemInCombat":
         this.ui = { kind: "pickAction", actorRef: this.ui.actorRef };
@@ -956,12 +1006,20 @@ export class App implements ScreenContext {
       // The reveal swallows `[b]`, so the party hint is suppressed.
       this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerSkipReveal"), this.ui.kind, false, false))]);
     } else {
-      this.main.content = this.renderMain();
+      const pending = this.confirmPending();
+      const main = this.renderMain();
+      this.main.content = pending === null ? main : withConfirmPrompt(main);
+      this.keepScrollInRange(this.main, this.ui !== this.mainUi);
+      this.showMainScroll();
       this.footer.content = joinLines([
-        highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable(), this.game.hasJournalEntries(), this.monstersAvailable())),
+        highlightKeyHints(
+          pending !== null
+            ? t("ui.footerConfirm", { key: CONFIRM_KEY_LABELS[pending] ?? pending }) + GROUP_SEP + t("ui.hintQuit")
+            : composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable(), this.game.hasJournalEntries(), this.monstersAvailable())
+        ),
       ]);
     }
-    this.keepScrollInRange(this.main, this.ui !== this.mainUi);
+    if (revealing) this.keepScrollInRange(this.main, this.ui !== this.mainUi);
     this.mainUi = this.ui;
     this.renderLogContent();
     this.lastRender = { revealing, focusId: focus?.id ?? null, logTailSessionId: this.roomLog.at(-1)?.session?.id ?? null };
@@ -986,6 +1044,12 @@ export class App implements ScreenContext {
       crit ||= reading.crit;
     }
     return { delta, crit, beat: this.reveal.summonBeat };
+  }
+
+  /** Marks the Dungeon panel's bottom border while some of its text is out of view. */
+  private showMainScroll(): void {
+    const { scrollY, maxScrollY } = this.main;
+    this.mainBox.bottomTitle = scrollY < maxScrollY ? t("ui.panelMainMoreBelow") : scrollY > 0 ? t("ui.panelMainMoreAbove") : undefined;
   }
 
   /** Reassigning scrollY clamps it to `maxScrollY` (wrapped rows); the wheel offset otherwise outlives a longer text. */
@@ -1496,6 +1560,8 @@ export class App implements ScreenContext {
 
       case "temple":
         return templeScreen.renderMain(this.game);
+      case "templeDonors":
+        return templeScreen.renderDonors(this.game, this.ui);
 
       default: {
         const _exhaustive: never = this.ui;
@@ -1584,6 +1650,8 @@ export class App implements ScreenContext {
         return gatekeeperScreen.renderFooter(this.ui, this.game);
       case "temple":
         return templeScreen.renderFooter(this.game);
+      case "templeDonors":
+        return templeScreen.renderDonorsFooter(this.game);
       case "abilityBuyback":
         return abilityBuybackScreen.renderFooter(this.game);
       case "gameover":

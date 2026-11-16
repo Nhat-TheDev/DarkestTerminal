@@ -131,7 +131,7 @@
   },
   "rest": {
     "pray": {
-      "faith": 15,
+      "faith": 20,
       "fearRelief": 5
     },
     "chat": {
@@ -190,16 +190,19 @@
   "temple": {
     "chance": 0.8,
     "giveBlood": {
-      "upperHpFraction": 0.5,
-      "hpCost": 0.5,
-      "faithGain": 15,
-      "lowerHpFraction": 0.3,
-      "hpFloor": 0.05,
-      "lowerFaithGain": 5
-    },
-    "giveAll": {
-      "hpCost": 0.6,
-      "faithGain": 30
+      "hpFloor": 0.01,
+      "matching": {
+        "minHpFraction": 0.5,
+        "hpCost": 0.5,
+        "faithGain": 18,
+        "lowMinHpFraction": 0.3,
+        "lowFaithGain": 6
+      },
+      "other": {
+        "minHpFraction": 0.55,
+        "hpCost": 0.55,
+        "faithGain": 15
+      }
     },
     "boon": {
       "faithCost": 20,

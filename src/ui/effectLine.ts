@@ -62,3 +62,11 @@ export function answerLines(state: GameState, answers: ReflectionAnswer[]): Text
     ];
   });
 }
+
+/** The dim Cost and Result lines under a choice; a missing one is left out. */
+export function optionDetailLines(cost: string | null, result: string | null): TextChunk[][] {
+  const lines: TextChunk[][] = [];
+  if (cost) lines.push([colorChunk(`${ANSWER_INDENT}${t("ui.optionCost", { cost })}`, PALETTE.dim)]);
+  if (result) lines.push([colorChunk(`${ANSWER_INDENT}${t("ui.optionResult", { result })}`, PALETTE.dim)]);
+  return lines;
+}

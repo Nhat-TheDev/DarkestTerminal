@@ -53,7 +53,7 @@ guard unless the party is in danger. Below 35% MP a character conserves: outside
 spends MP only on heals and fear relief, and otherwise reaches for a recovery item, a damage item
 or the free basic attack, in that order. Mana potions wait for the guard, and a healer always keeps
 the MP for its cheapest heal. It takes a rest room when anyone is hurt, frightened, low on MP or
-satiety is at 50 or below, camps on a kit when hungry, and at a rest eats when hungry, otherwise prays while Faith is below half (`PRAY_FAITH_BELOW`), otherwise talks when someone is frightened and eats if not (`chooseRest`). At a temple it gives blood whenever the temple will take it (giving everyone's blood only when every living member would survive the cost) and leaves otherwise; it never chooses the boon itself, which only the random footer keys can ask (`chooseTemple`). At an exit scene it leaves without a word one time in four (`LEAVE_SILENT_CHANCE`) and picks a shown answer at random otherwise (`chooseExit`). All of these are in `tools/random-play/team.ts`.
+satiety is at 50 or below, camps on a kit when hungry, and at a rest eats when hungry, otherwise prays while Faith is below half (`PRAY_FAITH_BELOW`), otherwise talks when someone is frightened and eats if not (`chooseRest`). At a temple it gives blood when the temple will take it and at least one member keeps more than `TEMPLE_KEEP_HP_FRACTION` of max HP after giving, choosing every such member (`chooseTempleDonors`), and leaves otherwise; it never chooses the boon itself, which only the random footer keys can ask (`chooseTemple`). At an exit scene it leaves without a word one time in four (`LEAVE_SILENT_CHANCE`) and picks a shown answer at random otherwise (`chooseExit`). All of these are in `tools/random-play/team.ts`.
 
 Once the run has not changed for a while it stops following the policy, backs out of any screen that offers Esc and favours digits and
 Enter over the global keys, so it does not idle in the character sheet or the log. Every run plays
@@ -626,6 +626,24 @@ string rather than rendering an empty `[]`. Counting is deliberately left to the
 screen: a central table would have to re-derive what `renderMain` already knows
 and would drift the first time an option list changed.
 
+**R7 — A choice that spends the visit asks for the same key twice.** On the temple
+(`temple`, `templeDonors`) and the event-room screens except `eventExit`, a key that
+commits (buy, give, pay, sacrifice, leave, fight, skip) calls `ctx.confirm(key.name)` first. The first press
+only arms it: the Dungeon panel scrolls to the top, where `ui.confirmPending` heads the body, and the footer
+becomes `[<key>] Confirm   [Any] Cancel   │   [Ctrl+C] Quit` (`ui.footerConfirm`). Pressing the same key
+again runs the action. Any other key cancels and does nothing else, which is why the
+footer drops every other global hint while armed. A key that only opens or moves
+between views (an offer's detail, a picker, a page) never asks. The armed key belongs to
+the `UiState` object it was pressed on, so a screen change drops it.
+
+**R8 — A Dungeon panel taller than its box scrolls, and its border says so.** Any screen
+whose body runs past the Dungeon panel can be moved with Shift+↑ and Shift+↓ (handled in
+`App.handleKey` ahead of the log panel, which keeps the plain arrows) or the mouse wheel. While text is
+out of view, the panel's bottom border reads `ui.panelMainMoreBelow` or `ui.panelMainMoreAbove`,
+the same way the Log panel's title names its scroll keys (`showMainScroll`, refreshed on every render and
+on every wheel event). The footer never carries it: it shows up only on screens that overflow, and a
+footer already near the 150-column minimum would lose its global hints.
+
 #### Mapping — contextual part per screen
 
 The global group is appended automatically, so the table lists only what each
@@ -635,7 +653,8 @@ screen contributes.
 | --- | --- |
 | `room` | `[1-n] Move   [i] Items   [a] Artifacts` — n = exits from this room; `[i]` drops when the bag is empty (`ui.footerRoomNoItems`) |
 | `rest` | `[1-3] Choose   [Enter] Leave` — `[1-4]` when the Merchant's Runner is there (Trade); once the rest action is taken, `[Enter] Leave`, or `[4] Trade   [Enter] Leave` with the runner |
-| `temple` | `[1-2] Choose   [Enter] Leave` — Give blood or Give everyone's blood, and Ask a boon; a locked action keeps its digit and refuses it |
+| `temple` | `[1-2] Choose   [Enter] Leave` — Give blood and Ask a boon; a locked action keeps its digit and refuses it |
+| `templeDonors` | `[1-n] Choose   [Enter] Give   [Esc] Back` — n = party size; a digit toggles that member, and one the temple will not take is refused |
 | `eventExit` | `[1-n] Choose   [Enter] Leave without a word` — n = the answers shown; `[Enter] Leave` alone when the event has no reflection this visit |
 | `runnerNotice` | `[Enter] Continue` |
 | `runnerShop` | `[1-n] Buy   [r] Refresh   [x] Sell   [t] Barter   [Enter] Leave` — n = offers left; `[r]` drops once refreshes run out, `[x]` when nothing is sellable, `[t]` when no trophy trade is left |
@@ -795,7 +814,7 @@ src/
   engine/              # pure logic (rng, party, resolver, combat, survival, dungeon, floorGraph, artifacts, save, migration, game) — testable without the UI
     party.ts             # character creation/stats, the Artifact equip/discard/replace decision flow (grantArtifact, resolveArtifactEquip, discardPendingArtifact)
     survival.ts           # fear, satiety and Faith mechanics: room-entry drain and Faith decay, the Faith factor on fear gains, Exhausted/Dying, Camp, rest room actions (Eat and drink, Talk, Pray)
-    temple.ts             # the temple room's actions: Give blood, Give everyone's blood, Ask a boon, Leave; templeActionsAvailable
+    temple.ts             # the temple room's actions: Give blood (bloodGift), Ask a boon, Leave; templeActionsAvailable
     reflection.ts         # reflection answers: conditions, shown answers, rolling an outcome, applying effects (the catalog rules are re-exported from data/reflectionCatalog.ts)
     journal.ts            # journal rules: conditions, fragment grants (no rng), the deduction queue, auto-strike, tear-out on a wipe
     migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts). A save loads if its version is an x.y.z version from `OLDEST_LOADABLE_SAVE_VERSION` (`save.ts`) up to the current app version. `VERSION_MIGRATIONS` holds one step per release that changed what a saved value means, oldest first; a save runs every step newer than its own version, in order, before the shape backfills (1.1.1 and 1.2.0 each rescale `partyExp` to that release's EXP curve, keeping the level and the share of the way to the next one, so a release that changes `expTiers[]` freezes its curve in `migration.ts` and adds a step, and `test/save.test.ts` fails until it does; 1.2.0 also remaps the class id `vanguard` to `knight`, renaming a character still carrying the old class name and the retired-character class; 1.2.1 renames two rooms on the saved floor, whose backdrop is found by name). A release that changes a saved value's meaning adds its step there; a release that changes nothing needs no step. Renamed ids are not remapped by default: whatever a loaded save still holds under an id that has left the catalog (inventory counts, statuses on units and in log snapshots, summons of an unknown archetype, queued actions, cooldown/use counters) is dropped, not carried over, so a release that renames an id an allowed version can hold remaps it in its step

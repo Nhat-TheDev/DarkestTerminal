@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { BALANCE } from "../src/data/balanceConfig";
+import { BALANCE, faithSourcesConfigError } from "../src/data/balanceConfig";
+import { TORCH_SPRITES, torchThresholdsError } from "../src/ui/sprites";
 import { Game } from "../src/engine/game";
 import { getRoom, moveToRoom } from "../src/engine/dungeon";
 import { adjustFaith, drainFaithOnFirstEntry, faithFearMultiplier, resistedFearGain } from "../src/engine/survival";
@@ -80,5 +81,47 @@ describe("Faith", () => {
     const game = new Game(4, PARTY);
     game.advanceToNextFloor();
     expect(game.state.faith).toBe(96);
+  });
+});
+
+describe("Faith config checks", () => {
+  const clone = () => structuredClone({ rest: BALANCE.rest, temple: BALANCE.temple });
+
+  test("the shipped config passes", () => {
+    expect(faithSourcesConfigError(BALANCE)).toBeNull();
+    expect(torchThresholdsError(BALANCE.faith.torchFrameThresholds)).toBeNull();
+  });
+
+  test("a missing Talk group size is refused", () => {
+    const config = clone();
+    delete (config.rest.chat.faithByGroupSize as Partial<Record<string, number>>)["3"];
+    expect(faithSourcesConfigError(config)).toContain("rest.chat.faithByGroupSize.3");
+  });
+
+  test("a Give blood share outside 0 to 1 is refused", () => {
+    const config = clone();
+    config.temple.giveBlood.other.hpCost = 1.5;
+    expect(faithSourcesConfigError(config)).toContain("temple.giveBlood.other.hpCost");
+  });
+
+  test("blood thresholds must be ordered and Faith gains finite and nonnegative", () => {
+    const config = clone();
+    config.temple.giveBlood.matching.lowMinHpFraction = 1;
+    expect(faithSourcesConfigError(config)).toContain("lowMinHpFraction");
+    for (const value of [-1, NaN, Infinity]) {
+      const invalid = clone();
+      invalid.temple.giveBlood.matching.faithGain = value;
+      expect(faithSourcesConfigError(invalid)).toContain("matching.faithGain");
+      const talk = clone();
+      talk.rest.chat.faithByGroupSize["2"] = value;
+      expect(faithSourcesConfigError(talk)).toContain("faithByGroupSize.2");
+    }
+  });
+
+  test("torch thresholds must match the frames and descend", () => {
+    expect(torchThresholdsError([75, 50, 25])).toContain("must list 4 numbers");
+    expect(torchThresholdsError([75, 50, 50, 0])).toContain("strictly descending");
+    const { low: _low, ...frames } = TORCH_SPRITES;
+    expect(torchThresholdsError([75, 50, 25, 0], frames)).toContain('no "low" frame');
   });
 });

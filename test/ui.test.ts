@@ -39,7 +39,7 @@ import * as eventsScreen from "../src/ui/screens/events";
 import * as campScreen from "../src/ui/screens/camp";
 import * as campReflectionScreen from "../src/ui/screens/campReflection";
 import * as abilityBuybackScreen from "../src/ui/screens/abilityBuyback";
-import { formatArtifactEffect } from "../src/data/artifacts";
+import { formatArtifactEffect, getArtifact } from "../src/data/artifacts";
 import { TROPHY_ICON } from "../src/ui/state";
 import { getStatusEffect } from "../src/data/statusEffects";
 import { ITEMS, describeItemEffects, getItem } from "../src/data/items";
@@ -225,6 +225,10 @@ describe("headless UI smoke test", () => {
     mockInput.pressKey("1"); // view again
     await renderOnce();
     mockInput.pressKey("1"); // buy
+    await renderOnce();
+    expect(game.state.coins).toBe(9999);
+    expect(app.debugUiState.kind).toBe("eventArtifactShop");
+    mockInput.pressKey("1"); // confirm
     await renderOnce();
 
     expect(game.state.coins).toBeLessThan(9999);
@@ -560,7 +564,8 @@ describe("playtest fixes", () => {
   test("Twin Altars shows each artifact's effect, not its lore", () => {
     const game = new Game(1);
     forceTwinAltars(game);
-    const text = eventsScreen.renderMain(game, { kind: "eventPairedOffer" }) as string;
+    const out = eventsScreen.renderMain(game, { kind: "eventPairedOffer" });
+    const text = typeof out === "string" ? out : out.chunks.map((c) => c.text).join("");
     for (const [i, id] of game.state.activeEvent!.offerArtifactIds.entries()) {
       const a = ARTIFACTS.find((x) => x.id === id)!;
       expect(text).toContain(`[${i + 1}] ${a.name} (${a.rarity}) — ${formatArtifactEffect(a)}`);
@@ -636,7 +641,7 @@ describe("rest room effect lines", () => {
   test("Pray shows Faith and Fear relief from the config", () => {
     const game = new Game(1);
     game.state.combat = null;
-    expect(renderRest(game)).toContain("      Faith +15   ·   Fear −5\n");
+    expect(renderRest(game)).toContain("      Faith +20   ·   Fear −5\n");
   });
 
   test("Chat shows its Faith only when the party shares a religion", () => {
@@ -664,6 +669,140 @@ function forceTwinAltars(game: Game): void {
   room.rolledEventId = "twin-altars";
   game.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: [ARTIFACTS[0]!.id, ARTIFACTS[1]!.id] };
 }
+
+describe("event choices show their Cost and Result", () => {
+  const plain = (out: string | StyledText) => (typeof out === "string" ? out : out.chunks.map((c) => c.text).join(""));
+  function eventGame(eventId: string): Game {
+    const game = new Game(1);
+    game.state.combat = null;
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "event";
+    room.rolledEventId = eventId;
+    room.cleared = false;
+    game.state.activeEvent = { eventId, offerArtifactIds: [] };
+    return game;
+  }
+
+  test("the blood altar's cost and result sit under Pay, and Leave has neither", () => {
+    const text = plain(eventsScreen.renderMain(eventGame("blood-altar"), { kind: "eventHpGamble", gamble: "hpGamble" }));
+    expect(text).toContain(`  [1] Pay the price\n      Cost: ${BALANCE.events.bloodAltarHpPercent}% max HP from one member\n      Result: 1 random artifact\n  [2] Leave`);
+    expect(text.trimEnd().endsWith("  [2] Leave")).toBe(true);
+  });
+
+  test("the gambling den shows the stake, the next pot and the jackpot", () => {
+    const [first, second] = BALANCE.events.gamblingDenRounds;
+    const game = eventGame("gambling-den");
+    const pct = (chance: number) => Math.round(chance * 100);
+    expect(plain(eventsScreen.renderMain(game, { kind: "eventCoinGamble" }))).toContain(
+      `  [1] Play\n      Cost: ${first!.stake} coins\n      Result: ${pct(first!.winChance)}% to win a ${first!.stake * 2}-coin pot\n  [2] Leave`
+    );
+    game.state.activeEvent!.gambleState = { round: 1, pot: 40, maxRounds: 4 };
+    expect(plain(eventsScreen.renderMain(game, { kind: "eventCoinGamble" }))).toContain(
+      `  [1] Stop\n      Result: bank 40 coins\n  [2] Continue\n      Cost: the 40-coin pot\n      Result: ${pct(second!.winChance)}% to win a 80-coin pot`
+    );
+    const last = BALANCE.events.gamblingDenRounds.at(-1)!;
+    game.state.activeEvent!.gambleState = { round: 3, pot: 160, maxRounds: 4 };
+    expect(plain(eventsScreen.renderMain(game, { kind: "eventCoinGamble" }))).toContain(`Result: ${pct(last.winChance)}% to win ${last.jackpotArtifactCount} ${last.jackpotRarity} artifacts`);
+  });
+
+  test("a chest names what it gives, and a scene that gives nothing adds no line", () => {
+    expect(plain(eventsScreen.renderMain(eventGame("open-chest"), { kind: "eventInstantReward" }))).toContain("  [1] Open the chest\n      Result: 1 random artifact");
+    expect(plain(eventsScreen.renderMain(eventGame("waiting-supplies"), { kind: "eventInstantReward" }))).toContain(
+      `Result: ${getArtifact("travelers-ration").name}, ${getItem("exploration-kit").name} ×3`
+    );
+    const nothing = plain(eventsScreen.renderMain(eventGame("the-delay"), { kind: "eventInstantReward" }));
+    expect(nothing).not.toContain("Result:");
+    expect(nothing).not.toContain("Cost:");
+  });
+
+  test("a choice list taller than the panel scrolls with Shift+arrows and says so", async () => {
+    const { renderer, renderOnce, captureCharFrame, mockInput } = await createTestRenderer({ width: 150, height: 40 });
+    const game = eventGame("merchant");
+    game.state.activeEvent!.offerArtifactIds = ARTIFACTS.slice(0, 4).map((a) => a.id);
+    new App(renderer, game);
+    await renderOnce();
+    let frame = captureCharFrame();
+    expect(frame).toContain(t("ui.panelMainMoreBelow"));
+    expect(frame).not.toContain("[r] Refresh offers");
+    for (let i = 0; i < 10; i++) mockInput.pressArrow("down", { shift: true });
+    await renderOnce();
+    frame = captureCharFrame();
+    expect(frame).toContain("[r] Refresh offers");
+    expect(frame).toContain(t("ui.panelMainMoreAbove"));
+    expect(frame).not.toContain(t("ui.panelMainMoreBelow"));
+    renderer.destroy();
+  });
+
+  test("unaffordable event actions report the cost error before confirmation", async () => {
+    for (const scenario of ["buy", "refresh", "gamble", "hermit"]) {
+      const { renderer, renderOnce, captureCharFrame, mockInput } = await createTestRenderer({ width: 180, height: 70 });
+      const game = eventGame(scenario === "gamble" ? "gambling-den" : scenario === "hermit" ? "wandering-hermit" : "merchant");
+      game.state.coins = 0;
+      game.state.activeEvent!.offerArtifactIds = [ARTIFACTS[0]!.id];
+      if (scenario === "hermit") game.state.party[0]!.equippedArtifactIds = [ARTIFACTS[0]!.id];
+      new App(renderer, game);
+      try {
+        await renderOnce();
+        if (scenario === "buy" || scenario === "hermit") {
+          mockInput.pressKey("1");
+          await renderOnce();
+        }
+        mockInput.pressKey(scenario === "refresh" ? "r" : "1");
+        await renderOnce();
+        expect(captureCharFrame()).toContain(t("errors.notEnoughCoins"));
+        expect(captureCharFrame()).not.toContain(t("ui.confirmPending").trim());
+        expect(game.state.coins).toBe(0);
+      } finally {
+        renderer.destroy();
+      }
+    }
+  });
+
+  test("confirming a merchant refresh after scrolling shows the confirmation prompt", async () => {
+    const { renderer, renderOnce, captureCharFrame, mockInput } = await createTestRenderer({ width: 150, height: 40 });
+    const game = eventGame("merchant");
+    game.state.activeEvent!.offerArtifactIds = ARTIFACTS.slice(0, 4).map((a) => a.id);
+    game.state.coins = 1000;
+    new App(renderer, game);
+    try {
+      await renderOnce();
+      for (let i = 0; i < 10; i++) mockInput.pressArrow("down", { shift: true });
+      await renderOnce();
+      expect(captureCharFrame()).toContain(t("ui.panelMainMoreAbove"));
+
+      mockInput.pressKey("r");
+      await renderOnce();
+      expect(captureCharFrame()).toContain(t("ui.footerConfirm", { key: "r" }));
+      expect(captureCharFrame()).toContain(t("ui.confirmPending").trim());
+      expect(game.state.coins).toBe(1000);
+
+      mockInput.pressKey("r");
+      await renderOnce();
+      expect(game.state.coins).toBe(1000 - BALANCE.events.merchantRefreshCostCoins);
+      expect(game.state.activeEvent!.refreshCount).toBe(1);
+    } finally {
+      renderer.destroy();
+    }
+  });
+
+  test("the sacrifice list states its cost and result once, above one line per artifact", () => {
+    const game = eventGame("sacrificial-circle");
+    game.state.party[0]!.equippedArtifactIds = [ARTIFACTS[0]!.id];
+    const text = plain(eventsScreen.renderMain(game, { kind: "eventArtifactSacrifice" }));
+    expect(text).toContain(`Choose 1 artifact to sacrifice:\n      Cost: the chosen artifact\n      Result: 1 random artifact of equal or higher rarity\n  [1] ${ARTIFACTS[0]!.name} (${ARTIFACTS[0]!.rarity})\n  [2] Leave the ritual circle`);
+  });
+
+  test("the temple shows the cost and result of Give blood and Ask a boon, and nothing under Leave", () => {
+    const game = withTempleChance(1, () => new Game(7));
+    game.state.faith = 50;
+    const text = plain(templeScreen.renderMain(game));
+    const { matching, other } = BALANCE.temple.giveBlood;
+    const gains = [matching.faithGain, matching.lowFaithGain, other.faithGain];
+    expect(text).toContain(`  [1] Give blood\n      Cost: HP from each chosen member\n      Result: +${Math.min(...gains)} to +${Math.max(...gains)} Faith per member`);
+    expect(text).toContain(`  [2] Ask a boon\n      Cost: ${BALANCE.temple.boon.faithCost} Faith\n      Result: the temple's boon until the floor ends`);
+    expect(text.trimEnd().endsWith("  [Enter] Leave")).toBe(true);
+  });
+});
 
 describe("room screen", () => {
   test("the first line names the room, and an event room adds the event's name", () => {
@@ -1746,6 +1885,10 @@ describe("Temple screen", () => {
       expect(captureCharFrame()).not.toContain(label);
       mockInput.pressKey("2");
       await renderOnce();
+      expect(game.state.boon).toBeNull();
+      expect(captureCharFrame()).toContain(t("ui.confirmPending").trim());
+      mockInput.pressKey("2");
+      await renderOnce();
       expect(game.state.boon?.religionId).toBe(religion.id);
       expect(captureCharFrame()).toContain(label);
       mockInput.pressKey("b");
@@ -1771,72 +1914,114 @@ describe("Temple screen", () => {
     }
   });
 
-  test.each([
-    { hp: 50, expectedHp: 5, faithGain: 15 },
-    { hp: 40, expectedHp: 5, faithGain: 5 },
-    { hp: 30, expectedHp: 5, faithGain: 5 },
-  ])("Give blood shows both HP bands before a follower at $hp HP gives", async ({ hp, expectedHp, faithGain }) => {
-    const { game, room, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({
-      prepare: (g) => {
-        g.state.faith = 50;
-        for (const c of g.state.party) if (religionOfClass(c.classId) === religionOfClass("knight")) c.hp = hp;
-      },
-    });
+  test("Give blood opens the donor list; the chosen give once Enter is pressed twice", async () => {
+    const { game, room, app, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({ prepare: (g) => { g.state.faith = 50; } });
     try {
-      const frame = captureCharFrame();
-      expect(frame).toContain("At least 50% HP");
-      expect(frame).toContain("30% to below 50% HP");
-      expect(frame).toContain("5 Faith");
-      expect(frame).toContain("below 30% HP: cannot give");
-      expect(frame).toContain("[2] Ask a boon");
-      expect(frame).toContain("[Enter] Leave");
-      expect(frame).not.toContain("{{");
-      const followers = game.state.party.filter((c) => religionOfClass(c.classId) === religionOfClass("knight"));
+      const knight = game.state.party[0]!;
       mockInput.pressKey("1");
       await renderOnce();
-      expect(followers.every((c) => c.hp === expectedHp && c.isAlive)).toBe(true);
-      expect(game.state.faith).toBe(50 + followers.length * faithGain);
+      expect(app.debugUiState.kind).toBe("templeDonors");
+      let frame = captureCharFrame();
+      expect(frame).toContain(t("ui.templeDonorsTitle"));
+      expect(frame).toContain(`Followers of ${getReligion(religionOfClass("knight")).name}`);
+      expect(frame).toContain("[1] [ ] Knight");
+      expect(frame).toContain("100/100 HP → 50 HP, +18 Faith");
+      expect(frame).toContain("[1-4] Choose   [Enter] Give   [Esc] Back");
+      expect(frame).not.toContain("{{");
+
+      mockInput.pressKey("1");
+      await renderOnce();
+      expect(captureCharFrame()).toContain("[1] [x] Knight");
+      mockInput.pressKey("RETURN");
+      await renderOnce();
+      frame = captureCharFrame();
+      expect(frame).toContain(t("ui.confirmPending").trim());
+      expect(frame).toContain("[Enter] Confirm   [Any] Cancel");
+      expect(room.cleared).toBe(false);
+
+      mockInput.pressKey("RETURN");
+      await renderOnce();
       expect(room.cleared).toBe(true);
+      expect(knight.hp).toBe(50);
+      expect(game.state.party.slice(1).every((c) => c.hp === 100)).toBe(true);
+      expect(game.state.faith).toBe(68);
+      expect(app.debugUiState.kind).toBe("room");
     } finally {
       renderer.destroy();
     }
   });
 
-  test("a temple no member follows offers Give everyone's blood", async () => {
-    const { game, room, app, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({
-      prepare: (g) => {
-        const unfollowed = CLASSES.find((c) => !g.state.party.some((p) => religionOfClass(p.classId) === c.religionId))!.religionId;
-        getRoom(g.state.floor, g.state.currentRoomId).templeReligionId = unfollowed;
-      },
-    });
-    expect(captureCharFrame()).toContain("[1] Give everyone's blood");
-    mockInput.pressKey("1");
-    await renderOnce();
-    expect(room.cleared).toBe(true);
-    expect(game.state.party.every((c) => c.hp === 40)).toBe(true);
-    expect(app.debugUiState.kind).toBe("room");
-    renderer.destroy();
+  test("any other key cancels the confirmation and does nothing else", async () => {
+    const { game, room, app, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({ prepare: (g) => { g.state.faith = 50; } });
+    try {
+      mockInput.pressKey("1");
+      mockInput.pressKey("1");
+      mockInput.pressKey("RETURN");
+      await renderOnce();
+      mockInput.pressKey("2");
+      await renderOnce();
+      expect(room.cleared).toBe(false);
+      expect(app.debugUiState).toEqual({ kind: "templeDonors", selectedIds: [game.state.party[0]!.id] });
+      expect(captureCharFrame()).not.toContain(t("ui.confirmPending").trim());
+      mockInput.pressEscape();
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("temple");
+    } finally {
+      renderer.destroy();
+    }
   });
 
-  test("locked give blood shows its reason", async () => {
+  test("a member the temple refuses cannot be chosen", async () => {
     const { game, app, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({
       prepare: (g) => {
-        for (const c of g.state.party) if (religionOfClass(c.classId) === religionOfClass("knight")) c.hp = 20;
+        g.state.faith = 50;
+        g.state.party[0]!.hp = 20;
       },
     });
-    expect(captureCharFrame()).toContain(t("ui.templeTooWeak"));
-    const line = templeScreen.renderMain(game) as StyledText;
-    const dimmed = line.chunks.find((c) => c.text.includes("Give blood"))!;
-    const want = RGBA.fromHex(PALETTE.disabled);
-    expect([dimmed.fg!.r, dimmed.fg!.g, dimmed.fg!.b]).toEqual([want.r, want.g, want.b]);
-    mockInput.pressKey("1");
-    await renderOnce();
-    expect(app.debugUiState.kind).toBe("temple");
-    renderer.destroy();
+    try {
+      mockInput.pressKey("1");
+      await renderOnce();
+      expect(captureCharFrame()).toContain("20/100 HP — cannot give");
+      mockInput.pressKey("1");
+      await renderOnce();
+      expect(app.debugUiState).toEqual({ kind: "templeDonors", selectedIds: [] });
+      expect(game.state.party[0]!.hp).toBe(20);
+    } finally {
+      renderer.destroy();
+    }
   });
 
-  test("leaving the temple returns to the room screen", async () => {
+  test.each([
+    { name: "a full torch", faith: 100, hp: 100, reason: "ui.templeTorchFull" },
+    { name: "no one able to give", faith: 50, hp: 20, reason: "ui.templeNoDonor" },
+  ])("locked give blood shows its reason: $name", async ({ faith, hp, reason }) => {
+    const { game, app, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({
+      prepare: (g) => {
+        g.state.faith = faith;
+        for (const c of g.state.party) c.hp = hp;
+      },
+    });
+    try {
+      expect(captureCharFrame()).toContain(t(reason));
+      const line = templeScreen.renderMain(game) as StyledText;
+      const dimmed = line.chunks.find((c) => c.text.includes("Give blood"))!;
+      const want = RGBA.fromHex(PALETTE.disabled);
+      expect([dimmed.fg!.r, dimmed.fg!.g, dimmed.fg!.b]).toEqual([want.r, want.g, want.b]);
+      mockInput.pressKey("1");
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("temple");
+    } finally {
+      renderer.destroy();
+    }
+  });
+
+  test("leaving the temple asks once, then returns to the room screen", async () => {
     const { room, app, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp();
+    mockInput.pressKey("RETURN");
+    await renderOnce();
+    expect(room.cleared).toBe(false);
+    expect(captureCharFrame()).toContain("[Enter] Confirm");
     mockInput.pressKey("RETURN");
     await renderOnce();
     expect(room.cleared).toBe(true);

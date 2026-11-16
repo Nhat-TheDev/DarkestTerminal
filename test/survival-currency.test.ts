@@ -227,7 +227,7 @@ describe("Pray", () => {
     }
     game.state.satiety = 50;
     game.restAction("pray");
-    expect(game.state.faith).toBe(55);
+    expect(game.state.faith).toBe(60);
     for (const c of game.state.party) {
       expect(c.survival.fear).toBe(25);
       expect(c.hp).toBe(5);

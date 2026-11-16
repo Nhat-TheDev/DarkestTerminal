@@ -27,22 +27,24 @@ interface BalanceConfig {
     /** Chance a floor opens with a temple room in front of its entrance fight; 0 disables and draws nothing from the rng. */
     chance: number;
     giveBlood: {
-      /** A matching member at or above this share of max HP gives the full cost. */
-      upperHpFraction: number;
-      /** Share of max HP the upper band gives. */
-      hpCost: number;
-      faithGain: number;
-      /** Under this share of max HP a member cannot give; from here up to the upper line the member is brought down to `hpFloor`. */
-      lowerHpFraction: number;
-      /** Share of max HP Give blood never takes anyone below. */
+      /** Share of max HP Give blood never takes anyone below; at least 1 HP always stays. */
       hpFloor: number;
-      lowerFaithGain: number;
-    };
-    giveAll: {
-      /** Share of max HP every living member loses; it can kill. */
-      hpCost: number;
-      /** Gained once, not per member. */
-      faithGain: number;
+      /** A member of the temple's religion. */
+      matching: {
+        /** At or above this share of max HP the member gives `hpCost` of max HP. */
+        minHpFraction: number;
+        hpCost: number;
+        faithGain: number;
+        /** From this share up to `minHpFraction` the member is brought down to `hpFloor`. */
+        lowMinHpFraction: number;
+        lowFaithGain: number;
+      };
+      /** A member of another religion; under `minHpFraction` the temple refuses them. */
+      other: {
+        minHpFraction: number;
+        hpCost: number;
+        faithGain: number;
+      };
     };
     boon: {
       faithCost: number;
@@ -380,3 +382,31 @@ export function targetingConfigError(config: TargetingConfig): string | null {
 
 const targetingError = targetingConfigError(BALANCE.targeting);
 if (targetingError) throw new Error(`balance-config ${targetingError}`);
+
+/** Why the Faith sources in `rest` and `temple` are not usable, or `null` when they are. */
+export function faithSourcesConfigError(config: Pick<BalanceConfig, "rest" | "temple">): string | null {
+  const groups = config.rest?.chat?.faithByGroupSize;
+  for (const size of ["2", "3", "4"] as const) {
+    if (!(typeof groups?.[size] === "number" && Number.isFinite(groups[size]) && groups[size] >= 0)) return `rest.chat.faithByGroupSize.${size} must be a finite nonnegative number`;
+  }
+  const blood = config.temple?.giveBlood;
+  const fractions: [string, unknown][] = [
+    ["hpFloor", blood?.hpFloor],
+    ["matching.minHpFraction", blood?.matching?.minHpFraction],
+    ["matching.hpCost", blood?.matching?.hpCost],
+    ["matching.lowMinHpFraction", blood?.matching?.lowMinHpFraction],
+    ["other.minHpFraction", blood?.other?.minHpFraction],
+    ["other.hpCost", blood?.other?.hpCost],
+  ];
+  for (const [key, value] of fractions) {
+    if (!(typeof value === "number" && value >= 0 && value <= 1)) return `temple.giveBlood.${key} must be a number from 0 to 1`;
+  }
+  if (blood.matching.lowMinHpFraction > blood.matching.minHpFraction) return "temple.giveBlood.matching.lowMinHpFraction must not exceed minHpFraction";
+  for (const [key, value] of [["matching.faithGain", blood.matching.faithGain], ["matching.lowFaithGain", blood.matching.lowFaithGain], ["other.faithGain", blood.other.faithGain]] as const) {
+    if (!(typeof value === "number" && Number.isFinite(value) && value >= 0)) return `temple.giveBlood.${key} must be a finite nonnegative number`;
+  }
+  return null;
+}
+
+const faithSourcesError = faithSourcesConfigError(BALANCE);
+if (faithSourcesError) throw new Error(`balance-config ${faithSourcesError}`);

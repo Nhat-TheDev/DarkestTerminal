@@ -6,11 +6,11 @@ import { Game } from "../src/engine/game";
 import { getRoom } from "../src/engine/dungeon";
 import { characterStatBreakdown } from "../src/engine/party";
 import { faithDecayForRoom, roundFaith } from "../src/engine/survival";
-import { templeActionsAvailable, templeAskBoon, templeGiveAll, templeGiveBlood, templeLeave, templeMatchingMembers } from "../src/engine/temple";
+import { bloodGift, templeActionsAvailable, templeAskBoon, templeGiveBlood, templeLeave } from "../src/engine/temple";
 import type { Character, Id } from "../src/types";
 import { withTempleChance } from "./setup";
 
-const [RELIGION_A, RELIGION_B, RELIGION_C] = RELIGIONS.map((r) => r.id) as [Id, Id, Id];
+const [RELIGION_A, RELIGION_B] = RELIGIONS.map((r) => r.id) as [Id, Id];
 const classOf = (religionId: Id) => CLASSES.filter((c) => c.religionId === religionId).map((c) => c.id);
 
 /** Party of two followers of A and two of B, in a temple of `templeReligion`; every member at 100/100 HP. */
@@ -31,98 +31,94 @@ function templeGame(templeReligion: Id = RELIGION_A, classes = [...classOf(RELIG
 const room = (game: Game) => getRoom(game.state.floor, game.state.currentRoomId);
 
 describe("temple actions", () => {
-  test("give blood upper band", () => {
+  test("a follower at or above the upper line gives the full cost", () => {
     const { game, a } = templeGame();
     game.state.faith = 50;
     a[0]!.hp = 80;
-    a[1]!.hp = 25;
-    expect(game.templeGiveBlood()).toBeNull();
+    expect(bloodGift(game.state, a[0]!)).toEqual({ hpAfter: 30, faith: 18 });
+    expect(game.templeGiveBlood([a[0]!.id])).toBeNull();
     expect(a[0]!.hp).toBe(30);
-    expect(game.state.faith).toBe(65);
+    expect(game.state.faith).toBe(68);
+    expect(room(game).cleared).toBe(true);
   });
 
-  test("give blood at exactly the upper line never kills", () => {
+  test("giving at exactly the upper line never kills", () => {
     const { game, a } = templeGame();
     game.state.faith = 50;
     a[0]!.hp = 50;
-    a[1]!.hp = 25;
-    templeGiveBlood(game.state);
-    expect(a[0]!.hp).toBe(5);
+    expect(templeGiveBlood(game.state, [a[0]!.id])).toBeNull();
+    expect(a[0]!.hp).toBe(1);
     expect(a[0]!.isAlive).toBe(true);
-    expect(game.state.faith).toBe(65);
+    expect(game.state.faith).toBe(68);
   });
 
-  test("give blood middle band", () => {
+  test("a follower in the low band drops to the floor for the low gain", () => {
     const { game, a } = templeGame();
-    game.state.faith = 50;
-    a[0]!.hp = 40;
-    a[1]!.hp = 25;
-    templeGiveBlood(game.state);
-    expect(a[0]!.hp).toBe(5);
-    expect(game.state.faith).toBe(55);
+    a[0]!.hp = 49;
+    expect(bloodGift(game.state, a[0]!)).toEqual({ hpAfter: 1, faith: 6 });
+    a[0]!.hp = 30;
+    expect(bloodGift(game.state, a[0]!)).toEqual({ hpAfter: 1, faith: 6 });
+    a[0]!.hp = 29;
+    expect(bloodGift(game.state, a[0]!)).toBeNull();
   });
 
-  test("give blood skips the low band", () => {
-    const { game, a } = templeGame();
+  test("another religion gives only from its own line", () => {
+    const { game, b } = templeGame();
+    b[0]!.hp = 100;
+    expect(bloodGift(game.state, b[0]!)).toEqual({ hpAfter: 45, faith: 15 });
+    b[0]!.hp = 55;
+    expect(bloodGift(game.state, b[0]!)).toEqual({ hpAfter: 1, faith: 15 });
+    b[0]!.hp = 54;
+    expect(bloodGift(game.state, b[0]!)).toBeNull();
+  });
+
+  test("only the chosen donors give, and their Faith adds up", () => {
+    const { game, a, b } = templeGame();
     game.state.faith = 50;
-    a[0]!.hp = 25;
-    a[1]!.hp = 25;
-    expect(templeActionsAvailable(game.state).giveBlood).toBe("locked");
-    expect(templeGiveBlood(game.state)).not.toBeNull();
-    expect(a[0]!.hp).toBe(25);
+    a[0]!.hp = 80;
+    expect(templeGiveBlood(game.state, [a[0]!.id, b[0]!.id])).toBeNull();
+    expect(game.state.faith).toBe(83);
+    expect([a[0]!.hp, a[1]!.hp, b[0]!.hp, b[1]!.hp]).toEqual([30, 100, 45, 100]);
+  });
+
+  test("Faith over the cap is lost", () => {
+    const { game, a, b } = templeGame();
+    game.state.faith = 90;
+    expect(templeGiveBlood(game.state, [a[0]!.id, b[0]!.id])).toBeNull();
+    expect(game.state.faith).toBe(100);
+  });
+
+  test("a full torch locks Give blood", () => {
+    const { game, a } = templeGame();
+    game.state.faith = 100;
+    expect(templeActionsAvailable(game.state).giveBlood).toBe("full");
+    expect(templeGiveBlood(game.state, [a[0]!.id])).not.toBeNull();
+    expect(a[0]!.hp).toBe(100);
+    expect(room(game).cleared).toBe(false);
+  });
+
+  test("Give blood needs at least one donor, each one the temple takes", () => {
+    const { game, a, b } = templeGame();
+    game.state.faith = 50;
+    expect(templeGiveBlood(game.state, [])).not.toBeNull();
+    b[0]!.hp = 54;
+    expect(templeGiveBlood(game.state, [a[0]!.id, b[0]!.id])).not.toBeNull();
+    expect([a[0]!.hp, b[0]!.hp]).toEqual([100, 54]);
     expect(game.state.faith).toBe(50);
     expect(room(game).cleared).toBe(false);
   });
 
-  test("give blood takes every eligible matching member", () => {
+  test("no one able to give locks Give blood; the dead never give", () => {
     const { game, a, b } = templeGame();
     game.state.faith = 50;
-    a[0]!.hp = 80;
-    a[1]!.hp = 40;
-    templeGiveBlood(game.state);
-    expect(game.state.faith).toBe(70);
-    expect(b.every((c) => c.hp === 100)).toBe(true);
-  });
-
-  test("give all only when nobody living matches", () => {
-    const { game, a } = templeGame();
-    expect(templeActionsAvailable(game.state).giveAll).toBe(false);
-    expect(templeGiveAll(game.state)).not.toBeNull();
-    expect(room(game).cleared).toBe(false);
-    for (const c of a) c.isAlive = false;
-    expect(templeMatchingMembers(game.state)).toEqual([]);
-    expect(templeActionsAvailable(game.state).giveAll).toBe(true);
-  });
-
-  test("dead matching member does not count at the temple", () => {
-    const { game, a } = templeGame();
-    a[0]!.isAlive = false;
-    expect(templeMatchingMembers(game.state)).toEqual([a[1]!]);
-    a[1]!.isAlive = false;
-    expect(templeActionsAvailable(game.state)).toEqual({ giveBlood: "hidden", giveAll: true, boon: true });
-  });
-
-  test("give all costs everyone and can kill", () => {
-    const { game } = templeGame(RELIGION_C);
-    game.state.faith = 50;
-    const [first, second, third, fourth] = game.state.party as [Character, Character, Character, Character];
-    first.hp = 100;
-    second.hp = 70;
-    third.hp = 50;
-    fourth.hp = 100;
-    expect(game.templeGiveAll()).toBeNull();
-    expect([first.hp, second.hp, third.hp]).toEqual([40, 10, 0]);
-    expect(third.isAlive).toBe(false);
-    expect(game.state.faith).toBe(80);
-    expect(game.state.gameOver).toBeNull();
-  });
-
-  test("give all that kills everyone is a defeat", () => {
-    const { game } = templeGame(RELIGION_C);
-    for (const c of game.state.party) c.hp = 50;
-    game.templeGiveAll();
-    expect(game.state.party.every((c) => !c.isAlive)).toBe(true);
-    expect(game.state.gameOver).toBe("defeat");
+    for (const c of a) c.hp = 29;
+    for (const c of b) c.hp = 54;
+    expect(templeActionsAvailable(game.state).giveBlood).toBe("none");
+    b[0]!.hp = 100;
+    expect(templeActionsAvailable(game.state).giveBlood).toBe("open");
+    b[0]!.isAlive = false;
+    expect(bloodGift(game.state, b[0]!)).toBeNull();
+    expect(templeActionsAvailable(game.state).giveBlood).toBe("none");
   });
 
   test("boon cost and gate", () => {
@@ -139,21 +135,16 @@ describe("temple actions", () => {
   });
 
   test("one action per visit", () => {
-    for (const act of [templeGiveBlood, templeAskBoon, templeLeave]) {
+    const giveFirst = (state: Game["state"]) => templeGiveBlood(state, [state.party[0]!.id]);
+    for (const act of [giveFirst, templeAskBoon, templeLeave]) {
       const { game } = templeGame();
       game.state.faith = 50;
-      game.state.party[0]!.hp = 80;
       act(game.state);
       expect(room(game).cleared).toBe(true);
-      expect(templeGiveBlood(game.state)).not.toBeNull();
-      expect(templeGiveAll(game.state)).not.toBeNull();
+      expect(giveFirst(game.state)).not.toBeNull();
       expect(templeAskBoon(game.state)).not.toBeNull();
-      expect(templeActionsAvailable(game.state)).toEqual({ giveBlood: "hidden", giveAll: false, boon: false });
+      expect(templeActionsAvailable(game.state)).toEqual({ giveBlood: "none", boon: false });
     }
-    const { game } = templeGame(RELIGION_C);
-    templeGiveAll(game.state);
-    expect(room(game).cleared).toBe(true);
-    expect(templeGiveAll(game.state)).not.toBeNull();
   });
 });
 
