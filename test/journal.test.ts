@@ -142,6 +142,10 @@ describe("journal scene at room clear", () => {
   test("a repeat-in-run source needs an earlier resolution of the same event this run", () => {
     const game = slotGame();
     resolveInstant(game, "old-count");
+    game.acknowledgeChoiceNarration();
+    const reward = game.state.pendingArtifactDecision;
+    if (reward?.forceEquip) expect(game.resolveArtifactEquip(game.state.party[0]!.id)).toBeNull();
+    else if (reward) expect(game.discardPendingArtifact()).toBeNull();
     choose(game, "They counted days, toward a day they meant to leave.");
     forceEventRoom(game, "old-count");
     game.state.journalHandledRoomId = null;
@@ -412,6 +416,9 @@ describe("journal UI", () => {
     mockInput.pressKey("1");
     mockInput.pressKey("1");
     await renderOnce();
+    expect(app.debugUiState.kind).toBe("choiceNarration");
+    mockInput.pressKey("RETURN");
+    await renderOnce();
     if (app.debugUiState.kind === "artifactDecision") {
       mockInput.pressKey("2");
       await renderOnce();
@@ -421,9 +428,6 @@ describe("journal UI", () => {
     await renderOnce();
     expect(app.debugUiState.kind).toBe("journalDeduction");
     mockInput.pressKey("1");
-    await renderOnce();
-    expect(app.debugUiState.kind).toBe("eventExit");
-    mockInput.pressKey("RETURN");
     await renderOnce();
     expect(app.debugUiState.kind).toBe("room");
     mockInput.pressKey("j");
@@ -445,6 +449,9 @@ describe("journal UI", () => {
     await renderOnce();
     mockInput.pressKey("1");
     mockInput.pressKey("1");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("choiceNarration");
+    mockInput.pressKey("RETURN");
     await renderOnce();
     if (app.debugUiState.kind === "artifactDecision") {
       mockInput.pressKey("2");

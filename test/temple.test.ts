@@ -243,3 +243,44 @@ describe("the boon", () => {
     expect(c.attack).toBe(before.get(c.id)!.attack.total);
   });
 });
+
+test("temple narration reports selected donors and capped faith through Game", () => {
+  const { game, a, b } = templeGame();
+  game.state.faith = 99;
+  const donors = [a[0]!, b[0]!];
+  const before = donors.map(c => c.hp);
+  const untouched = a[1]!.hp;
+  expect(game.templeGiveBlood(donors.map(c => c.id))).toBeNull();
+  expect(game.state.pendingChoiceNarration?.result.faithDelta).toBe(1);
+  expect(game.state.pendingChoiceNarration?.result.hpChanges).toEqual(donors.map((c, i) => ({ characterId: c.id, name: c.name, before: before[i]!, after: c.hp })));
+  expect(donors.every(c => c.isAlive && c.hp > 0)).toBe(true);
+  expect(a[1]!.hp).toBe(untouched);
+});
+
+test("temple boon acknowledgement does not heal and leave outside a temple is a no-op", () => {
+  const { game, a } = templeGame();
+  a[0]!.hp = 10;
+  game.state.faith = 100;
+  expect(game.templeAskBoon()).toBeNull();
+  const hp = a[0]!.hp;
+  game.acknowledgeChoiceNarration();
+  expect(a[0]!.hp).toBe(hp);
+  const current = room(game);
+  current.type = "event";
+  current.cleared = false;
+  current.rolledEventId = "open-chest";
+  game.templeLeave();
+  expect(game.state.pendingChoiceNarration).toBeNull();
+  expect(current.cleared).toBe(false);
+});
+
+test("temple narration includes a selected donor whose payment rounds to zero", () => {
+  const { game, a } = templeGame();
+  const donor = a[0]!;
+  donor.maxHp = 1;
+  donor.hp = 1;
+  game.state.faith = 50;
+  expect(game.templeGiveBlood([donor.id])).toBeNull();
+  expect(game.state.pendingChoiceNarration?.result.hpChanges).toEqual([{ characterId: donor.id, name: donor.name, before: 1, after: 1 }]);
+  expect(donor.isAlive).toBe(true);
+});

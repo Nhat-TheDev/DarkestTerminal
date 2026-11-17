@@ -181,6 +181,7 @@ export function resolveEventEntry(state: GameState, room: Room, ctx: EngineConte
     room.rolledEventId = rollEvent(ctx.rng, state.floor.depth, state.firedOnceEventIds);
     // Pinned at roll time so re-renders within a visit stay consistent. 0 = base `description`.
     const rolledEvent = getEvent(room.rolledEventId);
+    if (rolledEvent.kind === "artifactSacrifice") room.eventSacrificesThisVisit = 0;
     if (rolledEvent.descriptionVariants && rolledEvent.descriptionVariants.length > 0) {
       room.descriptionVariantIndex = ctx.rng.int(0, rolledEvent.descriptionVariants.length);
     }

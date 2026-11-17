@@ -53,7 +53,7 @@ guard unless the party is in danger. Below 35% MP a character conserves: outside
 spends MP only on heals and fear relief, and otherwise reaches for a recovery item, a damage item
 or the free basic attack, in that order. Mana potions wait for the guard, and a healer always keeps
 the MP for its cheapest heal. It takes a rest room when anyone is hurt, frightened, low on MP or
-satiety is at 50 or below, camps on a kit when hungry, and at a rest eats when hungry, otherwise prays while Faith is below half (`PRAY_FAITH_BELOW`), otherwise talks when someone is frightened and eats if not (`chooseRest`). At a temple it gives blood when the temple will take it and at least one member keeps more than `TEMPLE_KEEP_HP_FRACTION` of max HP after giving, choosing every such member (`chooseTempleDonors`), and leaves otherwise; it never chooses the boon itself, which only the random footer keys can ask (`chooseTemple`). At an exit scene it leaves without a word one time in four (`LEAVE_SILENT_CHANCE`) and picks a shown answer at random otherwise (`chooseExit`). All of these are in `tools/random-play/team.ts`.
+satiety is at 50 or below, camps on a kit when hungry, and at a rest eats when hungry, otherwise prays while Faith is below half (`PRAY_FAITH_BELOW`), otherwise talks when someone is frightened and eats if not (`chooseRest`). At a temple it gives blood when the temple will take it and at least one member keeps more than `TEMPLE_KEEP_HP_FRACTION` of max HP after giving, choosing every such member (`chooseTempleDonors`), and leaves otherwise; it never chooses the boon itself, which only the random footer keys can ask (`chooseTemple`). At an exit scene it leaves without a word one time in four (`LEAVE_SILENT_CHANCE`) and picks a shown answer at random otherwise (`chooseExit`). It acknowledges `choiceNarration` with `RETURN`, after the action has already committed; this does not change the donor selection policy. All of these are in `tools/random-play/team.ts`.
 
 Once the run has not changed for a while it stops following the policy, backs out of any screen that offers Esc and favours digits and
 Enter over the global keys, so it does not idle in the character sheet or the log. Every run plays
@@ -73,7 +73,7 @@ border are warnings for a human look, not failures. Each finding carries the see
 steps and a colour capture of the screen; `--game-seed X --bot-seed Y --team NAME` replays one run exactly.
 `report.html` also holds a gallery of every screen reached, rarest first: one capture per screen kind,
 event room and case (a fight's tier from its strongest monster, a fight's outcome, a reward or an empty
-one) at the size it was reached at, and again at 150×45. The tool exits non-zero
+one) at the size it was reached at, and again at 150×45. Narration uses the saved source, source id and semantic `caseKey` before looking at a prepared fight: accept/decline, rescue success/failure, gambling win/loss/jackpot, source-scene variants and temple religions have distinct keys within the existing `ScreenKey` fields. The tool exits non-zero
 when it finds a failure, and prints each kind of failure with the screens it hit and a command that
 replays its first occurrence; `--report none` skips `report.html` and `failures.json`, so that list
 and the exit code are the whole result. `report.html` also tabulates how each team played and the
@@ -82,8 +82,8 @@ runs 5 fixed seeds per team this way (`.github/workflows/random-play.yml`).
 
 `bun run random-play --evidence` plays fixed scenarios instead, to capture every screen rather than
 find crashes: a fresh run with its opening scenes, a rest room, every room event (each forced into an
-event room with `applyDump`'s `forceEventId`, the run ending once the party leaves the room, so each ends on its exit scene), a temple, an elite
-and a boss guard room, and a defeat. A scenario's seed and team come from its name, so adding an event
+event room with `applyDump`'s `forceEventId`, the run ending once the party leaves the room, covering its resolution and continuation), a temple, an elite
+and a boss guard room, and a defeat. These scenarios capture the narration passages they reach and then continue through the normal route; they do not prove every branch was visited. Directed engine and headless UI tests cover rare outcomes and scene variants. A scenario's seed and team come from its name, so adding an event
 leaves every other scenario's screens as they were, and a scenario plays at
 180×70 with no save round trips, resizes or hidden-key probes, so the same code captures the same
 screens. It still reports failures as above. Into `--out` it writes `screens/*.png` (each screen at
@@ -278,6 +278,35 @@ row with a second row for what status effects add or take, shell, bar and telegr
 cooldowns, its statuses) or, outside a fight, the bestiary of every archetype the slot has fought. That list is the profile's `seenMonsterIds`, written by
 `Game.noteSeenMonsters()` whenever a fight starts, a round resolves (it may summon) or a run loads mid-fight. A viewer opened from another replaces it, so `[Esc]` always
 returns to the screen the first one was opened from.
+
+### Event and temple choice narration
+
+A committed event or temple choice opens `choiceNarration` (`src/ui/screens/choiceNarration.ts`):
+the source title, a resolved passage, and the result details that apply to that action. Offered artifacts
+are distinct from removed artifacts; an empty result adds no result block. The reading step comes
+after the cost, reward or combat setup, before the player acts on what follows. `App.syncUiToGameState`
+checks Gatekeeper, ending checkpoint, founder dialogue, journal pickup and game-over handling first,
+then narration before artifact decisions, event Reflection, journal deductions and combat. After
+acknowledgement it derives the next screen from the pending state; no continuation is stored in the UI.
+An event exit without Reflection is consumed by acknowledgement instead of adding an empty reading step.
+A temple finishes at the room; there is no `templeReflection` screen.
+
+`GameState.pendingChoiceNarration` owns the saved reading: `source`, `sourceId`, `roomId`, `floorDepth`,
+`caseKey`, `title`, resolved `text` and `result`. `Game` captures the source before the action and fills
+the record from the actual effects after success (`src/engine/choiceNarration.ts`); a refused action
+creates no reading. The event/religion `narration` catalog supplies the passage, including semantic
+outcomes and scene-specific cases. Save/load retains the resolved reading alongside any prepared
+combat, artifact offer, Reflection or journal work. A loaded reading does not reroll effects or resolve
+the choice again. Older saves with no pending narration do not invent one from the room or log.
+
+The pre-action confirmation described in R7 still requires the same committing key twice. The reading
+screen needs one fresh Enter (`[Enter] Continue`, `ui.footerChoiceNarration`), which calls
+`Game.acknowledgeChoiceNarration()` and clears the reading without repeating the action. Digits and
+Escape cannot dismiss it or act through it; available global viewers, the run log and save controls
+retain their normal bindings. The Battlefield keeps the source event or temple visuals, even when
+the room is cleared or a fight has already been prepared. Long passages use the Dungeon panel's
+Shift+↑/Shift+↓ and mouse-wheel scrolling (R8). Returning from the log or save menu preserves the
+passage's scroll position; a different pending passage starts at the top.
 
 ### The "Battlefield" panel — pixel art
 
@@ -633,7 +662,7 @@ only arms it: the Dungeon panel scrolls to the top, where `ui.confirmPending` he
 becomes `[<key>] Confirm   [Any] Cancel   │   [Ctrl+C] Quit` (`ui.footerConfirm`). Pressing the same key
 again runs the action. Any other key cancels and does nothing else, which is why the
 footer drops every other global hint while armed. A key that only opens or moves
-between views (an offer's detail, a picker, a page) never asks. The armed key belongs to
+between views (an offer's detail, a picker, a page) never asks. A post-action `choiceNarration` is an acknowledgement, not another confirmation: one fresh Enter continues. The armed key belongs to
 the `UiState` object it was pressed on, so a screen change drops it.
 
 **R8 — A Dungeon panel taller than its box scrolls, and its border says so.** Any screen
@@ -655,6 +684,7 @@ screen contributes.
 | `rest` | `[1-3] Choose   [Enter] Leave` — `[1-4]` when the Merchant's Runner is there (Trade); once the rest action is taken, `[Enter] Leave`, or `[4] Trade   [Enter] Leave` with the runner |
 | `temple` | `[1-2] Choose   [Enter] Leave` — Give blood and Ask a boon; a locked action keeps its digit and refuses it |
 | `templeDonors` | `[1-n] Choose   [Enter] Give   [Esc] Back` — n = party size; a digit toggles that member, and one the temple will not take is refused |
+| `choiceNarration` | `[Enter] Continue` — acknowledges the resolved event or temple choice once |
 | `eventExit` | `[1-n] Choose   [Enter] Leave without a word` — n = the answers shown; `[Enter] Leave` alone when the event has no reflection this visit |
 | `runnerNotice` | `[Enter] Continue` |
 | `runnerShop` | `[1-n] Buy   [r] Refresh   [x] Sell   [t] Barter   [Enter] Leave` — n = offers left; `[r]` drops once refreshes run out, `[x]` when nothing is sellable, `[t]` when no trophy trade is left |
@@ -815,6 +845,7 @@ src/
     party.ts             # character creation/stats, the Artifact equip/discard/replace decision flow (grantArtifact, resolveArtifactEquip, discardPendingArtifact)
     survival.ts           # fear, satiety and Faith mechanics: room-entry drain and Faith decay, the Faith factor on fear gains, Exhausted/Dying, Camp, rest room actions (Eat and drink, Talk, Pray)
     temple.ts             # the temple room's actions: Give blood (bloodGift), Ask a boon, Leave; templeActionsAvailable
+    choiceNarration.ts    # captures event/temple source scenes, resolves semantic cases and actual result details for the saved pendingChoiceNarration
     reflection.ts         # reflection answers: conditions, shown answers, rolling an outcome, applying effects (the catalog rules are re-exported from data/reflectionCatalog.ts)
     journal.ts            # journal rules: conditions, fragment grants (no rng), the deduction queue, auto-strike, tear-out on a wipe
     migration.ts           # upgrades a GameState loaded from an older save to the current shape (see save.ts). A save loads if its version is an x.y.z version from `OLDEST_LOADABLE_SAVE_VERSION` (`save.ts`) up to the current app version. `VERSION_MIGRATIONS` holds one step per release that changed what a saved value means, oldest first; a save runs every step newer than its own version, in order, before the shape backfills (1.1.1 and 1.2.0 each rescale `partyExp` to that release's EXP curve, keeping the level and the share of the way to the next one, so a release that changes `expTiers[]` freezes its curve in `migration.ts` and adds a step, and `test/save.test.ts` fails until it does; 1.2.0 also remaps the class id `vanguard` to `knight`, renaming a character still carrying the old class name and the retired-character class; 1.2.1 renames two rooms on the saved floor, whose backdrop is found by name). A release that changes a saved value's meaning adds its step there; a release that changes nothing needs no step. Renamed ids are not remapped by default: whatever a loaded save still holds under an id that has left the catalog (inventory counts, statuses on units and in log snapshots, summons of an unknown archetype, queued actions, cooldown/use counters) is dropped, not carried over, so a release that renames an id an allowed version can hold remaps it in its step
@@ -847,7 +878,7 @@ src/
   ui/effectLine.ts      # the effect-line formatter shared by the rest room, exit scene and Camp Reflection: statEffectText, formatEffectLine, answerLines
   ui/state.ts           # UiState union + the state shared across screens
   ui/app.ts            # OpenTUI: layout + keyboard input, only reads/writes through Game
-  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, temple, runner, characterInfo, context, ending, floorMilestone, founderDialogue, memory, floorMapView, monsterInfo, gatekeeper, journal) — handleKey/renderMain/renderFooter
+  ui/screens/           # 1 module per screen (room, combat, artifacts, artifactDecision, camp, events, rewards, inventory, save, log, gameover, abilityBuyback, campReflection, temple, choiceNarration, runner, characterInfo, context, ending, floorMilestone, founderDialogue, memory, floorMapView, monsterInfo, gatekeeper, journal) — handleKey/renderMain/renderFooter
   main.ts              # actual entry point (createCliRenderer → mainMenu → partySelect/saveSelect → App)
 tools/
   game-editor/          # dev tool: sprites, backdrops, stat/balance rebalancing, damage/skill preview, and CRUD for monsters/artifacts/items/status effects/monster skills (bun run game-editor)

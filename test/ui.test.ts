@@ -33,6 +33,7 @@ import * as inventoryScreen from "../src/ui/screens/inventory";
 import * as artifactDecisionScreen from "../src/ui/screens/artifactDecision";
 import * as roomScreen from "../src/ui/screens/room";
 import * as templeScreen from "../src/ui/screens/temple";
+import * as choiceNarrationScreen from "../src/ui/screens/choiceNarration";
 import { getReligion, RELIGIONS } from "../src/data/religions";
 import { digitHint } from "../src/ui/keyHints";
 import { withTempleChance } from "./setup";
@@ -234,6 +235,9 @@ describe("headless UI smoke test", () => {
 
     expect(game.state.coins).toBeLessThan(9999);
     expect(game.state.pendingArtifactDecision?.artifactId).toBe(artifactId);
+    expect(app.debugUiState.kind).toBe("choiceNarration");
+    mockInput.pressKey("RETURN");
+    await renderOnce();
     expect(app.debugUiState.kind).toBe("artifactDecision");
   });
 
@@ -1895,6 +1899,184 @@ describe("Temple screen", () => {
     return { ...setup, game, app, room };
   }
 
+  test("acknowledgement routes prepared combat after a quicksave", async () => {
+    const { app, game, room, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({ prepare: (g) => {
+      g.state.faith = 50;
+      g.templeGiveBlood([g.state.party[0]!.id]);
+      const monster = spawnMonster("skeleton-guard", 1);
+      g.ctx.monsters.push(monster);
+      g.state.combat = startCombat(g.state.currentRoomId, [monster.id], g.ctx, true);
+    } });
+    try {
+      const combat = game.state.combat;
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      expect(captureCharFrame()).toContain(t("ui.templeLabel"));
+      expect(room.cleared).toBe(true);
+      mockInput.pressKey("s"); await renderOnce();
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      expect(captureCharFrame()).not.toContain(t("ui.revealingCombat"));
+      mockInput.pressKey("RETURN"); await renderOnce();
+      expect(game.state.pendingChoiceNarration).toBeNull();
+      expect(game.state.combat).toBe(combat);
+      expect(["pickAction", "roundResolved"]).toContain(app.debugUiState.kind);
+    } finally { renderer.destroy(); }
+  });
+
+  test("confirmed choice opens narration before rewards", async () => {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"], undefined, undefined, false, "slot1");
+    game.state.combat = null;
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "event"; room.rolledEventId = "merchant"; room.cleared = false;
+    game.state.activeEvent = { eventId: "merchant", offerArtifactIds: [ARTIFACTS[0]!.id] };
+    game.state.coins = 9999;
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    try {
+      const app = new App(setup.renderer, game, { autoReveal: false });
+      await setup.renderOnce();
+      expect(app.debugUiState.kind).toBe("eventArtifactShop");
+      setup.mockInput.pressKey("1"); setup.mockInput.pressKey("1"); setup.mockInput.pressKey("1");
+      await setup.renderOnce();
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      expect(setup.captureCharFrame()).toContain(`${ARTIFACTS[0]!.name} offered`);
+      expect(game.state.pendingArtifactDecision?.artifactId).toBe(ARTIFACTS[0]!.id);
+      saveRun(game);
+    } finally { setup.renderer.destroy(); }
+    const restored = gameFromSave(loadSave("slot1"), "slot1", 7);
+    const next = await createTestRenderer({ width: 150, height: 45 });
+    try {
+      const app = new App(next.renderer, restored, { autoReveal: false });
+      await next.renderOnce();
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      next.mockInput.pressKey("RETURN"); await next.renderOnce();
+      expect(app.debugUiState.kind).toBe("artifactDecision");
+    } finally { next.renderer.destroy(); }
+  });
+
+  test.each(["merchant", "guardian-fight"])("save and reload narration resumes the %s continuation", async (eventId) => {
+    const game = new Game(7, ["knight", "mage", "rogue", "acolyte"], undefined, undefined, false, "slot1");
+    game.state.combat = null;
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "event"; room.rolledEventId = eventId; room.cleared = false;
+    game.state.activeEvent = { eventId, offerArtifactIds: [] };
+    game.state.coins = 1000;
+    expect(eventId === "merchant" ? game.merchantRefresh() : game.enterGuardianFight()).toBeNull();
+    const passage = game.state.pendingChoiceNarration;
+    saveRun(game);
+    const restored = gameFromSave(loadSave("slot1"), "slot1", 7);
+    const setup = await createTestRenderer({ width: 150, height: 45 });
+    try {
+      const app = new App(setup.renderer, restored, { autoReveal: false });
+      await setup.renderOnce();
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      expect(restored.state.pendingChoiceNarration).toEqual(passage);
+      setup.mockInput.pressKey("RETURN"); await setup.renderOnce();
+      expect(app.debugUiState.kind).toBe(eventId === "merchant" ? "eventArtifactShop" : "pickAction");
+    } finally { setup.renderer.destroy(); }
+  });
+
+  test("narration acknowledgement preserves a pending Reflection", async () => {
+    const { app, game, mockInput, renderOnce, renderer } = await templeApp({ prepare: (g) => {
+      g.state.faith = 50; g.templeGiveBlood([g.state.party[0]!.id]);
+      g.state.pendingEventExit = { eventId: "guardian-fight", withReflection: true };
+    } });
+    try {
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      mockInput.pressKey("RETURN"); await renderOnce();
+      expect(app.debugUiState.kind).toBe("eventExit");
+      expect(game.state.pendingEventExit?.withReflection).toBe(true);
+    } finally { renderer.destroy(); }
+  });
+
+  test("narration shows resolved results without inventing effects", async () => {
+    const { game, renderer } = await templeApp({ prepare: (g) => { g.state.faith = 50; g.templeGiveBlood([g.state.party[0]!.id]); } });
+    try {
+      const narration = game.state.pendingChoiceNarration!;
+      narration.result = { coinsDelta: -3, faithDelta: 2, hpChanges: [{ characterId: "x", name: "Knight", before: 100, after: 50 }], offeredArtifacts: [{ artifactId: "a", name: "Offered" }], removedArtifacts: [{ artifactId: "b", name: "Lost" }], receivedItems: [{ itemId: "c", name: "Potion", count: 2 }], gamble: { round: 2, potBefore: 10, potAfter: 20, outcome: "win" }, boon: { religionId: "r", name: "Light", depth: 1 } };
+      const text = choiceNarrationScreen.renderMain(game).chunks.map((c) => c.text).join("");
+      for (const part of ["Coins −3", "Faith +2", "Knight HP 100 → 50", "Offered offered", "Lost removed", "Potion ×2 received", "pot 10 → 20 coins", "Light boon active"]) expect(text).toContain(part);
+      narration.result = {};
+      expect(choiceNarrationScreen.renderMain(game).chunks.map((c) => c.text).join("")).not.toContain("Result:");
+    } finally { renderer.destroy(); }
+  });
+
+  test("save and reload resumes the narration before continuing", async () => {
+    const setup = await templeApp({ slot: "slot1", prepare: (g) => { g.state.faith = 50; g.templeGiveBlood([g.state.party[0]!.id]); } });
+    const { game, renderer } = setup;
+    const passage = game.state.pendingChoiceNarration;
+    saveRun(game);
+    renderer.destroy();
+    const restored = gameFromSave(loadSave("slot1"), "slot1", 7);
+    const next = await createTestRenderer({ width: 150, height: 45 });
+    try {
+      const app = new App(next.renderer, restored, { autoReveal: false });
+      await next.renderOnce();
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      expect(restored.state.pendingChoiceNarration).toEqual(passage);
+      next.mockInput.pressKey("RETURN"); await next.renderOnce();
+      expect(app.debugUiState.kind).toBe("room");
+    } finally { next.renderer.destroy(); }
+  });
+
+  test("donor commit Enter does not also continue", async () => {
+    const { app, game, mockInput, renderOnce, renderer } = await templeApp({ prepare: (g) => { g.state.faith = 50; } });
+    try {
+      mockInput.pressKey("1");
+      mockInput.pressKey("1");
+      mockInput.pressKey("RETURN");
+      await renderOnce();
+      expect(game.state.party[0]!.hp).toBe(100);
+      mockInput.pressKey("1");
+      await renderOnce();
+      expect(app.debugUiState).toEqual({ kind: "templeDonors", selectedIds: [game.state.party[0]!.id] });
+      mockInput.pressKey("RETURN");
+      mockInput.pressKey("RETURN");
+      await renderOnce();
+      expect(game.state.party[0]!.hp).toBe(50);
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      mockInput.pressKey("RETURN");
+      await renderOnce();
+      expect(app.debugUiState.kind).toBe("room");
+    } finally { renderer.destroy(); }
+  });
+
+  test("narration blocks digits and escape", async () => {
+    const { app, game, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({ prepare: (g) => { g.state.faith = 50; } });
+    try {
+      mockInput.pressKey("1"); mockInput.pressKey("1"); mockInput.pressKey("RETURN"); mockInput.pressKey("RETURN");
+      await renderOnce();
+      const passage = game.state.pendingChoiceNarration;
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      expect(captureCharFrame()).toContain(t("ui.templeLabel"));
+      mockInput.pressKey("1"); mockInput.pressEscape();
+      await Bun.sleep(50); await renderOnce();
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      expect(game.state.pendingChoiceNarration).toEqual(passage);
+      expect(game.state.party[0]!.hp).toBe(50);
+      expect(captureCharFrame()).toContain("[Enter] Continue");
+    } finally { renderer.destroy(); }
+  });
+
+  test("narration retains scroll across viewers and resets for a new passage", async () => {
+    const { app, game, mockInput, renderOnce, captureCharFrame, renderer } = await templeApp({ prepare: (g) => { g.state.faith = 50; g.templeGiveBlood([g.state.party[0]!.id]); g.state.pendingChoiceNarration!.text = Array.from({ length: 35 }, (_, i) => `Passage line ${i}`).join("\n"); } });
+    try {
+      expect(captureCharFrame()).toContain("Passage line 0");
+      expect(captureCharFrame()).toContain(t("ui.panelMainMoreBelow"));
+      for (let i = 0; i < 10; i++) mockInput.pressArrow("down", { shift: true });
+      await renderOnce();
+      expect(captureCharFrame()).toContain("Passage line 10");
+      mockInput.pressKey("q"); await renderOnce();
+      mockInput.pressKey("3"); await renderOnce();
+      expect(captureCharFrame()).toContain("Passage line 10");
+      mockInput.pressKey("l"); await renderOnce();
+      mockInput.pressEscape(); await Bun.sleep(50); await renderOnce();
+      expect(captureCharFrame()).toContain("Passage line 10");
+      game.state.pendingChoiceNarration = { ...game.state.pendingChoiceNarration!, text: Array.from({ length: 35 }, (_, i) => `New passage ${i}`).join("\n") };
+      app.syncUiToGameState(); mockInput.pressKey("1"); await renderOnce();
+      expect(captureCharFrame()).toContain("New passage 0");
+      expect(captureCharFrame()).toContain("[Enter] Continue");
+    } finally { renderer.destroy(); }
+  });
+
   test.each(RELIGIONS)("$name temple renders its own sprite regardless of the party's religions", async (religion) => {
     const sprite = TEMPLE_SPRITES[religion.templeSpriteId];
     expect(sprite, religion.id).toBeDefined();
@@ -1947,6 +2129,9 @@ describe("Temple screen", () => {
       await renderOnce();
       expect(game.state.boon?.religionId).toBe(religion.id);
       expect(captureCharFrame()).toContain(label);
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      mockInput.pressKey("RETURN");
+      await renderOnce();
       mockInput.pressKey("b");
       await renderOnce();
       expect(app.debugUiState.kind).toBe("characterInfo");
@@ -2001,6 +2186,10 @@ describe("Temple screen", () => {
       expect(knight.hp).toBe(50);
       expect(game.state.party.slice(1).every((c) => c.hp === 100)).toBe(true);
       expect(game.state.faith).toBe(68);
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      expect(captureCharFrame()).toContain("Knight HP 100 → 50");
+      mockInput.pressKey("RETURN");
+      await renderOnce();
       expect(app.debugUiState.kind).toBe("room");
     } finally {
       renderer.destroy();
@@ -2081,6 +2270,9 @@ describe("Temple screen", () => {
     mockInput.pressKey("RETURN");
     await renderOnce();
     expect(room.cleared).toBe(true);
+    expect(app.debugUiState.kind).toBe("choiceNarration");
+    mockInput.pressKey("RETURN");
+    await renderOnce();
     expect(app.debugUiState.kind).toBe("room");
     expect(captureCharFrame()).toContain(t("ui.pathsLabel"));
     renderer.destroy();

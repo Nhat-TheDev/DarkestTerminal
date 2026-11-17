@@ -354,6 +354,7 @@ export interface Religion {
   name: string;
   templeDescription: string;
   templeSpriteId: Id;
+  narration: Record<string, string>;
   style: UnitStyle;
   boon: { emphasis: BoonStat | null; recoversHpMp: boolean };
 }
@@ -737,6 +738,7 @@ export interface EventDefinition {
   description: string;
   kind: EventKind;
   tier: EventTier;
+  narration?: Record<string, string>;
   forceEquip?: boolean;
   minFloorDepth?: number;
   onceLifetime?: boolean;
@@ -883,6 +885,28 @@ export interface ActiveBoon {
   depth: number;
 }
 
+export interface ChoiceNarrationResult {
+  coinsDelta?: number;
+  faithDelta?: number;
+  hpChanges?: { characterId: Id; name: string; before: number; after: number }[];
+  offeredArtifacts?: { artifactId: Id; name: string }[];
+  removedArtifacts?: { artifactId: Id; name: string }[];
+  receivedItems?: { itemId: Id; name: string; count: number }[];
+  gamble?: { round: number; potBefore: number; potAfter: number; outcome: "win" | "loss" | "banked" | "jackpot" };
+  boon?: { religionId: Id; name: string; depth: number };
+}
+
+export interface PendingChoiceNarration {
+  source: "event" | "temple";
+  sourceId: Id;
+  roomId: Id;
+  floorDepth: number;
+  caseKey: string;
+  title: string;
+  text: string;
+  result: ChoiceNarrationResult;
+}
+
 export type RoomType = "combat" | "rest" | "boss" | "event" | "temple";
 
 export interface Room {
@@ -899,6 +923,7 @@ export interface Room {
   /** Shown as unknown until the party enters it; absent means visible. */
   hidden?: boolean;
   rolledEventId?: Id;
+  eventSacrificesThisVisit?: number;
   /** The religion this floor's temple belongs to; set only on a temple room. */
   templeReligionId?: Id;
   chainVariant?: "buildup" | "forced" | "forced2" | "forced3";
@@ -1250,6 +1275,7 @@ export interface GameState {
   faith: number;
   /** The boon asked at this floor's temple; cleared when the floor ends. */
   boon: ActiveBoon | null;
+  pendingChoiceNarration?: PendingChoiceNarration | null;
   pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean } | null;
   /** Gambling Den's 2nd jackpot artifact, waiting until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;

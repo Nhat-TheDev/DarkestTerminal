@@ -1,4 +1,4 @@
-import type { EventDefinition, EventTier, GameState, Id, ReflectionCondition } from "../types";
+import type { EventDefinition, EventKind, EventTier, GameState, Id, ReflectionCondition } from "../types";
 import eventsJson from "../../data/events.json";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
@@ -88,6 +88,69 @@ export function eventTexts(event: EventDefinition): string[] {
   ].filter((text): text is string => typeof text === "string");
 }
 
+const NARRATION_CASES: Record<Exclude<EventKind, "scripted">, readonly string[]> = {
+  instantReward: [],
+  combatReward: ["fight", "leave"],
+  artifactShop: ["purchase", "refresh", "leave"],
+  hpGamble: ["pay", "leave"],
+  cursedOffer: ["accept", "decline"],
+  pairedOffer: ["chooseFirst", "chooseSecond"],
+  artifactSacrifice: ["sacrifice", "leave.untouched", "leave.afterOffering", "leave.legacy"],
+  fortuneExchange: ["exchange", "leave"],
+  rescueGamble: ["rescue.success", "rescue.failure", "leave"],
+  coinGamble: ["enter.win", "enter.loss", "continue.win", "continue.loss", "jackpot", "stop", "leave"],
+};
+
+function assertEventNarrationValid(event: EventDefinition): void {
+  if (event.kind === "scripted") return;
+  const where = `data/events.json: "${event.id}" narration`;
+  const narration = event.narration;
+  if (!narration || typeof narration !== "object" || Array.isArray(narration)) throw new Error(`${where} must be a case-to-text map`);
+  const required = [...NARRATION_CASES[event.kind]];
+  const sourceCases: [string, boolean][] = [];
+  if (event.kind === "instantReward") {
+    if (Object.hasOwn(narration, "moveOn")) {
+      required.push("moveOn");
+    } else {
+      if ((event.descriptionVariants?.length ?? 0) > 2) throw new Error(`${where} has unsupported descriptionVariants beyond the lockbox and gear cases`);
+      required.push("take.chest");
+      sourceCases.push(
+        ["take.lockbox", (event.descriptionVariants?.length ?? 0) >= 1],
+        ["take.gear", (event.descriptionVariants?.length ?? 0) >= 2],
+        ["take.habit", !!event.chainEscalatedDescription],
+      );
+    }
+  }
+  if (event.kind === "combatReward") {
+    sourceCases.push(
+      ["fight.forced1", !!event.chainForcedDescription],
+      ["fight.forced2", !!event.chainForced2Description],
+      ["fight.forced3", !!event.chainForced3Description],
+    );
+  }
+  if (event.kind === "hpGamble" || event.kind === "artifactSacrifice") {
+    const action = event.kind === "hpGamble" ? "pay" : "sacrifice";
+    sourceCases.push(
+      [`${action}.tier1`, !!event.escalation && !!event.chainEscalatedDescription],
+      [`${action}.tier2`, !!event.escalation && !!event.chainEscalated2Description],
+      [`${action}.tier3`, !!event.escalation && !!event.chainEscalated3Description],
+    );
+  }
+  for (const [key, applies] of sourceCases) if (applies) required.push(key);
+  const allowed = new Set(required);
+  if (event.kind === "instantReward" && Object.hasOwn(narration, "moveOn") && event.chainEscalatedDescription) allowed.add("moveOn.habit");
+  for (const key of required) {
+    if (!Object.hasOwn(narration, key)) throw new Error(`${where} is missing case "${key}"`);
+  }
+  for (const [key, text] of Object.entries(narration)) {
+    if (!allowed.has(key)) throw new Error(`${where} has unsupported case "${key}"`);
+    if (typeof text !== "string" || !text.trim()) throw new Error(`${where} case "${key}" must be nonempty text`);
+    if (/[{}]/.test(text.replace(/\{\{(?:character|artifact|oldArtifact|newArtifact)\}\}/g, ""))) {
+      throw new Error(`${where} case "${key}" has an unsupported placeholder`);
+    }
+  }
+}
+
 export function assertEventDataConsistent(events: EventDefinition[]): void {
   for (const event of events) {
     const unpaired = eventTexts(event).find((text) => splitHighlights(text) === null);
@@ -118,6 +181,7 @@ export function assertEventDataConsistent(events: EventDefinition[]): void {
         throw new Error(`data/events.json: "${event.id}" reflectionRequiresOutcome "${event.reflectionRequiresOutcome}" is not one of ${[...ENGAGEMENT_OUTCOMES].join(", ")}`);
       }
     }
+    assertEventNarrationValid(event);
   }
 }
 

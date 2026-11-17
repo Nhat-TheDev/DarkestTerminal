@@ -922,5 +922,20 @@
   "ui.journalLastPageLine": "{{page}} — {{subject}}",
   "ui.journalSplit": "split: {{first}} / {{second}}",
   "ui.journalWriterRun": "{{writer}}, run {{run}}",
-  "ui.journalSince": "Since: {{text}} — floor {{depth}}"
+  "ui.journalSince": "Since: {{text}} — floor {{depth}}",
+  "errors.pendingArtifactDecision": "Resolve the offered artifact before taking another action.",
+  "errors.pendingChoiceNarration": "Continue the current narration before taking another action.",
+  "ui.footerChoiceNarration": "[Enter] Continue",
+  "ui.choiceNarrationCoins": "Coins {{delta}}",
+  "ui.choiceNarrationFaith": "Faith {{delta}}",
+  "ui.choiceNarrationHp": "{{character}} HP {{before}} → {{after}}",
+  "ui.choiceNarrationArtifactOffered": "{{artifact}} offered",
+  "ui.choiceNarrationArtifactRemoved": "{{artifact}} removed",
+  "ui.choiceNarrationItemReceived": "{{item}} ×{{count}} received",
+  "ui.choiceNarrationGamble": "Round {{round}}: {{outcome}}; pot {{potBefore}} → {{potAfter}} {{potAfter|coin|coins}}",
+  "ui.choiceNarrationBoon": "{{religion}} boon active until the floor ends",
+  "ui.choiceNarrationGambleWin": "won",
+  "ui.choiceNarrationGambleLoss": "lost",
+  "ui.choiceNarrationGambleBanked": "banked",
+  "ui.choiceNarrationGambleJackpot": "jackpot"
 }

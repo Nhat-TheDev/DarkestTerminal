@@ -55,6 +55,7 @@ import { PAGE_SIZE, ITEM_PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import { GROUP_SEP, canOpenJournal, canOpenMap, canOpenMemory, canOpenMonsters, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
+import * as choiceNarrationScreen from "./screens/choiceNarration";
 import * as roomScreen from "./screens/room";
 import * as combatScreen from "./screens/combat";
 import * as inventoryScreen from "./screens/inventory";
@@ -145,6 +146,8 @@ export class App implements ScreenContext {
   /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
   private deferredToasts: LogEntry[] = [];
   private mainUi: UiState | null = null;
+  private narrationPassage: Game["state"]["pendingChoiceNarration"] = null;
+  private narrationScroll = 0;
   private roomLog: LogEntry[] = [];
   private roomLogFloor: Floor | null = null;
   private roomLogRoomId: Id | null = null;
@@ -429,6 +432,10 @@ export class App implements ScreenContext {
       this.ui = { kind: "gameover" };
       return;
     }
+    if (this.game.state.pendingChoiceNarration) {
+      this.ui = { kind: "choiceNarration" };
+      return;
+    }
     const combat = this.game.state.combat;
     if (!combat) {
       if (this.game.state.pendingArtifactDecision) {
@@ -545,7 +552,7 @@ export class App implements ScreenContext {
       this.render();
       return;
     }
-    if (this.reveal.active) {
+    if (this.reveal.active && this.ui.kind !== "choiceNarration") {
       this.flushPendingReveal();
       return;
     }
@@ -610,6 +617,9 @@ export class App implements ScreenContext {
     const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
 
     switch (this.ui.kind) {
+      case "choiceNarration":
+        choiceNarrationScreen.handleKey(this, key);
+        break;
       case "room":
       case "rest":
         roomScreen.handleKey(this, this.ui, key, digit);
@@ -890,9 +900,14 @@ export class App implements ScreenContext {
     // Runs before the header/party/monster panels so they all read the same last-revealed snapshot.
     const combat = s.combat;
     const fresh: LogEntry[] = [];
+    if (this.mainUi?.kind === "choiceNarration" && this.ui !== this.mainUi) this.narrationScroll = this.main.scrollY;
+    if (s.pendingChoiceNarration !== this.narrationPassage) {
+      this.narrationPassage = s.pendingChoiceNarration;
+      this.narrationScroll = 0;
+    }
     // Not always the current combat: a party-wiping round ends the combat before this render runs.
     let revealSource = combat;
-    if (combat !== this.observedCombat) {
+    if (!s.pendingChoiceNarration && combat !== this.observedCombat) {
       const finished = this.observedCombat;
       if (finished && finished.log.length > this.lastLogLength) {
         fresh.push(...finished.log.slice(this.lastLogLength));
@@ -905,11 +920,11 @@ export class App implements ScreenContext {
       // A loaded save's resolved rounds were seen before saving, so they are not replayed.
       if (combat && combat.log.some((e) => e.snapshot !== undefined)) this.lastLogLength = combat.log.length;
     }
-    if (combat && combat.log.length > this.lastLogLength) {
+    if (!s.pendingChoiceNarration && combat && combat.log.length > this.lastLogLength) {
       fresh.push(...combat.log.slice(this.lastLogLength));
       this.lastLogLength = combat.log.length;
     }
-    fresh.push(...this.deferredToasts.splice(0));
+    if (!s.pendingChoiceNarration) fresh.push(...this.deferredToasts.splice(0));
     if (fresh.length > 0) {
       // Lines queued behind a running reveal neither rewind HP/MP/coins nor add a tick.
       const wasIdle = !this.reveal.active;
@@ -922,9 +937,9 @@ export class App implements ScreenContext {
       this.reveal.enqueue(fresh);
       if (wasIdle) this.startReveal();
     }
-    const revealing = this.reveal.active;
+    const revealing = this.reveal.active && !s.pendingChoiceNarration;
     if (!revealing) this.narratedCombat = null;
-    const shownCombat = this.narratedCombat ?? combat;
+    const shownCombat = s.pendingChoiceNarration ? null : this.narratedCombat ?? combat;
     const focus = this.reveal.focus;
     const inFullLog = this.ui.kind === "fullLog";
     for (const box of this.chrome) box.visible = !inFullLog;
@@ -1011,6 +1026,7 @@ export class App implements ScreenContext {
       const main = this.renderMain();
       this.main.content = pending === null ? main : withConfirmPrompt(main);
       this.keepScrollInRange(this.main, this.ui !== this.mainUi);
+      if (this.ui.kind === "choiceNarration" && this.ui !== this.mainUi) this.main.scrollY = this.narrationScroll;
       this.showMainScroll();
       this.footer.content = joinLines([
         highlightKeyHints(
@@ -1332,8 +1348,8 @@ export class App implements ScreenContext {
 
     const room = getRoom(s.floor, s.currentRoomId);
     const isRestRoom = !combat && room.type === "rest";
-    const isTempleRoom = !combat && room.type === "temple" && !room.cleared;
-    const isEventRoom = !combat && room.type === "event" && !!room.rolledEventId && !room.cleared;
+    const isTempleRoom = !combat && room.type === "temple" && (!room.cleared || s.pendingChoiceNarration?.source === "temple");
+    const isEventRoom = !combat && room.type === "event" && !!room.rolledEventId && (!room.cleared || s.pendingChoiceNarration?.source === "event");
     const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
     let enemyBlock: TextChunk[][];
@@ -1519,6 +1535,8 @@ export class App implements ScreenContext {
       case "eventCombatReward":
       case "eventExit":
         return eventsScreen.renderMain(this.game, this.ui, this.listPage);
+      case "choiceNarration":
+        return choiceNarrationScreen.renderMain(this.game);
 
       case "campReflection":
         return campReflectionScreen.renderMain(this.game, this.ui);
@@ -1625,6 +1643,8 @@ export class App implements ScreenContext {
       case "eventCombatReward":
       case "eventExit":
         return eventsScreen.renderFooter(this.ui, this.game, this.listPage);
+      case "choiceNarration":
+        return choiceNarrationScreen.renderFooter();
       case "campReflection":
         return campReflectionScreen.renderFooter(this.game);
       case "floorMilestone":

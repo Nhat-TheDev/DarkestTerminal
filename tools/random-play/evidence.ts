@@ -25,6 +25,11 @@ const TIER_ORDER: MonsterTier[] = ["normal", "elite", "boss"];
 
 export function screenKeyOf(ui: UiState, game: Game): ScreenKey {
   const state = game.state;
+  const narration = state.pendingChoiceNarration;
+  if (ui.kind === "choiceNarration" && narration) {
+    return { kind: ui.kind, event: narration.source === "event" ? narration.sourceId : null,
+      screenCase: `${narration.source}.${narration.sourceId}.${narration.caseKey}` };
+  }
   const room = getRoom(state.floor, state.currentRoomId);
   const event = room.type === "event" ? (room.rolledEventId ?? null) : null;
   const combat = state.combat;
