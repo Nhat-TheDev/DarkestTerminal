@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { KeyEvent, RGBA, type CapturedFrame, type StyledText } from "@opentui/core";
+import { KeyEvent, RGBA, TextAttributes, type CapturedFrame, type StyledText } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
 import { App, type RunExit } from "../src/ui/app";
 import { Game } from "../src/engine/game";
@@ -765,8 +765,8 @@ describe("event choices show their Cost and Result", () => {
     }
   });
 
-  test("confirming a merchant refresh after scrolling shows the confirmation prompt", async () => {
-    const { renderer, renderOnce, captureCharFrame, mockInput } = await createTestRenderer({ width: 150, height: 40 });
+  test("confirming a merchant refresh after scrolling keeps the highlighted action and confirmation footer visible", async () => {
+    const { renderer, renderOnce, captureCharFrame, captureSpans, mockInput } = await createTestRenderer({ width: 150, height: 40 });
     const game = eventGame("merchant");
     game.state.activeEvent!.offerArtifactIds = ARTIFACTS.slice(0, 4).map((a) => a.id);
     game.state.coins = 1000;
@@ -780,7 +780,9 @@ describe("event choices show their Cost and Result", () => {
       mockInput.pressKey("r");
       await renderOnce();
       expect(captureCharFrame()).toContain(t("ui.footerConfirm", { key: "r" }));
-      expect(captureCharFrame()).toContain(t("ui.confirmPending").trim());
+      const refresh = captureSpans().lines.flatMap(line => line.spans).find(span => span.text.includes("[r] Refresh offers"))!;
+      expect(refresh.fg).toEqual(RGBA.fromHex(PALETTE.title));
+      expect(refresh.attributes & TextAttributes.BOLD).not.toBe(0);
       expect(game.state.coins).toBe(1000);
 
       mockInput.pressKey("r");
@@ -790,6 +792,32 @@ describe("event choices show their Cost and Result", () => {
     } finally {
       renderer.destroy();
     }
+  });
+
+  test.each([
+    ["merchant", "r", "[r] Refresh offers"],
+    ["merchant", "ESCAPE", "[2] Leave empty-handed"],
+    ["guardian-fight", "ESCAPE", "[2] Leave"],
+  ])("pending %s %s highlights its action row", async (eventId, key, label) => {
+    const { renderer, renderOnce, captureSpans, mockInput } = await createTestRenderer({ width: 180, height: 70 });
+    const game = eventGame(eventId!);
+    game.state.coins = 1000;
+    game.state.activeEvent!.offerArtifactIds = [ARTIFACTS[0]!.id];
+    new App(renderer, game);
+    const row = () => captureSpans().lines.flatMap(line => line.spans).find(span => span.text.includes(label!))!;
+    try {
+      await renderOnce();
+      expect(row().fg).toEqual(RGBA.fromHex(PALETTE.text));
+      mockInput.pressKey(key!);
+      await Bun.sleep(30);
+      await renderOnce();
+      expect(row().fg).toEqual(RGBA.fromHex(PALETTE.title));
+      expect(row().attributes & TextAttributes.BOLD).not.toBe(0);
+      mockInput.pressKey("x");
+      await renderOnce();
+      expect(row().fg).toEqual(RGBA.fromHex(PALETTE.text));
+      expect(row().attributes & TextAttributes.BOLD).toBe(0);
+    } finally { renderer.destroy(); }
   });
 
   test("the sacrifice list states its cost and result once, above one line per artifact", () => {
@@ -2112,6 +2140,36 @@ describe("Temple screen", () => {
     expect(frame).not.toContain("{{");
     expect(templeScreen.renderFooter(game)).toBe(digitHint("ui.footerTemple", 2));
     renderer.destroy();
+  });
+
+  test("confirmation highlights only the chosen boon or selected donors and clears on cancellation", async () => {
+    const { game, mockInput, renderOnce, captureSpans, renderer } = await templeApp({ prepare: g => { g.state.faith = 50; } });
+    const row = (label: string) => captureSpans().lines.flatMap(line => line.spans).find(span => span.text.includes(label))!;
+    try {
+      mockInput.pressKey("2"); await renderOnce();
+      expect(row("[2] Ask a boon").fg).toEqual(RGBA.fromHex(PALETTE.title));
+      expect(row("[2] Ask a boon").attributes & TextAttributes.BOLD).not.toBe(0);
+      expect(row("[1] Give blood").fg).toEqual(RGBA.fromHex(PALETTE.text));
+      expect(row(`Cost: ${BALANCE.temple.boon.faithCost} Faith`).fg).toEqual(RGBA.fromHex(PALETTE.dim));
+      mockInput.pressKey("1"); await renderOnce();
+      expect(row("[2] Ask a boon").fg).toEqual(RGBA.fromHex(PALETTE.text));
+      expect(game.state.boon).toBeNull();
+      mockInput.pressKey("1"); mockInput.pressKey("1"); mockInput.pressKey("RETURN"); await renderOnce();
+      expect(row("[1] [x] Knight").fg).toEqual(RGBA.fromHex(PALETTE.title));
+      expect(row("[1] [x] Knight").attributes & TextAttributes.BOLD).not.toBe(0);
+      expect(row("[2] [ ] Mage").fg).toEqual(RGBA.fromHex(PALETTE.text));
+      mockInput.pressKey("x"); await renderOnce();
+      expect(row("[1] [x] Knight").fg).toEqual(RGBA.fromHex(PALETTE.title));
+      expect(row("[1] [x] Knight").attributes & TextAttributes.BOLD).toBe(0);
+      expect(game.state.party[0]!.hp).toBe(100);
+      mockInput.pressEscape(); await Bun.sleep(30); await renderOnce();
+      mockInput.pressKey("RETURN"); await renderOnce();
+      expect(row("[Enter] Leave").fg).toEqual(RGBA.fromHex(PALETTE.title));
+      expect(row("[Enter] Leave").attributes & TextAttributes.BOLD).not.toBe(0);
+      mockInput.pressKey("x"); await renderOnce();
+      expect(row("[Enter] Leave").fg).toEqual(RGBA.fromHex(PALETTE.text));
+      expect(row("[Enter] Leave").attributes & TextAttributes.BOLD).toBe(0);
+    } finally { renderer.destroy(); }
   });
 
   test.each(RELIGIONS)("$name boon shows its temple religion in the party and character details", async (religion) => {

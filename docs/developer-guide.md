@@ -658,7 +658,7 @@ and would drift the first time an option list changed.
 **R7 — A choice that spends the visit asks for the same key twice.** On the temple
 (`temple`, `templeDonors`) and the event-room screens except `eventExit`, a key that
 commits (buy, give, pay, sacrifice, leave, fight, skip) calls `ctx.confirm(key.name)` first. The first press
-only arms it: the Dungeon panel scrolls to the top, where `ui.confirmPending` heads the body, and the footer
+only arms it: `ui.confirmPending` heads the body, and the Dungeon panel scrolls as needed to keep the pending choice visible, accounting for wrapped lines. The pending action row is gold and bold, while its Cost/Result lines keep their normal style; confirming a donation emphasizes only the selected donors. The footer
 becomes `[<key>] Confirm   [Any] Cancel   │   [Ctrl+C] Quit` (`ui.footerConfirm`). Pressing the same key
 again runs the action. Any other key cancels and does nothing else, which is why the
 footer drops every other global hint while armed. A key that only opens or moves

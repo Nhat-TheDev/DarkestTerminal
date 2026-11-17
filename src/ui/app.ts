@@ -110,9 +110,23 @@ export type RunExit = "newRun" | "menu";
 
 const CONFIRM_KEY_LABELS: Record<string, string> = { return: "Enter", escape: "Esc" };
 
-function withConfirmPrompt(main: string | StyledText): StyledText {
+function withConfirmPrompt(main: string | StyledText, keys: string[]): { content: StyledText; selectedLine: number } {
   const chunks = typeof main === "string" ? [plainChunk(main)] : main.chunks;
-  return new StyledText([colorChunk(t("ui.confirmPending"), PALETTE.title), plainChunk("\n\n"), ...chunks]);
+  const lines: TextChunk[][] = [[]];
+  for (const chunk of chunks) {
+    chunk.text.split("\n").forEach((text, index) => {
+      if (index > 0) lines.push([]);
+      if (text) lines.at(-1)!.push({ ...chunk, text });
+    });
+  }
+  let selectedLine = -1;
+  const highlighted = lines.map((line, index) => {
+    const key = /^\s*\[([^\]]+)\]/.exec(line.map(chunk => chunk.text).join(""))?.[1];
+    if (!key || !keys.includes(key.toLowerCase())) return line;
+    if (selectedLine < 0) selectedLine = index + 2;
+    return line.map(chunk => boldColorChunk(chunk.text, PALETTE.title));
+  });
+  return { content: new StyledText([colorChunk(t("ui.confirmPending"), PALETTE.title), plainChunk("\n\n"), ...joinLines(highlighted).chunks]), selectedLine };
 }
 
 export class App implements ScreenContext {
@@ -1024,8 +1038,21 @@ export class App implements ScreenContext {
     } else {
       const pending = this.confirmPending();
       const main = this.renderMain();
-      this.main.content = pending === null ? main : withConfirmPrompt(main);
+      let confirmKeys = [CONFIRM_KEY_LABELS[pending ?? ""]?.toLowerCase() ?? pending ?? ""];
+      if (pending === "return" && this.ui.kind === "templeDonors") {
+        const selectedIds = this.ui.selectedIds;
+        confirmKeys = s.party.flatMap((member, index) => selectedIds.includes(member.id) ? [String(index + 1)] : []);
+      } else if (pending === "escape" && this.ui.kind === "eventCombatReward") confirmKeys = ["2"];
+      else if (pending === "escape" && this.ui.kind === "eventArtifactShop") confirmKeys = [String((s.activeEvent?.offerArtifactIds.length ?? 0) + 1)];
+      const confirmation = pending === null ? null : withConfirmPrompt(main, confirmKeys);
+      this.main.content = confirmation?.content ?? main;
       this.keepScrollInRange(this.main, this.ui !== this.mainUi);
+      if (confirmation) {
+        const rows = this.main.lineInfo.lineSources;
+        const first = rows.indexOf(confirmation.selectedLine);
+        const last = rows.lastIndexOf(confirmation.selectedLine);
+        if (first >= 0) this.main.scrollY = Math.min(first, Math.max(this.main.scrollY, last - this.main.height + 1));
+      }
       if (this.ui.kind === "choiceNarration" && this.ui !== this.mainUi) this.main.scrollY = this.narrationScroll;
       this.showMainScroll();
       this.footer.content = joinLines([
