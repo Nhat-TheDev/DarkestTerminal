@@ -4,12 +4,12 @@
     "noLoreExposure": true,
     "freeTake": true,
     "name": "Open Chest",
-    "description": "Rubble has spilled across half the floor, and a grey haze of stone dust still hangs in the torchlight. A cracked oak chest sits crooked on top of the pile, its iron bands flecked with rust. Whoever carried it this far didn't carry it any further.",
+    "description": "Rubble has spilled across half the floor, and a grey haze of stone dust still hangs in the torchlight. [[A cracked oak chest]] sits crooked on top of the pile, its iron bands flecked with rust. Whoever carried it this far didn't carry it any further.",
     "descriptionVariants": [
-      "Water drips somewhere behind a collapsed beam, slow and even, and the timber smells of rot and wet iron. Wedged beneath it is a rusted lockbox, its lid swollen with damp. The key is still in the lock, snapped off at the shaft.",
-      "The corridor narrows here, and the floor is swept clean in a square the width of a sleeping mat. Someone stacked their gear in the middle of it before they stopped needing it: boots with the laces tucked in, a belt coiled flat, a pack still buckled shut."
+      "Water drips somewhere behind a collapsed beam, slow and even, and the timber smells of rot and wet iron. Wedged beneath it is [[a rusted lockbox]], its lid swollen with damp. The key is still in the lock, snapped off at the shaft.",
+      "The corridor narrows here, and the floor is swept clean in a square the width of a sleeping mat. Someone stacked their gear in the middle of it before they stopped needing it: boots with the laces tucked in, a belt coiled flat, [[a pack still buckled shut]]."
     ],
-    "chainEscalatedDescription": "A chest sits in the rubble. The pry bar you carry for these has gone blunt at the tip.",
+    "chainEscalatedDescription": "[[A chest]] sits in the rubble. The pry bar you carry for these has gone blunt at the tip.",
     "kind": "instantReward",
     "tier": "common"
   },
@@ -18,15 +18,15 @@
     "reflectionRequiresOutcome": "resolved",
     "removedOnFounderVictory": true,
     "name": "Guardian Fight",
-    "description": "The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. A chest sits in the far corner. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, claws scrape slowly on stone. The scraping stops.",
+    "description": "The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. [[A chest sits in the far corner]]. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, [[claws scrape slowly on stone]]. The scraping stops.",
     "descriptionVariants": [
-      "The air is warm here, warmer than it should be, and thick with an animal smell. Something breathes in the dark ahead, deep and slow, a sound that comes up through the floor as much as through the air. It keeps the same pace whether you move or not.",
-      "Grit crunches under your boots, loud in a room this quiet, and the walls are scored at knee height with long pale gouges. Back where the light doesn't reach, loose stone shifts under something heavy, and dust sifts down into the torchlight. The shifting stops when you stop."
+      "The air is warm here and thick with an animal smell. [[A chest sits at the edge of the light]], its lid ajar. [[Something breathes in the dark beyond it]], deep and slow, a sound that comes up through the floor as much as through the air. It keeps the same pace whether you move or not.",
+      "Grit crunches under your boots, and the walls are scored at knee height with long pale gouges. [[A chest lies on its side by the far wall]]. Back where the light doesn't reach, [[loose stone shifts under something heavy]], and dust sifts down into the torchlight. The shifting stops when you stop."
     ],
-    "chainBuildupDescription": "Claws scrape on stone in the dark corner, then once more, a stride nearer the door.",
-    "chainForcedDescription": "It is standing in the doorway you came in through.",
-    "chainForced2Description": "The scraping starts while you're still on the stairs.",
-    "chainForced3Description": "Claw marks run from the corner to the foot of the stairs, worn deep, back and forth.",
+    "chainBuildupDescription": "[[Claws scrape on stone in the dark corner]], then once more, a stride nearer the door.",
+    "chainForcedDescription": "[[It is standing in the doorway]] you came in through.",
+    "chainForced2Description": "[[The scraping starts]] while you're still on the stairs.",
+    "chainForced3Description": "[[Claw marks run from the corner to the foot of the stairs]], worn deep, back and forth.",
     "crossEventVariants": [
       {
         "when": [
@@ -34,7 +34,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. A chest sits in the far corner. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, claws scrape slowly on stone. The spiral on the artifact in your pack turns the other way."
+        "description": "The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. [[A chest sits in the far corner]]. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, [[claws scrape slowly on stone]]. The spiral on the artifact in your pack turns the other way."
       }
     ],
     "reflection": {
@@ -89,19 +89,19 @@
     "removedOnFounderVictory": true,
     "name": "Merchant Encounter",
     "minFloorDepth": 2,
-    "description": "A lamp gutters on the stone, smelling of oil, over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows.",
+    "description": "A lamp gutters on the stone, smelling of oil, over [[a cloth spread with goods]], each with a spiral mark burned into it. A hooded figure bows.",
     "descriptionVariants": [
-      "Firelight catches on a buckle, a cup, a ring, a knife with no edge, each marked the same way. A hooded shape reaches for the first.",
-      "A cloth lies on the stone, a pebble on each corner against a draft that isn't there. The hooded figure keeps its head bowed over the goods."
+      "Firelight catches on [[a buckle, a cup, a ring, a knife with no edge]], each marked the same way. A hooded shape reaches for the first.",
+      "A cloth lies on the stone, a pebble on each corner against a draft that isn't there. The hooded figure keeps its head bowed over [[the goods]]."
     ],
     "crossEventVariants": [
       {
         "when": [{ "eventId": "still-breathing", "outcome": "resolved" }],
         "match": "any",
-        "description": "A lamp gutters over a cloth of goods, each with a spiral mark. A hooded figure bows. The cloth is the weave of the strip grown into that wall."
+        "description": "A lamp gutters over [[a cloth of goods]], each with a spiral mark. A hooded figure bows. The cloth is the weave of the strip grown into that wall."
       }
     ],
-    "returnDescription": "A hooded figure bows over a cloth of new wares, its hands folded at the same height, the bow dipping to the same depth.",
+    "returnDescription": "A hooded figure bows over [[a cloth of new wares]], its hands folded at the same height, the bow dipping to the same depth.",
     "reflection": {
       "prompt": "The hooded figure never once lifted the hood, not even to count your coin.",
       "options": [
@@ -156,15 +156,15 @@
     "reflectionRequiresOutcome": "resolved",
     "removedOnFounderVictory": true,
     "name": "Desecrate the Altar",
-    "description": "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot.",
+    "description": "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot. [[On the far side of it, something heavy shifts its weight]].",
     "descriptionVariants": [
-      "No torch is needed in here. A pulse of red light runs along the altar's edge, and the stone ticks faintly as it warms and cools, like a pot left by a fire. Water stands in every crack in the floor except the ones nearest the altar.",
-      "Dust hangs thick in the red light around the altar. The glow pools in a carved spiral at its base, sealed shut, the cuts older than the stone around them. Your torch hisses in the heat."
+      "No torch is needed in here. A pulse of red light runs along the altar's edge, and the stone ticks faintly as it warms and cools, like a pot left by a fire. [[Past the altar, a heavy shape turns over and settles]]. Water stands in every crack in the floor except the ones nearest the altar.",
+      "Dust hangs thick in the red light around the altar. The glow pools in a carved spiral at its base, sealed shut, the cuts older than the stone around them. [[Past the altar, something drags itself a stride closer]]. Your torch hisses in the heat."
     ],
-    "chainBuildupDescription": "The stone altar glows with a pale red light, pulsing quicker than a resting heart.",
-    "chainForcedDescription": "The red light has spread across the floor to the doorway. There is no stepping around it.",
-    "chainForced2Description": "The glow had reached the doorframe by the time you came in.",
-    "chainForced3Description": "The spiral at the altar's base has been scored through with a blade, more than once. The cuts look like yours.",
+    "chainBuildupDescription": "The stone altar glows with a pale red light, [[pulsing quicker than a resting heart]].",
+    "chainForcedDescription": "The red light has spread across the floor to the doorway. [[There is no stepping around it.]]",
+    "chainForced2Description": "[[The glow had reached the doorframe]] by the time you came in.",
+    "chainForced3Description": "[[The spiral at the altar's base has been scored through with a blade]], more than once. The cuts look like yours.",
     "crossEventVariants": [
       {
         "when": [
@@ -172,7 +172,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. Someone in the party wipes their palms dry before going closer."
+        "description": "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. [[On the far side of it, something heavy shifts its weight]]. Someone in the party wipes their palms dry before going closer."
       }
     ],
     "reflection": {
@@ -228,15 +228,15 @@
     "reflectionRequiresOutcome": "paid",
     "removedOnFounderVictory": true,
     "name": "Blood Altar",
-    "description": "A copper smell fills the room before the torchlight finds the pedestal. Worn carvings run down its sides and ooze a dark, still-warm liquid, a spiral unwound and open at its center. The liquid creeps along every channel toward one cup and stops a finger's width short of it.",
-    "chainEscalatedDescription": "Carvings on the pedestal ooze toward the cup. Someone has the knife out and the bandage ready.",
-    "chainEscalated2Description": "The liquid stops a finger's width short of the cup. The palm held out over it is more scar than skin.",
-    "chainEscalated3Description": "The liquid creeps toward the cup. Three of you have a scar in the same place on the left palm.",
+    "description": "A copper smell fills the room before the torchlight finds the pedestal. Worn carvings run down its sides and ooze a dark, still-warm liquid, a spiral unwound and open at its center. The liquid creeps along every channel [[toward one cup]] and stops a finger's width short of it.",
+    "chainEscalatedDescription": "Carvings on the pedestal ooze toward the cup. [[Someone has the knife out and the bandage ready]].",
+    "chainEscalated2Description": "The liquid stops a finger's width short of the cup. [[The palm held out over it]] is more scar than skin.",
+    "chainEscalated3Description": "The liquid creeps [[toward the cup]]. Three of you have a scar in the same place on the left palm.",
     "crossEventVariants": [
       {
         "when": [{ "eventId": "half-a-warning", "outcome": "resolved" }],
         "match": "any",
-        "description": "A copper smell fills the room before the torchlight finds the pedestal. Worn carvings run down its sides and ooze a dark, still-warm liquid, a spiral unwound and open at its center. Someone's knife is out, and someone else has a hand on their wrist."
+        "description": "A copper smell fills the room before the torchlight finds the pedestal. Worn carvings run down its sides and ooze a dark, still-warm liquid, a spiral unwound and open at its center. [[Someone's knife is out]], and someone else has a hand on their wrist."
       },
       {
         "when": [
@@ -245,7 +245,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "A copper smell fills the room before the torchlight finds the pedestal. Worn carvings run down its sides and ooze a dark, still-warm liquid, a spiral unwound and open at its center. Two of you roll up a sleeve at the same time."
+        "description": "A copper smell fills the room before the torchlight finds the pedestal. Worn carvings run down its sides and ooze a dark, still-warm liquid, a spiral unwound and open at its center. [[Two of you roll up a sleeve]] at the same time."
       }
     ],
     "reflection": {
@@ -327,7 +327,7 @@
     "id": "cursed-shrine",
     "removedOnFounderVictory": true,
     "name": "Cursed Shrine",
-    "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. It wasn't the same one a moment ago. Its stone hands are held out at waist height, and something rests in them, close enough to take.",
+    "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. It wasn't the same one a moment ago. Its stone hands are held out at waist height, and [[something rests in them, close enough to take]].",
     "crossEventVariants": [
       {
         "when": [
@@ -335,7 +335,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. Its lowest lid is chipped, the way stone chips under a knife point. Its stone hands are held out at waist height, and something rests in them, close enough to take."
+        "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. Its lowest lid is chipped, the way stone chips under a knife point. Its stone hands are held out at waist height, and [[something rests in them, close enough to take]]."
       }
     ],
     "reflection": {
@@ -405,7 +405,7 @@
     "id": "twin-altars",
     "removedOnFounderVictory": true,
     "name": "Twin Altars",
-    "description": "Two stone pedestals face each other across a narrow room, close enough that a person standing between them could touch both. Each is carved with a spiral, open at the center, and the air between them is a little colder than the air around. A hairline crack already runs across the floor between them.",
+    "description": "Two stone pedestals face each other across a narrow room, close enough to touch both at once. Each is carved with a spiral open at the center, and [[a small object sits on top of each]]. The air between them is a little colder than the air around. A hairline crack already runs across the floor between them.",
     "crossEventVariants": [
       {
         "when": [
@@ -413,7 +413,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "Two stone pedestals face each other across a narrow room, close enough that a person standing between them could touch both. Each is carved with a spiral, open at the center, and the air between them is a little colder than the air around. The cups set into them are dark at the bottom, the same dark as at the last altar."
+        "description": "Two stone pedestals face each other across a narrow room, close enough to touch both at once. Each is carved with a spiral open at the center, and [[a small object sits on top of each]]. The air between them is a little colder than the air around. The cups set into them are dark at the bottom, the same dark as at the last altar."
       }
     ],
     "reflection": {
@@ -468,15 +468,15 @@
     "removedOnFounderVictory": true,
     "name": "Ritual Circle",
     "minFloorDepth": 2,
-    "description": "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end, its line as even as a drawn string. The broom marks stop a full stride short of it on every side.",
-    "chainEscalatedDescription": "Old dried blood traces a spiral across the stone. Your packs come off at its open end, the way they do at camp.",
-    "chainEscalated2Description": "Old dried blood traces a spiral across the stone. At its open end the floor is worn smooth in two places, a pair of knees apart.",
-    "chainEscalated3Description": "Old dried blood traces a spiral across the stone. The worn places at its open end fit your knees exactly.",
+    "description": "The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. [[At the open end a flat stone sits bare, worn hollow where things were set down]]. The broom marks stop a stride short of the blood on every side.",
+    "chainEscalatedDescription": "Old dried blood traces a spiral across the stone. [[Your packs come off at its open end]], the way they do at camp.",
+    "chainEscalated2Description": "Old dried blood traces a spiral across the stone. [[At its open end the floor is worn smooth in two places]], a pair of knees apart.",
+    "chainEscalated3Description": "Old dried blood traces a spiral across the stone. [[The worn places at its open end]] fit your knees exactly.",
     "crossEventVariants": [
       {
         "when": [{ "eventId": "blood-altar", "outcome": "paid" }],
         "match": "any",
-        "description": "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end, its line as even as a drawn string. The broom marks stop a full stride short of it on every side. The blood is the same dark brown as the stain on your sleeve cuff."
+        "description": "The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. [[At the open end a flat stone sits bare, worn hollow where things were set down]]. The broom marks stop a stride short of the blood on every side. The blood is the same dark brown as the stain on your sleeve cuff."
       }
     ],
     "reflection": {
@@ -542,7 +542,7 @@
     "id": "gambling-den",
     "name": "Wandering Gambling Den",
     "minFloorDepth": 2,
-    "description": "Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. 'Put it on the crate. I want to see your face when the cup comes up.'",
+    "description": "Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. '[[Put it on the crate.]] I want to see your face when the cup comes up.'",
     "crossEventVariants": [
       {
         "when": [
@@ -550,13 +550,13 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. He asks what you've already paid today, and starts the next round before you answer."
+        "description": "Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. He asks what you've already paid today, and [[starts the next round before you answer]]."
       }
     ],
     "returnDescription": {
-      "won": "The stranger sets the three cups mouth-down without looking up. 'Didn't expect a winner to come back for more.'",
-      "lost": "The stranger sets the three cups mouth-down without looking up. 'Back for more? I like watching the same face lose twice.'",
-      "declined": "The stranger sets the three cups mouth-down without looking up. 'Changed your mind? Show me the face that walked away.'"
+      "won": "The stranger [[sets the three cups mouth-down]] without looking up. 'Didn't expect a winner to come back for more.'",
+      "lost": "The stranger [[sets the three cups mouth-down]] without looking up. 'Back for more? I like watching the same face lose twice.'",
+      "declined": "The stranger [[sets the three cups mouth-down]] without looking up. 'Changed your mind? Show me the face that walked away.'"
     },
     "reflection": {
       "prompt": "The cups start clicking again before you've closed your purse.",
@@ -634,7 +634,7 @@
     "removedOnFounderVictory": true,
     "name": "Wandering Hermit",
     "minFloorDepth": 3,
-    "description": "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. His eyes are shut. Beside him a small fire of sticks burns without smoke. 'Put down what you want rid of. I'll name the price.'",
+    "description": "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. His eyes are shut. Beside him a small fire of sticks burns without smoke. '[[Put down what you want rid of. I'll name the price.]]'",
     "crossEventVariants": [
       {
         "when": [
@@ -642,7 +642,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. His eyes are open when you arrive. He lays a clean rag on the stone beside him before you've said a word."
+        "description": "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. His eyes are open when you arrive. [[He lays a clean rag on the stone beside him]] before you've said a word."
       },
       {
         "when": [
@@ -650,15 +650,15 @@
           { "eventId": "desecrated-altar", "outcome": "resolved" }
         ],
         "match": "any",
-        "description": "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. His eyes go to the guardian ash on your boots, then to the mark on his own arm."
+        "description": "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. His eyes go to the guardian ash on your boots, then to the mark on his own arm. [[He pats the bare stone in front of him.]]"
       },
       {
         "when": [{ "eventId": "camp-reflection", "outcome": "unaware" }],
         "match": "any",
-        "description": "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. He looks at your hands before your face, and keeps looking at them while you talk."
+        "description": "Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. He looks at your hands before your face, and [[holds out an open palm]] while you talk."
       }
     ],
-    "returnDescription": "The old man has cleared a space on the stone in front of him. 'Back again. Set it down where I can see it.'",
+    "returnDescription": "The old man has cleared a space on the stone in front of him. 'Back again. [[Set it down where I can see it.]]'",
     "campReflectionUnawareEcho": "He shuts his eyes for the trade before you've set anything down.",
     "stanceEcho": {
       "curious": "He watches you a little longer than he needs to before naming his price.",
@@ -712,27 +712,27 @@
   {
     "id": "collapsed-floor",
     "name": "Collapsed Floor",
-    "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it.",
+    "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. [[A weak groan comes up after it.]]",
     "crossEventVariants": [
       {
         "when": [{ "eventId": "collapsed-floor", "outcome": "rescued" }],
         "match": "any",
-        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it. The rope from the last one is still in your pack, frayed where it ran over the edge."
+        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. [[A weak groan comes up after it.]] The rope from the last one is still in your pack, frayed where it ran over the edge."
       },
       {
         "when": [{ "eventId": "collapsed-floor", "outcome": "failed" }],
         "match": "any",
-        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it. The last one like this stopped halfway through a breath."
+        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. [[A weak groan comes up after it.]] The last one like this stopped halfway through a breath."
       },
       {
         "when": [{ "eventId": "blood-altar", "outcome": "paid" }],
         "match": "any",
-        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it. Whoever paid at the altar is the first to kneel at the edge."
+        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. [[A weak groan comes up after it.]] Whoever paid at the altar is the first to kneel at the edge."
       },
       {
         "when": [{ "eventId": "blood-altar", "outcome": "declined" }],
         "match": "any",
-        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. A weak groan comes up after it. Whoever kept their hand closed at the altar stands at the edge with both hands in their sleeves."
+        "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. [[A weak groan comes up after it.]] Whoever kept their hand closed at the altar stands at the edge with both hands in their sleeves."
       }
     ],
     "kind": "rescueGamble",
@@ -742,7 +742,7 @@
     "id": "old-count",
     "freeTake": true,
     "name": "Old Count",
-    "description": "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. Water has run down through the oldest. The last row stops mid-stroke.",
+    "description": "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. [[A satchel hangs from a peg driven into the lowest row]]. The last row stops mid-stroke.",
     "crossEventVariants": [
       {
         "when": [
@@ -752,10 +752,10 @@
           { "eventId": "collapsed-floor", "outcome": "declined" }
         ],
         "match": "any",
-        "description": "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. Water has run down through the oldest. The last row stops mid-stroke. Under it, a pack strap rotted through at the buckle."
+        "description": "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. [[A satchel hangs from a peg driven into the lowest row]], its strap rotted through at the buckle. The last row stops mid-stroke."
       }
     ],
-    "chainEscalatedDescription": "Tally marks, hundreds, in neat rows. Your eyes go to the floor under them first, for whatever was left behind.",
+    "chainEscalatedDescription": "Tally marks, hundreds, in neat rows. Your eyes go to the floor under them first, [[for whatever was left behind]].",
     "instantRewardActionLabel": "  [1] Move on",
     "reflection": {
       "prompt": "Your eyes keep going back to the half-finished mark.",
@@ -804,7 +804,7 @@
     "id": "doubled-back",
     "freeTake": true,
     "name": "Doubled Back",
-    "description": "Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. The room is empty to its corners.",
+    "description": "Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. [[Where they stop, something lies on top of the dust]].",
     "crossEventVariants": [
       {
         "when": [
@@ -814,10 +814,10 @@
           { "eventId": "collapsed-floor", "outcome": "declined" }
         ],
         "match": "any",
-        "description": "Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. The tread is worn down at the heel, like yours."
+        "description": "Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. [[Where they stop, something lies on top of the dust]]. The tread is worn down at the heel, like yours."
       }
     ],
-    "chainEscalatedDescription": "Footprints lead into this room and stop. Your own walk straight to the spot where they end.",
+    "chainEscalatedDescription": "Footprints lead into this room and stop. Your own walk straight to [[the spot where they end]].",
     "instantRewardActionLabel": "  [1] Move on",
     "reflection": {
       "prompt": "You check the walls for a door. The stone is solid all the way round.",
@@ -929,15 +929,15 @@
     "id": "waiting-supplies",
     "freeTake": true,
     "name": "Waiting Supplies",
-    "description": "The corridor bends here, and in the dry angle of the bend, out of the draft, a bundle sits wrapped and tied at the base of the wall, where someone would leave it to come back for later. The cloth smells faintly of smoked meat. The rope is knotted tight, every turn laid the same way. Dust lies thick on the knot.",
+    "description": "The corridor bends here, and in the dry angle of the bend, out of the draft, [[a bundle sits wrapped and tied at the base of the wall]], where someone would leave it to come back for later. The cloth smells faintly of smoked meat. The rope is knotted tight, every turn laid the same way. Dust lies thick on the knot.",
     "crossEventVariants": [
       {
         "when": [{ "eventId": "merchant", "outcome": "resolved" }],
         "match": "any",
-        "description": "The corridor bends here, and in the dry angle of the bend, out of the draft, a bundle sits wrapped and tied at the base of the wall, where someone would leave it to come back for later. The cloth smells faintly of smoked meat. The rope is knotted in a spiral, the same mark burned into the merchant's goods. Dust lies thick on it."
+        "description": "The corridor bends here, and in the dry angle of the bend, out of the draft, [[a bundle sits wrapped and tied at the base of the wall]], where someone would leave it to come back for later. The cloth smells faintly of smoked meat. The rope is knotted in a spiral, the same mark burned into the merchant's goods. Dust lies thick on it."
       }
     ],
-    "chainEscalatedDescription": "A bundle sits at the base of the wall. Your pack is already full of bundles tied the same way.",
+    "chainEscalatedDescription": "[[A bundle sits at the base of the wall]]. Your pack is already full of bundles tied the same way.",
     "instantRewardActionLabel": "  [1] Move on",
     "guaranteedArtifactId": "travelers-ration",
     "guaranteedItems": [{ "itemId": "exploration-kit", "count": 3 }],
@@ -1005,10 +1005,10 @@
     "id": "vigil-candle",
     "freeTake": true,
     "name": "Vigil",
-    "description": "A candle burns at the end of a long, dusty corridor with no footprints in it, its light steady enough to read by. The wax has pooled thick on the floor and set in layers, like the rings of a cut tree, but the flame is a new candle's height. A cloth lies folded beside it.",
+    "description": "A candle burns at the end of a long, dusty corridor with no footprints in it, its light steady enough to read by. The wax has pooled thick on the floor and set in layers, like the rings of a cut tree, but the flame is a new candle's height. [[A cloth lies folded beside it.]]",
     "instantRewardActionLabel": "  [1] Move on",
     "guaranteedArtifactId": "vigil-cloth",
-    "chainEscalatedDescription": "A candle burns at the end of an empty corridor. The cloth folded beside it would make a good bandage.",
+    "chainEscalatedDescription": "A candle burns at the end of an empty corridor. [[The cloth folded beside it]] would make a good bandage.",
     "minFloorDepth": 15,
     "onceLifetime": true,
     "reflection": {
@@ -1073,7 +1073,7 @@
     "freeTake": true,
     "removedOnFounderVictory": true,
     "name": "Broken Seal",
-    "description": "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open.",
+    "description": "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into [[what's left of the lock]], the other half torn away with whatever broke it open.",
     "guaranteedArtifactId": "torn-lock-plate",
     "crossEventVariants": [
       {
@@ -1082,7 +1082,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. Chips of mortar lie on the stone beneath it, fallen inward."
+        "description": "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into [[what's left of the lock]], the other half torn away with whatever broke it open. Chips of mortar lie on the stone beneath it, fallen inward."
       },
       {
         "when": [
@@ -1090,10 +1090,10 @@
           { "eventId": "desecrated-altar", "outcome": "resolved" }
         ],
         "match": "any",
-        "description": "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. Chips of mortar are scattered across the floor, thrown outward."
+        "description": "A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into [[what's left of the lock]], the other half torn away with whatever broke it open. Chips of mortar are scattered across the floor, thrown outward."
       }
     ],
-    "chainEscalatedDescription": "A stone hatch with a torn chain. Your pack is open on the floor before the torch is set down.",
+    "chainEscalatedDescription": "[[A stone hatch with a torn chain]]. Your pack is open on the floor before the torch is set down.",
     "instantRewardActionLabel": "  [1] Move on",
     "minFloorDepth": 15,
     "onceLifetime": true,
@@ -1166,10 +1166,10 @@
     "freeTake": true,
     "removedOnFounderVictory": true,
     "name": "Half a Warning",
-    "description": "Someone carved this fast, low on the wall where the stone is soft, and never finished it; the last letters trail off into scratches. A snapped knife blade lies in the grit below. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'",
+    "description": "Someone carved this fast, low on the wall, and never finished it; the last letters trail off into scratches. [[A stub of chalk and a snapped knife blade]] lie in the grit below. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'",
     "instantRewardActionLabel": "  [1] Move on",
     "guaranteedArtifactId": "worn-chalk-stub",
-    "chainEscalatedDescription": "Words carved fast into the wall, unfinished. You read them on the way to the gear piled underneath.",
+    "chainEscalatedDescription": "Words carved fast into the wall, unfinished. You read them on the way to [[the gear piled underneath]].",
     "minFloorDepth": 35,
     "onceLifetime": true,
     "reflection": {
@@ -1386,7 +1386,7 @@
   {
     "id": "the-gatekeeper",
     "name": "The Gatekeeper",
-    "description": "Wind comes down off the hills and into the cave mouth, and none of it comes back out. An old man leans on a staff beside the opening, a lantern hung from its tip. The rock at the threshold is worn smooth at shoulder height, where hand after hand has steadied itself before going in. 'Most who pass leave something with me. Coin, by custom. Keep it if you like. The way in doesn't close.'",
+    "description": "Wind comes down off the hills and into the cave mouth, and none of it comes back out. An old man leans on a staff beside the opening, a lantern hung from its tip. The rock at the threshold is worn smooth at shoulder height, where hand after hand has steadied itself before going in. '[[Most who pass leave something with me. Coin, by custom.]] Keep it if you like. The way in doesn't close.'",
     "kind": "scripted",
     "tier": "common",
     "backdrop": "cave-mouth"

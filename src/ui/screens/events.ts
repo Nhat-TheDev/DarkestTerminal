@@ -3,7 +3,7 @@ import type { Character, GameState, ReflectionOption } from "../../types";
 import type { Game } from "../../engine/game";
 import { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../../engine/game";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
-import { getEvent } from "../../data/events";
+import { eventTextParts, getEvent } from "../../data/events";
 import { getItem } from "../../data/items";
 import { getRoom, pickEventText } from "../../engine/dungeon";
 import { getJournalEcho } from "../../data/journal";
@@ -52,6 +52,18 @@ export type EventUiState = Extract<
 
 function partyHpPickerLines(party: Character[]): string[] {
   return party.map((c, i) => `  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`);
+}
+
+/** An event text as panel lines, its `[[...]]` parts in the title colour. */
+export function eventTextLines(block: string): TextChunk[][] {
+  const lines: TextChunk[][] = [[]];
+  for (const part of eventTextParts(block)) {
+    part.text.split("\n").forEach((piece, i) => {
+      if (i > 0) lines.push([]);
+      if (piece) lines.at(-1)!.push(colorChunk(piece, part.highlight ? PALETTE.title : PALETTE.text));
+    });
+  }
+  return lines;
 }
 
 function currentEventDescription(state: GameState): string {
@@ -288,7 +300,6 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
 }
 
 const text = (line: string): TextChunk[] => [colorChunk(line, PALETTE.text)];
-const textLines = (block: string): TextChunk[][] => block.split("\n").map(text);
 const coins = (amount: number) => t("ui.coinsCost", { coins: amount });
 
 /** The note that names an artifact's rarity, effect and description under the choices. */
@@ -324,7 +335,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       const event = room.rolledEventId ? getEvent(room.rolledEventId) : undefined;
       const { result, notes } = chestDetails(room.rolledEventId);
       return joinLines([
-        ...textLines(currentEventDescription(s)),
+        ...eventTextLines(currentEventDescription(s)),
         [],
         text(event?.instantRewardActionLabel ?? t("ui.openChestOption")),
         ...optionDetailLines(null, result),
@@ -350,7 +361,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
         ]);
       }
       const refreshCount = s.activeEvent?.refreshCount ?? 0;
-      const lines = [...textLines(currentEventDescription(s)), [], text(t("ui.merchantOffers"))];
+      const lines = [...eventTextLines(currentEventDescription(s)), [], text(t("ui.merchantOffers"))];
       offers.forEach((id, i) => {
         const a = getArtifact(id);
         lines.push(text(t("ui.merchantOfferLine", { i: i + 1, name: a.name, rarity: a.rarity, desc: truncateText(a.description, 34) })), ...optionDetailLines(coins(MERCHANT_PRICE_COINS[a.rarity]), null));
@@ -368,7 +379,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       const artifactId = s.activeEvent?.offerArtifactIds[0];
       const a = artifactId ? getArtifact(artifactId) : null;
       return joinLines([
-        ...textLines(currentEventDescription(s)),
+        ...eventTextLines(currentEventDescription(s)),
         [],
         text(t("ui.acceptOption")),
         ...optionDetailLines(null, a ? withMarker(t(a.isCursed ? "ui.cursedArtifactResult" : "ui.receiveResult", { name: a.name }), 0) : null),
@@ -379,7 +390,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
 
     case "eventPairedOffer": {
       const offers = s.activeEvent?.offerArtifactIds ?? [];
-      const lines = [...textLines(currentEventDescription(s)), [], text(t("ui.twinAltarsIntro"))];
+      const lines = [...eventTextLines(currentEventDescription(s)), [], text(t("ui.twinAltarsIntro"))];
       offers.forEach((id, i) => {
         const a = getArtifact(id);
         lines.push(text(t("ui.twinAltarsOfferLine", { i: i + 1, name: a.name, rarity: a.rarity })), ...optionDetailLines(null, withMarker(t("ui.twinAltarsResult", { name: a.name }), i)));
@@ -392,7 +403,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventHpGamble": {
       const percent = ui.gamble === "hpGamble" ? BLOOD_ALTAR_HP_PERCENT : COLLAPSED_FLOOR_HP_PERCENT;
       const result = ui.gamble === "hpGamble" ? t("ui.randomArtifact") : t("ui.collapsedFloorResult", { chance: Math.round(BALANCE.events.collapsedFloorSuccessChance * 100) });
-      return joinLines([...textLines(currentEventDescription(s)), [], text(t("ui.payOption")), ...optionDetailLines(t("ui.hpGambleCost", { percent }), result), text(t("ui.leaveOption"))]);
+      return joinLines([...eventTextLines(currentEventDescription(s)), [], text(t("ui.payOption")), ...optionDetailLines(t("ui.hpGambleCost", { percent }), result), text(t("ui.leaveOption"))]);
     }
 
     case "eventHpGamblePickPayer": {
@@ -403,7 +414,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventArtifactSacrifice": {
       const candidates = ownedArtifactEntries(s.party);
       const { pageItems, page: p, pages } = paginate(candidates, page, SACRIFICE_PAGE_SIZE);
-      const lines = [...textLines(currentEventDescription(s)), [], text(t("ui.chooseSacrifice")), ...optionDetailLines(t("ui.sacrificeCost"), t("ui.sacrificeResult"))];
+      const lines = [...eventTextLines(currentEventDescription(s)), [], text(t("ui.chooseSacrifice")), ...optionDetailLines(t("ui.sacrificeCost"), t("ui.sacrificeResult"))];
       pageItems.forEach(({ artifactId }, i) => {
         const a = getArtifact(artifactId);
         lines.push(text(`  [${i + 1}] ${a.name} (${a.rarity})`));
@@ -427,7 +438,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       if (!gamble) {
         const round1 = GAMBLING_DEN_ROUNDS[0]!;
         return joinLines([
-          ...textLines(currentEventDescription(s)),
+          ...eventTextLines(currentEventDescription(s)),
           [],
           text(t("ui.gamblingDenEnterOption")),
           ...optionDetailLines(coins(round1.stake), winLine(0, round1.stake)),
@@ -447,7 +458,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventFortuneExchange": {
       const hasAny = ownedArtifactEntries(s.party).length > 0;
       return joinLines([
-        ...textLines(currentEventDescription(s)),
+        ...eventTextLines(currentEventDescription(s)),
         [],
         text(t("ui.hermitExchangeOnlyIntro")),
         text(t("ui.hermitExchangeOption", { suffix: hasAny ? "" : t("ui.hermitNoArtifactSuffix") })),
@@ -470,7 +481,7 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       const lines = [
         text(t("ui.guardianFightIntro", { room: room.name })),
         [],
-        ...textLines(currentEventDescription(s)),
+        ...eventTextLines(currentEventDescription(s)),
         [],
         text(t("ui.guardianFightEnterOption")),
         ...optionDetailLines(t("ui.guardianFightCost", { min, max }), t("ui.guardianFightResult")),

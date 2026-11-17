@@ -2,7 +2,7 @@ import type { EventDefinition, Floor, GameState, ReflectionStance, Room } from "
 import type { EngineContext } from "./combat";
 import { startCombat } from "./combat";
 import { drainFaithOnFirstEntry, drainSatiety, SATIETY_DRAIN_COMBAT, SATIETY_DRAIN_EVENT } from "./survival";
-import { getEvent, rollEvent } from "../data/events";
+import { getEvent, plainEventText, rollEvent } from "../data/events";
 import { rollArtifact, rollArtifactOrCursed } from "../data/artifacts";
 import { boonMatches, recomputeAllPartyStats } from "./party";
 import { getReligion } from "../data/religions";
@@ -198,7 +198,7 @@ export function resolveEventEntry(state: GameState, room: Room, ctx: EngineConte
     room.chainVariant = pastForced ? (tier3 ? "forced3" : tier2 ? "forced2" : "forced") : skips === forcedThreshold - 1 ? "buildup" : undefined;
   }
 
-  state.message = pickEventText(state, room, event);
+  state.message = plainEventText(pickEventText(state, room, event));
   // `metNarrativeNpcIds` is marked in `closeEvent()`, not here, so `alreadyMet` stays false across re-renders of the first visit.
 
   if (event.kind === "instantReward" || event.kind === "combatReward") {

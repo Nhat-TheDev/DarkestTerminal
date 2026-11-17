@@ -222,9 +222,9 @@ events' `"skipped"` tag keeps pairs 8 and 15 tied to an actual won fight, never 
 4. `guardian-fight`/`desecrated-altar` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`),
    own imagery per id (each keeps the imagery it already uses elsewhere — `desecrated-altar` never
    uses guardian-fight's claws or dark corner), each closing on one detail that fits both triggers (a blood payment or an artifact
-   sacrifice): `guardian-fight`: *"The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. A chest sits in the far corner. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, claws scrape slowly on stone. The spiral on the artifact in your pack turns the other way."* · `desecrated-altar`: *"The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. Someone in the party wipes their palms dry before going closer."*
-5. `twin-altars` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"Two stone pedestals face each other across a narrow room, close enough that a person standing between them could touch both. Each is carved with a spiral, open at the center, and the air between them is a little colder than the air around. The cups set into them are dark at the bottom, the same dark as at the last altar."*
-6. `sacrificial-circle` ← `blood-altar`=`paid`: *"The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end, its line as even as a drawn string. The broom marks stop a full stride short of it on every side. The blood is the same dark brown as the stain on your sleeve cuff."*
+   sacrifice): `guardian-fight`: *"The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. A chest sits in the far corner. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, claws scrape slowly on stone. The spiral on the artifact in your pack turns the other way."* · `desecrated-altar`: *"The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. On the far side of it, something heavy shifts its weight. Someone in the party wipes their palms dry before going closer."*
+5. `twin-altars` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"Two stone pedestals face each other across a narrow room, close enough to touch both at once. Each is carved with a spiral open at the center, and a small object sits on top of each. The air between them is a little colder than the air around. The cups set into them are dark at the bottom, the same dark as at the last altar."*
+6. `sacrificial-circle` ← `blood-altar`=`paid`: *"The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. At the open end a flat stone sits bare, worn hollow where things were set down. The broom marks stop a stride short of the blood on every side. The blood is the same dark brown as the stain on your sleeve cuff."*
 7. `wandering-hermit` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"Rubble has been pushed back to the walls to clear a patch of floor, and an old man sits cross-legged in the middle of it, a spiral mark scarred into his forearm. His eyes are open when you arrive. He lays a clean rag on the stone beside him before you've said a word."*
 8. `wandering-hermit` ← (`guardian-fight`=`resolved` OR `desecrated-altar`=`resolved`) — a 2nd,
    independent entry on the same field; if both this and #7 match, #7 wins (array order, "first
@@ -233,8 +233,8 @@ events' `"skipped"` tag keeps pairs 8 and 15 tied to an actual won fight, never 
 9. `gambling-den` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"Lamplight and the smell of cheap tallow gather around an upturned crate. A stranger shuffles three cups across its top, worn pale in a circle by the same motion, his forearms bare and unmarked. The cups click together, quick and even. He asks what you've already paid today, and starts the next round before you answer."*
 10. `cursed-shrine` ← (`blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed`): *"Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. Its lowest lid is chipped, the way stone chips under a knife point. Its stone hands are held out at waist height, and something rests in them, close enough to take."*
 11. `waiting-supplies` ← `merchant` (any resolution): *"The corridor bends here, and in the dry angle of the bend, out of the draft, a bundle sits wrapped and tied at the base of the wall, where someone would leave it to come back for later. The cloth smells faintly of smoked meat. The rope is knotted in a spiral, the same mark burned into the merchant's goods. Dust lies thick on it."*
-12. `doubled-back` ← (`open-chest` OR `collapsed-floor`, any resolution): *"Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. The tread is worn down at the heel, like yours."*
-13. `old-count` ← (`open-chest` OR `collapsed-floor`, any resolution): *"The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. Water has run down through the oldest. The last row stops mid-stroke. Under it, a pack strap rotted through at the buckle."*
+12. `doubled-back` ← (`open-chest` OR `collapsed-floor`, any resolution): *"Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. Where they stop, something lies on top of the dust. The tread is worn down at the heel, like yours."*
+13. `old-count` ← (`open-chest` OR `collapsed-floor`, any resolution): *"The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. A satchel hangs from a peg driven into the lowest row, its strap rotted through at the buckle. The last row stops mid-stroke."*
 14. `broken-seal` ← `blood-altar`=`paid` OR `sacrificial-circle`=`sacrificed` (communion-leaning
     reading): *"A stone hatch sits flush in the floor, mortared at the edges, its chain hanging torn and cold enough to fog the air around it. Half a spiral is stamped into what's left of the lock, the other half torn away with whatever broke it open. Chips of mortar lie on the stone beneath it, fallen inward."*
 15. `broken-seal` ← `guardian-fight`=`resolved` OR `desecrated-altar`=`resolved` (containment-leaning
@@ -298,8 +298,8 @@ variant, or 3 variants become the same template with nouns swapped):
 **`guardian-fight`** (spiral kept in 1 of 3, not all — repeating it everywhere is its own checklist
 tell):
 - *(description)* "The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. A chest sits in the far corner. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, claws scrape slowly on stone. The scraping stops."
-- "The air is warm here, warmer than it should be, and thick with an animal smell. Something breathes in the dark ahead, deep and slow, a sound that comes up through the floor as much as through the air. It keeps the same pace whether you move or not."
-- "Grit crunches under your boots, loud in a room this quiet, and the walls are scored at knee height with long pale gouges. Back where the light doesn't reach, loose stone shifts under something heavy, and dust sifts down into the torchlight. The shifting stops when you stop."
+- "The air is warm here and thick with an animal smell. A chest sits at the edge of the light, its lid ajar. Something breathes in the dark beyond it, deep and slow, a sound that comes up through the floor as much as through the air. It keeps the same pace whether you move or not."
+- "Grit crunches under your boots, and the walls are scored at knee height with long pale gouges. A chest lies on its side by the far wall. Back where the light doesn't reach, loose stone shifts under something heavy, and dust sifts down into the torchlight. The shifting stops when you stop."
 
 **`merchant`**:
 - *(description)* "A lamp gutters on the stone, smelling of oil, over a cloth spread with goods, each with a spiral mark burned into it. A hooded figure bows."
@@ -307,9 +307,9 @@ tell):
 - "A cloth lies on the stone, a pebble on each corner against a draft that isn't there. The hooded figure keeps its head bowed over the goods."
 
 **`desecrated-altar`**:
-- *(description)* "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot."
-- "No torch is needed in here. A pulse of red light runs along the altar's edge, and the stone ticks faintly as it warms and cools, like a pot left by a fire. Water stands in every crack in the floor except the ones nearest the altar."
-- "Dust hangs thick in the red light around the altar. The glow pools in a carved spiral at its base, sealed shut, the cuts older than the stone around them. Your torch hisses in the heat."
+- *(description)* "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot. On the far side of it, something heavy shifts its weight."
+- "No torch is needed in here. A pulse of red light runs along the altar's edge, and the stone ticks faintly as it warms and cools, like a pot left by a fire. Past the altar, a heavy shape turns over and settles. Water stands in every crack in the floor except the ones nearest the altar."
+- "Dust hangs thick in the red light around the altar. The glow pools in a carved spiral at its base, sealed shut, the cuts older than the stone around them. Past the altar, something drags itself a stride closer. Your torch hisses in the heat."
 
 The other events (`blood-altar`, `cursed-shrine`, `twin-altars`, `sacrificial-circle`,
 `wandering-hermit`, `gambling-den`, `collapsed-floor`, and the narrative-layer events in C.3 and
@@ -405,7 +405,7 @@ holds no event depth gate — only the chain tiers' (`chainTier2MinFloorDepth`,
 
 **Floor 35 — "Half a Warning"**
 
-> "Someone carved this fast, low on the wall where the stone is soft, and never finished it; the last letters trail off into scratches. A snapped knife blade lies in the grit below. What's left: 'saw what happened to the one who
+> "Someone carved this fast, low on the wall, and never finished it; the last letters trail off into scratches. A stub of chalk and a snapped knife blade lie in the grit below. What's left: 'saw what happened to the one who
 > tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'"
 
 ```
@@ -496,7 +496,7 @@ readings are in B.1, entries 14-15. Same mechanics as `vigil-candle`, `guarantee
 
 **`old-count`** — Thread 4, common tier:
 
-> "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. Water has run down through the oldest. The last row stops mid-stroke."
+> "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. A satchel hangs from a peg driven into the lowest row. The last row stops mid-stroke."
 
 ```
 reflection.prompt: "Your eyes keep going back to the half-finished mark."
@@ -509,7 +509,7 @@ dismissive: "You shoulder your pack and take the next corridor down."
 
 **`doubled-back`** — Thread 4, common tier:
 
-> "Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. The room is empty to its corners."
+> "Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. Where they stop, something lies on top of the dust."
 
 ```
 reflection.prompt: "You check the walls for a door. The stone is solid all the way round."

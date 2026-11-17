@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { Rng } from "../src/engine/rng";
 import { getRoom, moveToRoom, pickEventText } from "../src/engine/dungeon";
 import { rollArtifact, rollArtifactWithMinRarity, rollArtifactOrCursed, getArtifact } from "../src/data/artifacts";
-import { rollEvent, EVENTS, getEvent, assertEventDataConsistent } from "../src/data/events";
+import { rollEvent, EVENTS, getEvent, assertEventDataConsistent, eventTexts, eventTextParts, plainEventText } from "../src/data/events";
 import { curseAggroBoostSum } from "../src/engine/artifacts";
 import { removeArtifactFromCharacter } from "../src/engine/party";
 import { MERCHANT_PRICE_COINS } from "../src/engine/events/merchant";
@@ -406,7 +406,7 @@ describe("recurring narrative NPCs (docs/gameplay-decisions/08-events.md §8.3)"
     room.rolledEventId = "merchant";
     moveToRoom(game.state, target.id, game.ctx);
     const merchantEvent = EVENTS.find((e) => e.id === "merchant")!;
-    expect(game.state.message).toBe(merchantEvent.description);
+    expect(game.state.message).toBe(plainEventText(merchantEvent.description));
     expect(game.state.metNarrativeNpcIds).not.toContain("merchant"); // still the 1st visit
     game.merchantLeave();
     expect(game.state.metNarrativeNpcIds).toContain("merchant"); // marked only once the visit closes
@@ -422,7 +422,7 @@ describe("recurring narrative NPCs (docs/gameplay-decisions/08-events.md §8.3)"
     moveToRoom(game.state, target.id, game.ctx);
     const hermitReturnDescription = EVENTS.find((e) => e.id === "wandering-hermit")!.returnDescription;
     expect(typeof hermitReturnDescription).toBe("string");
-    expect(game.state.message).toBe(hermitReturnDescription as string);
+    expect(game.state.message).toBe(plainEventText(hermitReturnDescription as string));
   });
 
   test("resolveEventEntry leaves events without a returnDescription unaffected by metNarrativeNpcIds (e.g. cursed-shrine)", () => {
@@ -433,7 +433,7 @@ describe("recurring narrative NPCs (docs/gameplay-decisions/08-events.md §8.3)"
     room.type = "event";
     room.rolledEventId = "cursed-shrine";
     moveToRoom(game.state, target.id, game.ctx);
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "cursed-shrine")!.description);
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "cursed-shrine")!.description));
   });
 
   test("gambling den closing paths set lastGamblingDenOutcome to lost/won/declined", () => {
@@ -492,7 +492,7 @@ describe("recurring narrative NPCs (docs/gameplay-decisions/08-events.md §8.3)"
       room.type = "event";
       room.rolledEventId = "gambling-den";
       moveToRoom(game.state, target.id, game.ctx);
-      expect(game.state.message).toBe(returnVariants[outcome]);
+      expect(game.state.message).toBe(plainEventText(returnVariants[outcome]));
     }
   });
 });
@@ -520,7 +520,7 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/08-events.md �
     const buildupDescription = EVENTS.find((e) => e.id === "guardian-fight")!.chainBuildupDescription;
     expect(room.chainVariant).toBe("buildup");
     expect(typeof buildupDescription).toBe("string");
-    expect(game.state.message).toBe(buildupDescription as string);
+    expect(game.state.message).toBe(plainEventText(buildupDescription as string));
     expect(game.skipGuardianFight()).toBeNull(); // still allowed at 2
   });
 
@@ -535,7 +535,7 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/08-events.md �
     const forcedDescription = EVENTS.find((e) => e.id === "desecrated-altar")!.chainForcedDescription;
     expect(room.chainVariant).toBe("forced");
     expect(typeof forcedDescription).toBe("string");
-    expect(game.state.message).toBe(forcedDescription as string);
+    expect(game.state.message).toBe(plainEventText(forcedDescription as string));
     expect(game.skipGuardianFight()).not.toBeNull(); // rejected past the threshold
     expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(3);
   });
@@ -563,7 +563,7 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/08-events.md �
     room.rolledEventId = "guardian-fight";
     moveToRoom(game.state, target.id, game.ctx);
     expect(room.chainVariant).toBeUndefined();
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.description);
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "guardian-fight")!.description));
   });
 
   test("12-world-bible.md §12.13 tier 2: the 2nd+ forced encounter past chainTier2MinFloorDepth shows chainForced2Description, Skip still rejected", () => {
@@ -579,7 +579,7 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/08-events.md �
     const forced2Description = EVENTS.find((e) => e.id === "guardian-fight")!.chainForced2Description;
     expect(room.chainVariant).toBe("forced2");
     expect(typeof forced2Description).toBe("string");
-    expect(game.state.message).toBe(forced2Description as string);
+    expect(game.state.message).toBe(plainEventText(forced2Description as string));
     expect(game.skipGuardianFight()).not.toBeNull(); // still rejected at tier 2
   });
 
@@ -594,7 +594,7 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/08-events.md �
     room.rolledEventId = "guardian-fight";
     moveToRoom(game.state, target.id, game.ctx);
     expect(room.chainVariant).toBe("forced");
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.chainForcedDescription as string);
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "guardian-fight")!.chainForcedDescription as string));
   });
 
   test("guardianGrudgeFiredCount increments on every forced entry and never resets", () => {
@@ -630,7 +630,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     room1.type = "event";
     room1.rolledEventId = "sacrificial-circle";
     moveToRoom(game.state, target1.id, game.ctx);
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "sacrificial-circle")!.description); // still below 5
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "sacrificial-circle")!.description)); // still below 5
 
     c.equippedArtifactIds = ["scholars-insight"];
     expect(game.sacrifice("scholars-insight")).toBeNull();
@@ -644,7 +644,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     room2.type = "event";
     room2.rolledEventId = "sacrificial-circle";
     moveToRoom(game.state, target2.id, game.ctx);
-    expect(game.state.message).toBe(escalated as string);
+    expect(game.state.message).toBe(plainEventText(escalated as string));
 
     // stays escalated — the counter never resets for Chain 2/3 (unlike Chain 1)
     expect(game.state.narrativeCounters.artifactsSacrificed).toBe(5);
@@ -672,7 +672,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     room1.rolledEventId = "blood-altar";
     moveToRoom(game.state, target1.id, game.ctx);
     // Still below the chain-4 threshold, but the cross-event variant fires: collapsedFloorAttempt() set eventOutcomes["collapsed-floor"] to "rescued" or "failed", and either matches.
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.crossEventVariants![1]!.description);
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "blood-altar")!.crossEventVariants![1]!.description));
 
     c.hp = c.maxHp;
     expect(game.collapsedFloorAttempt(c.id)).toBeNull();
@@ -686,7 +686,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     room2.type = "event";
     room2.rolledEventId = "blood-altar";
     moveToRoom(game.state, target2.id, game.ctx);
-    expect(game.state.message).toBe(escalated as string);
+    expect(game.state.message).toBe(plainEventText(escalated as string));
   });
 
   test("collapsedFloorAttempt counts toward Chain 3 even when the 60% success roll fails — only the HP payment matters", () => {
@@ -720,7 +720,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     room1.type = "event";
     room1.rolledEventId = "sacrificial-circle";
     moveToRoom(game.state, target1.id, game.ctx);
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalatedDescription as string);
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalatedDescription as string));
 
     // deep enough now — tier 2 text takes over
     game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
@@ -731,7 +731,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     moveToRoom(game.state, target2.id, game.ctx);
     const escalated2 = EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalated2Description;
     expect(typeof escalated2).toBe("string");
-    expect(game.state.message).toBe(escalated2 as string);
+    expect(game.state.message).toBe(plainEventText(escalated2 as string));
   });
 
   test("12-world-bible.md §12.13 tier 2: blood-altar needs both threshold2 and chainTier2MinFloorDepth", () => {
@@ -748,7 +748,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     room1.type = "event";
     room1.rolledEventId = "blood-altar";
     moveToRoom(game.state, target1.id, game.ctx);
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.chainEscalatedDescription as string);
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "blood-altar")!.chainEscalatedDescription as string));
 
     game.state.floor.depth = BALANCE.events.chainTier2MinFloorDepth;
     const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
@@ -758,7 +758,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     moveToRoom(game.state, target2.id, game.ctx);
     const escalated2 = EVENTS.find((e) => e.id === "blood-altar")!.chainEscalated2Description;
     expect(typeof escalated2).toBe("string");
-    expect(game.state.message).toBe(escalated2 as string);
+    expect(game.state.message).toBe(plainEventText(escalated2 as string));
   });
 });
 
@@ -939,7 +939,7 @@ describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
     room1.type = "event";
     room1.rolledEventId = "sacrificial-circle";
     moveToRoom(game.state, target1.id, game.ctx);
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalated2Description as string);
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalated2Description as string));
 
     // deep enough now — tier 3 text takes over
     game.state.floor.depth = BALANCE.events.chainTier3MinFloorDepth;
@@ -950,7 +950,7 @@ describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
     moveToRoom(game.state, target2.id, game.ctx);
     const escalated3 = EVENTS.find((e) => e.id === "sacrificial-circle")!.chainEscalated3Description;
     expect(typeof escalated3).toBe("string");
-    expect(game.state.message).toBe(escalated3 as string);
+    expect(game.state.message).toBe(plainEventText(escalated3 as string));
   });
 
   test("Chain 3 tier 3: blood-altar needs both threshold3 and chainTier3MinFloorDepth", () => {
@@ -968,7 +968,7 @@ describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
     room1.type = "event";
     room1.rolledEventId = "blood-altar";
     moveToRoom(game.state, target1.id, game.ctx);
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "blood-altar")!.chainEscalated2Description as string);
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "blood-altar")!.chainEscalated2Description as string));
 
     game.state.floor.depth = BALANCE.events.chainTier3MinFloorDepth;
     const target2 = game.connectedRoomChoices().find((r) => r.id !== target1.id) ?? game.connectedRoomChoices()[0]!;
@@ -978,7 +978,7 @@ describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
     moveToRoom(game.state, target2.id, game.ctx);
     const escalated3 = EVENTS.find((e) => e.id === "blood-altar")!.chainEscalated3Description;
     expect(typeof escalated3).toBe("string");
-    expect(game.state.message).toBe(escalated3 as string);
+    expect(game.state.message).toBe(plainEventText(escalated3 as string));
   });
 
   test("Chain 1 tier 3: forced3 requires guardianGrudgeFiredCount>=2 AND chainTier3MinFloorDepth — count alone falls back to forced2", () => {
@@ -1005,7 +1005,7 @@ describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
     room.rolledEventId = "guardian-fight";
     moveToRoom(game.state, target.id, game.ctx);
     expect(room.chainVariant).toBe("forced3");
-    expect(game.state.message).toBe(EVENTS.find((e) => e.id === "guardian-fight")!.chainForced3Description as string);
+    expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "guardian-fight")!.chainForced3Description as string));
 
     const event = EVENTS.find((e) => e.id === "guardian-fight")!;
     const prompt = pickReflectionPrompt(game.state, room, event);
@@ -1494,6 +1494,33 @@ describe("assertEventDataConsistent", () => {
 
   test("the shipped catalog passes", () => {
     expect(() => assertEventDataConsistent(EVENTS)).not.toThrow();
+  });
+
+  test("[[ ]] highlight marks must open and close in pairs, unnested", () => {
+    for (const description of ["a [[b", "a ]] b", "a [[b [[c]] d]]", "a ]]b[[ c"]) {
+      expect(() => assertEventDataConsistent([{ ...base, description }])).toThrow(/don't pair up/);
+    }
+    expect(() => assertEventDataConsistent([{ ...base, description: "a [[b]] c [[d]]" }])).not.toThrow();
+  });
+
+  test("a room that gives, asks or fights highlights every text it can show; a room that gives nothing highlights none", () => {
+    for (const event of EVENTS) {
+      const givesNothing = event.kind === "instantReward" && event.noArtifactReward && !event.guaranteedItems?.length;
+      for (const text of eventTexts(event)) {
+        const highlights = eventTextParts(text).filter((part) => part.highlight).length;
+        if (givesNothing) expect({ id: event.id, highlights }).toEqual({ id: event.id, highlights: 0 });
+        else expect({ id: event.id, text, has: highlights > 0 }).toEqual({ id: event.id, text, has: true });
+      }
+    }
+  });
+
+  test("the plain text drops the marks and keeps every word", () => {
+    expect(plainEventText("A [[chest]] sits in the [[far]] corner.")).toBe("A chest sits in the far corner.");
+    expect(eventTextParts("A [[chest]] sits.")).toEqual([
+      { text: "A ", highlight: false },
+      { text: "chest", highlight: true },
+      { text: " sits.", highlight: false },
+    ]);
   });
 
   test("freeTake needs an instantReward that grants an artifact", () => {

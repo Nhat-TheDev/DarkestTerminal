@@ -27,6 +27,7 @@ import { EVENTS } from "../src/data/events";
 import { renderMain as renderCombat, skillEffectLine, skillMechanicLines } from "../src/ui/screens/combat";
 import { BALANCE } from "../src/data/balanceConfig";
 import * as runnerScreen from "../src/ui/screens/runner";
+import * as gatekeeperScreen from "../src/ui/screens/gatekeeper";
 import * as artifactsScreen from "../src/ui/screens/artifacts";
 import * as inventoryScreen from "../src/ui/screens/inventory";
 import * as artifactDecisionScreen from "../src/ui/screens/artifactDecision";
@@ -827,6 +828,22 @@ describe("event choices show their Cost and Result", () => {
     const text = plain(eventsScreen.renderMain(game, { kind: "eventCursedOffer" }));
     expect(text).toContain(`  [1] Accept\n      Result: Receive ${a.name} (cursed) *\n  [2] Decline\n\n* ${a.name} (${a.rarity}, cursed): ${formatArtifactEffect(a)}\n  ${a.description}`);
     expect(text.indexOf(a.description)).toBeGreaterThan(text.indexOf("[2] Decline"));
+  });
+
+  test("an event's [[ ]] parts show in the title colour and the marks never reach the screen", () => {
+    const shrine = eventGame("cursed-shrine");
+    shrine.state.activeEvent!.offerArtifactIds = [ARTIFACTS.find((x) => x.isCursed)!.id];
+    const gate = new Game(1);
+    gate.state.gatekeeperAnswer = null;
+    const screens = [
+      { out: eventsScreen.renderMain(shrine, { kind: "eventCursedOffer" }), phrase: "something rests in them, close enough to take" },
+      { out: gatekeeperScreen.renderMain(gate, { kind: "gatekeeper", mapTaken: false }), phrase: "Most who pass leave something with me. Coin, by custom." },
+    ];
+    for (const { out, phrase } of screens) {
+      const chunks = typeof out === "string" ? [] : out.chunks;
+      expect(chunks.map((c) => c.text).join("")).not.toContain("[[");
+      expect(chunks.find((c) => c.text === phrase)?.fg).toEqual(RGBA.fromHex(PALETTE.title));
+    }
   });
 
   test("the Dungeon panel border has no scroll marker when the text fits", async () => {
