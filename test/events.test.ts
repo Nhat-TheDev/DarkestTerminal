@@ -268,16 +268,31 @@ describe("events", () => {
     const c = game.state.party[0]!;
     let sawSubUnique = false;
     for (let i = 0; i < 60 && !sawSubUnique; i++) {
+      forceEventRoom(game, "sacrificial-circle");
       c.equippedArtifactIds = ["scholars-insight"];
       expect(game.sacrifice("scholars-insight")).toBeNull();
       const rarity = getArtifact(game.state.pendingArtifactDecision!.artifactId).rarity;
       if (rarity === "common" || rarity === "rare") sawSubUnique = true;
       game.state.pendingArtifactDecision = null;
+      game.state.pendingEventExit = null;
     }
     expect(sawSubUnique).toBe(false);
-    expect(getRoom(game.state.floor, game.state.currentRoomId).cleared).toBe(false);
-    game.sacrificeLeave();
+  });
+
+  test("sacrificial-circle allows one sacrifice per visit, then the room closes", () => {
+    const game = new Game(12);
+    forceEventRoom(game, "sacrificial-circle");
+    const c = game.state.party[0]!;
+    c.equippedArtifactIds = ["scholars-insight", "scholars-insight"];
+    expect(game.sacrifice("scholars-insight")).toBeNull();
     expect(getRoom(game.state.floor, game.state.currentRoomId).cleared).toBe(true);
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(1);
+    expect(game.state.pendingEventExit).toEqual({ eventId: "sacrificial-circle", withReflection: true });
+
+    game.state.pendingArtifactDecision = null;
+    expect(game.sacrifice("scholars-insight")).not.toBeNull();
+    expect(c.equippedArtifactIds).toEqual(["scholars-insight"]);
+    expect(game.state.narrativeCounters.artifactsSacrificed).toBe(1);
   });
 
   test("gambling den: enter, continue, stop, and loss flows", () => {
@@ -619,9 +634,11 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     const c = game.state.party[0]!;
 
     for (let i = 0; i < 4; i++) {
+      forceEventRoom(game, "sacrificial-circle");
       c.equippedArtifactIds = ["scholars-insight"];
       expect(game.sacrifice("scholars-insight")).toBeNull();
       game.state.pendingArtifactDecision = null;
+      game.state.pendingEventExit = null;
     }
     expect(game.state.narrativeCounters.artifactsSacrificed).toBe(4);
 
@@ -708,9 +725,11 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     const game = new Game(42);
     const c = game.state.party[0]!;
     for (let i = 0; i < BALANCE.events.circleRemembersThreshold2; i++) {
+      forceEventRoom(game, "sacrificial-circle");
       c.equippedArtifactIds = ["scholars-insight"];
       expect(game.sacrifice("scholars-insight")).toBeNull();
       game.state.pendingArtifactDecision = null;
+      game.state.pendingEventExit = null;
     }
     expect(game.state.narrativeCounters.artifactsSacrificed).toBe(BALANCE.events.circleRemembersThreshold2);
 
@@ -926,9 +945,11 @@ describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
     const game = new Game(70);
     const c = game.state.party[0]!;
     for (let i = 0; i < BALANCE.events.circleRemembersThreshold3; i++) {
+      forceEventRoom(game, "sacrificial-circle");
       c.equippedArtifactIds = ["scholars-insight"];
       expect(game.sacrifice("scholars-insight")).toBeNull();
       game.state.pendingArtifactDecision = null;
+      game.state.pendingEventExit = null;
     }
     expect(game.state.narrativeCounters.artifactsSacrificed).toBe(BALANCE.events.circleRemembersThreshold3);
 
