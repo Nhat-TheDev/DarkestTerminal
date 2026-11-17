@@ -709,7 +709,7 @@ describe("event choices show their Cost and Result", () => {
   });
 
   test("a chest names what it gives, and a scene that gives nothing adds no line", () => {
-    expect(plain(eventsScreen.renderMain(eventGame("open-chest"), { kind: "eventInstantReward" }))).toContain("  [1] Open the chest\n      Result: 1 random artifact");
+    expect(plain(eventsScreen.renderMain(eventGame("open-chest"), { kind: "eventInstantReward" }))).toContain("  [1] Open it\n      Result: 1 random artifact");
     expect(plain(eventsScreen.renderMain(eventGame("waiting-supplies"), { kind: "eventInstantReward" }))).toContain(
       `Result: Receive ${getArtifact("travelers-ration").name}, ${getItem("exploration-kit").name} ×3 *\n\n* ${getArtifact("travelers-ration").name} (`
     );
@@ -836,7 +836,7 @@ describe("event choices show their Cost and Result", () => {
     const gate = new Game(1);
     gate.state.gatekeeperAnswer = null;
     const screens = [
-      { out: eventsScreen.renderMain(shrine, { kind: "eventCursedOffer" }), phrase: "something rests in them, close enough to take" },
+      { out: eventsScreen.renderMain(shrine, { kind: "eventCursedOffer" }), phrase: "something rests in the cupped palms" },
       { out: gatekeeperScreen.renderMain(gate, { kind: "gatekeeper", mapTaken: false }), phrase: "Most who pass leave something with me. Coin, by custom." },
     ];
     for (const { out, phrase } of screens) {

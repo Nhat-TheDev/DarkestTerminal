@@ -1,6 +1,7 @@
 [
   {
     "id": "open-chest",
+    "instantRewardActionLabel": "  [1] Open it",
     "noLoreExposure": true,
     "freeTake": true,
     "name": "Open Chest",
@@ -156,10 +157,10 @@
     "reflectionRequiresOutcome": "resolved",
     "removedOnFounderVictory": true,
     "name": "Desecrate the Altar",
-    "description": "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot. [[On the far side of it, something heavy shifts its weight]].",
+    "description": "The room is lit from one place: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot. On the far side of it, [[a long shape lies curled]] around [[something that glints]].",
     "descriptionVariants": [
-      "No torch is needed in here. A pulse of red light runs along the altar's edge, and the stone ticks faintly as it warms and cools, like a pot left by a fire. [[Past the altar, a heavy shape turns over and settles]]. Water stands in every crack in the floor except the ones nearest the altar.",
-      "Dust hangs thick in the red light around the altar. The glow pools in a carved spiral at its base, sealed shut, the cuts older than the stone around them. [[Past the altar, something drags itself a stride closer]]. Your torch hisses in the heat."
+      "No torch is needed in here. A pulse of red light runs along the altar's edge, and the stone ticks faintly as it warms and cools, like a pot left by a fire. Behind it, [[a heavy shape turns over]], and [[something under it glints]]. Water stands in every crack in the floor except the ones nearest the altar.",
+      "Dust hangs thick in the red light around the altar. The glow pools in a carved spiral at its base, sealed shut, the cuts older than the stone around them. [[Something glints past the altar]], and [[a shape drags itself between you and it]]. Your torch hisses in the heat."
     ],
     "chainBuildupDescription": "The stone altar glows with a pale red light, [[pulsing quicker than a resting heart]].",
     "chainForcedDescription": "The red light has spread across the floor to the doorway. [[There is no stepping around it.]]",
@@ -172,7 +173,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. [[On the far side of it, something heavy shifts its weight]]. Someone in the party wipes their palms dry before going closer."
+        "description": "The room is lit from one place: a stone altar giving off a pale red light that rises and falls, slow as breathing. On the far side of it, [[a long shape lies curled]] around [[something that glints]]. Someone in the party wipes their palms dry before going closer."
       }
     ],
     "reflection": {
@@ -327,7 +328,7 @@
     "id": "cursed-shrine",
     "removedOnFounderVictory": true,
     "name": "Cursed Shrine",
-    "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. It wasn't the same one a moment ago. Its stone hands are held out at waist height, and [[something rests in them, close enough to take]].",
+    "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. It wasn't the same one a moment ago. Its stone hands are held out at waist height, and [[something rests in the cupped palms]].",
     "crossEventVariants": [
       {
         "when": [
@@ -335,7 +336,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. Its lowest lid is chipped, the way stone chips under a knife point. Its stone hands are held out at waist height, and [[something rests in them, close enough to take]]."
+        "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. Its lowest lid is chipped, the way stone chips under a knife point. Its stone hands are held out at waist height, and [[something rests in the cupped palms]]."
       }
     ],
     "reflection": {
@@ -468,7 +469,7 @@
     "removedOnFounderVictory": true,
     "name": "Ritual Circle",
     "minFloorDepth": 2,
-    "description": "The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. [[At the open end a flat stone sits bare, worn hollow where things were set down]]. The broom marks stop a stride short of the blood on every side.",
+    "description": "The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. [[A flat stone sits at the open end, worn hollow in the middle]]. The broom marks stop a stride short of the blood on every side.",
     "chainEscalatedDescription": "Old dried blood traces a spiral across the stone. [[Your packs come off at its open end]], the way they do at camp.",
     "chainEscalated2Description": "Old dried blood traces a spiral across the stone. [[At its open end the floor is worn smooth in two places]], a pair of knees apart.",
     "chainEscalated3Description": "Old dried blood traces a spiral across the stone. [[The worn places at its open end]] fit your knees exactly.",
@@ -476,7 +477,7 @@
       {
         "when": [{ "eventId": "blood-altar", "outcome": "paid" }],
         "match": "any",
-        "description": "The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. [[At the open end a flat stone sits bare, worn hollow where things were set down]]. The broom marks stop a stride short of the blood on every side. The blood is the same dark brown as the stain on your sleeve cuff."
+        "description": "The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. [[A flat stone sits at the open end, worn hollow in the middle]]. The broom marks stop a stride short of the blood on every side. The blood is the same dark brown as the stain on your sleeve cuff."
       }
     ],
     "reflection": {
@@ -752,7 +753,7 @@
           { "eventId": "collapsed-floor", "outcome": "declined" }
         ],
         "match": "any",
-        "description": "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. [[A satchel hangs from a peg driven into the lowest row]], its strap rotted through at the buckle. The last row stops mid-stroke."
+        "description": "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. [[A satchel lies under the lowest row]], its strap rotted through at the buckle. The last row stops mid-stroke."
       }
     ],
     "chainEscalatedDescription": "Tally marks, hundreds, in neat rows. Your eyes go to the floor under them first, [[for whatever was left behind]].",

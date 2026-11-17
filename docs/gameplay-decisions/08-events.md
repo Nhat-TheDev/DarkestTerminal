@@ -390,7 +390,7 @@ The answer is kept in `GameState.gatekeeperAnswer` (`"paid"` / `"refused"`). A d
 
 > "Rubble has spilled across half the floor, and a grey haze of stone dust still hangs in the torchlight. A cracked oak chest sits crooked on top of the pile, its iron bands flecked with rust. Whoever carried it this far didn't carry it any further."
 
-No combat, no price to pay. Entering the room shows the flavor text and a single **[1] Open the chest** action (`Game.openChest()`, `src/engine/events/openChest.ts`) — the artifact isn't granted until the player actively chooses to open it, so the room's description gets a beat on screen before the loot/decision flow takes over. Opening grants 1 Artifact rolled on the standard rarity table, which goes through the normal decision flow (`07-items-artifacts.md` §7.2).
+No combat, no price to pay. Entering the room shows the flavor text and a single **[1] Open it** action (`instantRewardActionLabel`, so the lockbox and the stacked pack read right too) (`Game.openChest()`, `src/engine/events/openChest.ts`) — the artifact isn't granted until the player actively chooses to open it, so the room's description gets a beat on screen before the loot/decision flow takes over. Opening grants 1 Artifact rolled on the standard rarity table, which goes through the normal decision flow (`07-items-artifacts.md` §7.2).
 
 **No recurring NPC, no chain, no reflection** — kept deliberately mundane along with Collapsed Floor (§8.21); see §8.2.
 
@@ -407,7 +407,7 @@ No combat, no price to pay. Entering the room shows the flavor text and a single
 
 **The only difference between the two ids**: flavor text.
 - `guardian-fight`: "The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. A chest sits in the far corner. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, claws scrape slowly on stone. The scraping stops."
-- `desecrated-altar`: "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot. On the far side of it, something heavy shifts its weight."
+- `desecrated-altar`: "The room is lit from one place: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot. On the far side of it, a long shape lies curled around something that glints."
 
 **Chain escalation**: repeatedly choosing "Leave without fighting" builds toward a forced encounter — see §8.5 Chain 1, "The Guardian's Grudge." **Reflection**: see §8.6.
 
@@ -500,7 +500,7 @@ No combat. On entering the room, the player may:
 
 ## 8.16 Cursed Shrine (`cursed-shrine`) — *Rare*
 
-> "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. It wasn't the same one a moment ago. Its stone hands are held out at waist height, and something rests in them, close enough to take."
+> "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. It wasn't the same one a moment ago. Its stone hands are held out at waist height, and something rests in the cupped palms."
 
 **No combat** (`kind: "cursedOffer"`). Pre-rolls 1 random Artifact that may be Cursed (`rollArtifactOrCursed`, `src/data/artifacts.ts` — a fixed chance of landing in the Cursed-Artifact pool from §8.4, otherwise a normal roll on the standard table) — **shown in full before you accept it** (unlike `blood-altar` — you see the specific artifact and know whether it's cursed or not, you just don't know what it will be until the single roll happens).
 
@@ -529,7 +529,7 @@ No combat. On entering the room, the player may:
 
 ## 8.18 Ritual Circle (`sacrificial-circle`) — *Rare*
 
-> "The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. At the open end a flat stone sits bare, worn hollow where things were set down. The broom marks stop a stride short of the blood on every side."
+> "The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. A flat stone sits at the open end, worn hollow in the middle. The broom marks stop a stride short of the blood on every side."
 
 **No combat** (`kind: "artifactSacrifice"`). Sacrifice 1 **currently-equipped** artifact (every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) — deliberately not scaled by floor depth — excluding tiers below the threshold.
 
