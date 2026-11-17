@@ -84,7 +84,7 @@ EventDefinition {
 
 Every Artifact granted by any event in this section — whether revealed up front or rolled blind then revealed — goes through the same **decision flow** described in `07-items-artifacts.md` §7.2: Equip (any character, replacing 1 of their own ordinary artifacts if full) or Discard (unless Cursed/`forceEquip`, which skips straight to a forced Equip). None of the per-event sections below repeat that flow — they only describe what's specific to that room.
 
-On every event screen except the exit scene, each choice that costs or gives something shows it in up to two dim lines under the choice: `Cost:` (coins, HP, an artifact, a fight) and `Result:` (what the party gets, or its odds). A line is left out when there is nothing to show, so Leave and Decline have none. Every figure in them is read from `data/balance-config.json` (`events`) or the event's own record (`guaranteedArtifactId`, `guaranteedItems`, `noArtifactReward`) when the screen is drawn, and the choice labels themselves name only the action. The lines are built in `renderMain` (`src/ui/screens/events.ts`) with `optionDetailLines` (`src/ui/effectLine.ts`). A choice that spends the visit also asks for a second press of its key (`developer-guide.md`, "Key hints", R7).
+On every event screen except the exit scene, each choice that costs or gives something shows it in up to two dim lines under the choice: `Cost:` (coins, HP, an artifact, a fight) and `Result:` (what the party gets, or its odds). A line is left out when there is nothing to show, so Leave and Decline have none. Every figure in them is read from `data/balance-config.json` (`events`) or the event's own record (`guaranteedArtifactId`, `guaranteedItems`, `noArtifactReward`) when the screen is drawn, and the choice labels themselves name only the action. When a `Result:` names a specific artifact (Cursed Shrine, Twin Altars, a merchant offer's detail screen, a scene with a `guaranteedArtifactId`), it ends in `*` (`**` for Twin Altars' second altar), and a note under the choices repeats the marker with the artifact's rarity, effect and description; the description above the choices stays the room's own. The lines are built in `renderMain` (`src/ui/screens/events.ts`) with `optionDetailLines` and `footnoteLines` (`src/ui/effectLine.ts`). A choice that spends the visit also asks for a second press of its key (`developer-guide.md`, "Key hints", R7).
 
 ---
 
@@ -498,11 +498,11 @@ No combat. On entering the room, the player may:
 
 ## 8.16 Cursed Shrine (`cursed-shrine`) — *Rare*
 
-> "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other, and the stone around them is smooth from touching. One of them is open. It wasn't the same one a moment ago."
+> "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. It wasn't the same one a moment ago. Its stone hands are held out at waist height, and something rests in them, close enough to take."
 
 **No combat** (`kind: "cursedOffer"`). Pre-rolls 1 random Artifact that may be Cursed (`rollArtifactOrCursed`, `src/data/artifacts.ts` — a fixed chance of landing in the Cursed-Artifact pool from §8.4, otherwise a normal roll on the standard table) — **shown in full before you accept it** (unlike `blood-altar` — you see the specific artifact and know whether it's cursed or not, you just don't know what it will be until the single roll happens).
 
-- Step 1: roll, show the result (name + all effects, including the negative one if any).
+- Step 1: roll, show the result: Accept's `Result:` line names the artifact (and says if it is cursed), and a `*` note under the choices gives its rarity, all its effects (the negative one too) and its description.
 - Step 2: the player chooses **Accept** or **Decline** (nothing is lost by declining — unlike `blood-altar`, which requires paying up front).
 - If Accepted: it goes through the normal decision flow — forced-Equip if it turned out Cursed, optional Equip/Discard otherwise.
 

@@ -112,7 +112,7 @@ The word is "boon" in code and docs: "blessing" is the gatekeeper's paid blessin
 
 ### Text
 
-A temple screen shows the religion's name in its color, its `templeDescription` and the actions. Give blood and Ask a boon each carry a dim `Cost:` and `Result:` line under them, drawn from `temple.giveBlood` and `temple.boon`; Leave has none. Each description is one physical scene, around fifty words, in the same voice as an event room; none of them names a feeling or a god.
+A temple screen shows the religion's name in its color, its `templeDescription` and the actions. Give blood and Ask a boon each carry a dim `Cost:` and `Result:` line under them, drawn from `temple.giveBlood` and `temple.boon`; Leave has none. Ask a boon's `Result:` names the religion's boon and ends in `*`, and a `*` note under Leave spells out what that boon does, built from the religion's `boon` record and `temple.boon` (`boonEffectText`, `src/ui/screens/temple.ts`). Each description is one physical scene, around fifty words, in the same voice as an event room; none of them names a feeling or a god.
 
 ## 13.5 Pray and Talk (the rest room)
 

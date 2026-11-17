@@ -15,7 +15,7 @@ import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
 import { ownedArtifactEntries } from "../state";
 import { digitHint } from "../keyHints";
-import { answerLines, formatEffectLine, optionDetailLines } from "../effectLine";
+import { answerLines, footnoteLines, footnoteMarker, formatEffectLine, optionDetailLines } from "../effectLine";
 import { PALETTE, boldColorChunk, colorChunk, joinLines } from "../theme";
 import { truncateText } from "../layout";
 import { paginate, PAGE_SIZE } from "../pagination";
@@ -291,13 +291,29 @@ const text = (line: string): TextChunk[] => [colorChunk(line, PALETTE.text)];
 const textLines = (block: string): TextChunk[][] => block.split("\n").map(text);
 const coins = (amount: number) => t("ui.coinsCost", { coins: amount });
 
-function chestResult(eventId: string | undefined): string | null {
-  if (!eventId) return null;
+/** The note that names an artifact's rarity, effect and description under the choices. */
+function artifactFootnote(artifactId: string, index: number): TextChunk[][] {
+  const a = getArtifact(artifactId);
+  const heading = t("ui.footnoteArtifact", { name: a.name, rarity: a.rarity, curse: a.isCursed ? t("ui.footnoteCursed") : "", effect: formatArtifactEffect(a) });
+  return footnoteLines(footnoteMarker(index), heading, a.description);
+}
+
+const withMarker = (result: string, index: number) => `${result} ${footnoteMarker(index)}`;
+
+function chestDetails(eventId: string | undefined): { result: string | null; notes: TextChunk[][] } {
+  if (!eventId) return { result: null, notes: [] };
   const event = getEvent(eventId);
   const parts: string[] = [];
-  if (!event.noArtifactReward) parts.push(event.guaranteedArtifactId ? getArtifact(event.guaranteedArtifactId).name : t("ui.randomArtifact"));
+  let notes: TextChunk[][] = [];
+  if (!event.noArtifactReward) {
+    if (event.guaranteedArtifactId) {
+      parts.push(t("ui.receiveResult", { name: getArtifact(event.guaranteedArtifactId).name }));
+      notes = artifactFootnote(event.guaranteedArtifactId, 0);
+    } else parts.push(t("ui.randomArtifact"));
+  }
   for (const { itemId, count } of event.guaranteedItems ?? []) parts.push(t("ui.itemCount", { name: getItem(itemId).name, count }));
-  return parts.length > 0 ? parts.join(", ") : null;
+  const result = parts.length > 0 ? parts.join(", ") : null;
+  return { result: result && notes.length > 0 ? withMarker(result, 0) : result, notes };
 }
 
 export function renderMain(game: Game, ui: EventUiState, page = 0): string | StyledText {
@@ -306,7 +322,14 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventInstantReward": {
       const room = getRoom(s.floor, s.currentRoomId);
       const event = room.rolledEventId ? getEvent(room.rolledEventId) : undefined;
-      return joinLines([...textLines(currentEventDescription(s)), [], text(event?.instantRewardActionLabel ?? t("ui.openChestOption")), ...optionDetailLines(null, chestResult(room.rolledEventId))]);
+      const { result, notes } = chestDetails(room.rolledEventId);
+      return joinLines([
+        ...textLines(currentEventDescription(s)),
+        [],
+        text(event?.instantRewardActionLabel ?? t("ui.openChestOption")),
+        ...optionDetailLines(null, result),
+        ...(notes.length > 0 ? [[], ...notes] : []),
+      ]);
     }
 
     case "eventArtifactShop": {
@@ -319,11 +342,11 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
         return joinLines([
           text(t("ui.merchantDetailTitle", { name: a.name, rarity: a.rarity }) + cursedTag),
           [],
-          ...textLines(t("ui.merchantDetailDesc", { desc: a.description })),
-          [],
           text(t("ui.merchantDetailBuyOption")),
-          ...optionDetailLines(coins(MERCHANT_PRICE_COINS[a.rarity]), a.name),
+          ...optionDetailLines(coins(MERCHANT_PRICE_COINS[a.rarity]), withMarker(t("ui.receiveResult", { name: a.name }), 0)),
           text(t("ui.merchantDetailCancelOption")),
+          [],
+          ...artifactFootnote(artifactId, 0),
         ]);
       }
       const refreshCount = s.activeEvent?.refreshCount ?? 0;
@@ -344,15 +367,13 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventCursedOffer": {
       const artifactId = s.activeEvent?.offerArtifactIds[0];
       const a = artifactId ? getArtifact(artifactId) : null;
-      const curseTag = a?.isCursed ? t("ui.cursedTag") : "";
       return joinLines([
         ...textLines(currentEventDescription(s)),
         [],
-        text(a ? `${a.name} (${a.rarity})${curseTag} — ${a.description}` : "..."),
-        [],
         text(t("ui.acceptOption")),
-        ...optionDetailLines(null, a ? (a.isCursed ? t("ui.cursedArtifactResult", { name: a.name }) : a.name) : null),
+        ...optionDetailLines(null, a ? withMarker(t(a.isCursed ? "ui.cursedArtifactResult" : "ui.receiveResult", { name: a.name }), 0) : null),
         text(t("ui.declineOption")),
+        ...(artifactId ? [[], ...artifactFootnote(artifactId, 0)] : []),
       ]);
     }
 
@@ -361,8 +382,10 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
       const lines = [...textLines(currentEventDescription(s)), [], text(t("ui.twinAltarsIntro"))];
       offers.forEach((id, i) => {
         const a = getArtifact(id);
-        lines.push(text(t("ui.twinAltarsOfferLine", { i: i + 1, name: a.name, rarity: a.rarity, effect: formatArtifactEffect(a) })), ...optionDetailLines(null, t("ui.twinAltarsResult", { name: a.name })));
+        lines.push(text(t("ui.twinAltarsOfferLine", { i: i + 1, name: a.name, rarity: a.rarity })), ...optionDetailLines(null, withMarker(t("ui.twinAltarsResult", { name: a.name }), i)));
       });
+      if (offers.length > 0) lines.push([]);
+      offers.forEach((id, i) => lines.push(...artifactFootnote(id, i)));
       return joinLines(lines);
     }
 

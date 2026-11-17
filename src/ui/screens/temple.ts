@@ -1,18 +1,21 @@
 import { StyledText, type KeyEvent, type TextChunk } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import type { PartyActionError } from "../../engine/party";
+import type { BoonStat, Religion } from "../../types";
 import { getRoom } from "../../engine/dungeon";
 import { bloodGift, templeActionsAvailable } from "../../engine/temple";
 import { BALANCE } from "../../data/balanceConfig";
 import { getReligion } from "../../data/religions";
 import { t } from "../../data/strings";
 import { digitHint } from "../keyHints";
-import { optionDetailLines } from "../effectLine";
+import { footnoteLines, footnoteMarker, optionDetailLines } from "../effectLine";
 import type { UiState } from "../state";
 import { PALETTE, boldColorChunk, colorChunk, joinLines } from "../theme";
 import type { ScreenContext } from "./context";
 
 const ACTION_COUNT = 2;
+const BOON_STAT_ORDER: readonly BoonStat[] = ["offense", "defense", "speed"];
+const BOON_STAT_LABEL_KEY: Record<BoonStat, string> = { offense: "ui.boonStatOffense", defense: "ui.boonStatDefense", speed: "ui.boonStatSpeed" };
 
 type DonorsUi = Extract<UiState, { kind: "templeDonors" }>;
 
@@ -67,6 +70,33 @@ export function handleDonorKey(ctx: ScreenContext, ui: DonorsUi, key: KeyEvent, 
   }
 }
 
+function listLabels(stats: readonly BoonStat[]): string {
+  const labels = stats.map((stat) => t(BOON_STAT_LABEL_KEY[stat]));
+  return labels.length > 1 ? t("ui.listAnd", { items: labels.slice(0, -1).join(", "), last: labels.at(-1)! }) : (labels[0] ?? "");
+}
+
+/** What the religion's boon does, read from `religions.json` and `temple.boon`. */
+export function boonEffectText(religion: Religion): string {
+  const config = BALANCE.temple.boon;
+  const percent = (fraction: number) => Math.round(fraction * 100);
+  const { emphasis, recoversHpMp } = religion.boon;
+  const parts = [
+    emphasis
+      ? t("ui.boonEmphasis", {
+          percent: config.emphasisPercent,
+          stat: listLabels([emphasis]),
+          otherPercent: config.statPercent,
+          others: listLabels(BOON_STAT_ORDER.filter((stat) => stat !== emphasis)),
+          matching: config.matchingEmphasisPercent,
+          otherMatching: config.matchingStatPercent,
+        })
+      : t("ui.boonAllStats", { percent: config.statPercent, stats: listLabels(BOON_STAT_ORDER), matching: config.matchingStatPercent }),
+  ];
+  if (recoversHpMp) parts.push(t("ui.boonRecovery", { percent: percent(config.recoveryPerRoom), matching: percent(config.matchingRecoveryPerRoom) }));
+  parts.push(t("ui.boonFaithDecay", { percent: percent(1 - config.decayMultiplier) }));
+  return parts.join(" ");
+}
+
 function templeHeader(game: Game): TextChunk[][] {
   const room = getRoom(game.state.floor, game.state.currentRoomId);
   const religion = getReligion(room.templeReligionId!);
@@ -76,6 +106,7 @@ function templeHeader(game: Game): TextChunk[][] {
 export function renderMain(game: Game): StyledText {
   const available = templeActionsAvailable(game.state);
   const { boon } = BALANCE.temple;
+  const religion = getReligion(getRoom(game.state.floor, game.state.currentRoomId).templeReligionId!);
   const lines = templeHeader(game);
   const action = (n: number, label: string, text: string, locked: string | null, cost: string, result: string) =>
     lines.push(
@@ -100,9 +131,9 @@ export function renderMain(game: Game): StyledText {
     t("ui.templeBoon"),
     available.boon ? null : t("ui.templeNoFaith", { cost: boon.faithCost }),
     t("ui.templeBoonCost", { cost: boon.faithCost }),
-    t("ui.templeBoonResult")
+    `${t("ui.templeBoonResult", { religion: religion.name })} ${footnoteMarker(0)}`
   );
-  lines.push([], [colorChunk(t("ui.templeLeave"), PALETTE.text)]);
+  lines.push([], [colorChunk(t("ui.templeLeave"), PALETTE.text)], [], ...footnoteLines(footnoteMarker(0), t("ui.footnoteBoon", { religion: religion.name }), boonEffectText(religion)));
   return joinLines(lines);
 }
 

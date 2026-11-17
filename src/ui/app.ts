@@ -241,6 +241,7 @@ export class App implements ScreenContext {
     this.mainBox = mainBox;
     mainBox.onMouseScroll = () => this.showMainScroll();
     this.main = new TextRenderable(renderer, { id: "main", content: "", fg: PALETTE.text });
+    this.main.on("line-info-change", () => this.showMainScroll());
     mainBox.add(this.main);
     body.add(mainBox);
 

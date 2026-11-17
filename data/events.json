@@ -327,7 +327,7 @@
     "id": "cursed-shrine",
     "removedOnFounderVictory": true,
     "name": "Cursed Shrine",
-    "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other, and the stone around them is smooth from touching. One of them is open. It wasn't the same one a moment ago.",
+    "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. It wasn't the same one a moment ago. Its stone hands are held out at waist height, and something rests in them, close enough to take.",
     "crossEventVariants": [
       {
         "when": [
@@ -335,7 +335,7 @@
           { "eventId": "sacrificial-circle", "outcome": "sacrificed" }
         ],
         "match": "any",
-        "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other, and the stone around them is smooth from touching. One of them is open. Its lowest lid is chipped, the way stone chips under a knife point."
+        "description": "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. Its lowest lid is chipped, the way stone chips under a knife point. Its stone hands are held out at waist height, and something rests in them, close enough to take."
       }
     ],
     "reflection": {

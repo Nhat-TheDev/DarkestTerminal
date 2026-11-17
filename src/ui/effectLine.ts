@@ -70,3 +70,15 @@ export function optionDetailLines(cost: string | null, result: string | null): T
   if (result) lines.push([colorChunk(`${ANSWER_INDENT}${t("ui.optionResult", { result })}`, PALETTE.dim)]);
   return lines;
 }
+
+/** The `*`, `**`, ... that ties a Result line to its note under the choices. */
+export function footnoteMarker(index: number): string {
+  return "*".repeat(index + 1);
+}
+
+/** A note under the choices: the marker and heading on one line, then the dim body indented under it. */
+export function footnoteLines(marker: string, heading: string, body: string | null): TextChunk[][] {
+  const lines: TextChunk[][] = [[colorChunk(`${marker} ${heading}`, PALETTE.text)]];
+  if (body) lines.push([colorChunk(`${" ".repeat(marker.length + 1)}${body}`, PALETTE.dim)]);
+  return lines;
+}

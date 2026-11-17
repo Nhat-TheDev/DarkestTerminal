@@ -561,14 +561,16 @@ describe("list paging", () => {
 });
 
 describe("playtest fixes", () => {
-  test("Twin Altars shows each artifact's effect, not its lore", () => {
+  test("Twin Altars names each artifact in its Result and explains it in a * and ** note", () => {
     const game = new Game(1);
     forceTwinAltars(game);
     const out = eventsScreen.renderMain(game, { kind: "eventPairedOffer" });
     const text = typeof out === "string" ? out : out.chunks.map((c) => c.text).join("");
     for (const [i, id] of game.state.activeEvent!.offerArtifactIds.entries()) {
       const a = ARTIFACTS.find((x) => x.id === id)!;
-      expect(text).toContain(`[${i + 1}] ${a.name} (${a.rarity}) — ${formatArtifactEffect(a)}`);
+      const marker = "*".repeat(i + 1);
+      expect(text).toContain(`[${i + 1}] ${a.name} (${a.rarity})\n      Result: Receive ${a.name}; the other altar shatters ${marker}\n`);
+      expect(text).toContain(`\n${marker} ${a.name} (${a.rarity}${a.isCursed ? ", cursed" : ""}): ${formatArtifactEffect(a)}\n${" ".repeat(marker.length + 1)}${a.description}`);
     }
   });
 
@@ -708,7 +710,7 @@ describe("event choices show their Cost and Result", () => {
   test("a chest names what it gives, and a scene that gives nothing adds no line", () => {
     expect(plain(eventsScreen.renderMain(eventGame("open-chest"), { kind: "eventInstantReward" }))).toContain("  [1] Open the chest\n      Result: 1 random artifact");
     expect(plain(eventsScreen.renderMain(eventGame("waiting-supplies"), { kind: "eventInstantReward" }))).toContain(
-      `Result: ${getArtifact("travelers-ration").name}, ${getItem("exploration-kit").name} ×3`
+      `Result: Receive ${getArtifact("travelers-ration").name}, ${getItem("exploration-kit").name} ×3 *\n\n* ${getArtifact("travelers-ration").name} (`
     );
     const nothing = plain(eventsScreen.renderMain(eventGame("the-delay"), { kind: "eventInstantReward" }));
     expect(nothing).not.toContain("Result:");
@@ -799,8 +801,45 @@ describe("event choices show their Cost and Result", () => {
     const { matching, other } = BALANCE.temple.giveBlood;
     const gains = [matching.faithGain, matching.lowFaithGain, other.faithGain];
     expect(text).toContain(`  [1] Give blood\n      Cost: HP from each chosen member\n      Result: +${Math.min(...gains)} to +${Math.max(...gains)} Faith per member`);
-    expect(text).toContain(`  [2] Ask a boon\n      Cost: ${BALANCE.temple.boon.faithCost} Faith\n      Result: the temple's boon until the floor ends`);
-    expect(text.trimEnd().endsWith("  [Enter] Leave")).toBe(true);
+    const religion = getReligion(getRoom(game.state.floor, game.state.currentRoomId).templeReligionId!);
+    expect(text).toContain(`  [2] Ask a boon\n      Cost: ${BALANCE.temple.boon.faithCost} Faith\n      Result: ${religion.name} boon until the floor ends *\n`);
+    expect(text).toContain(`  [Enter] Leave\n\n* ${religion.name} boon\n  ${templeScreen.boonEffectText(religion)}`);
+  });
+
+  test("a boon's note reads its stats from the religion and temple.boon", () => {
+    const boon = BALANCE.temple.boon;
+    const decay = `Faith fades ${Math.round((1 - boon.decayMultiplier) * 100)}% slower.`;
+    const emphasised = RELIGIONS.find((r) => r.boon.emphasis === "defense")!;
+    expect(templeScreen.boonEffectText(emphasised)).toBe(
+      `+${boon.emphasisPercent}% defense, +${boon.statPercent}% attack, magic power and speed (+${boon.matchingEmphasisPercent}% and +${boon.matchingStatPercent}% for its followers). ${decay}`
+    );
+    const healing = RELIGIONS.find((r) => r.boon.emphasis === null && r.boon.recoversHpMp)!;
+    expect(templeScreen.boonEffectText(healing)).toBe(
+      `+${boon.statPercent}% attack, magic power, defense and speed (+${boon.matchingStatPercent}% for its followers). ` +
+        `Each room restores ${Math.round(boon.recoveryPerRoom * 100)}% HP and MP (${Math.round(boon.matchingRecoveryPerRoom * 100)}% for its followers). ${decay}`
+    );
+  });
+
+  test("the cursed shrine keeps the artifact out of the description and explains it in a note", () => {
+    const game = eventGame("cursed-shrine");
+    const a = ARTIFACTS.find((x) => x.isCursed)!;
+    game.state.activeEvent!.offerArtifactIds = [a.id];
+    const text = plain(eventsScreen.renderMain(game, { kind: "eventCursedOffer" }));
+    expect(text).toContain(`  [1] Accept\n      Result: Receive ${a.name} (cursed) *\n  [2] Decline\n\n* ${a.name} (${a.rarity}, cursed): ${formatArtifactEffect(a)}\n  ${a.description}`);
+    expect(text.indexOf(a.description)).toBeGreaterThan(text.indexOf("[2] Decline"));
+  });
+
+  test("the Dungeon panel border has no scroll marker when the text fits", async () => {
+    const { renderer, renderOnce, captureCharFrame } = await createTestRenderer({ width: 150, height: 45 });
+    const game = eventGame("cursed-shrine");
+    game.state.activeEvent!.offerArtifactIds = [ARTIFACTS.find((x) => x.isCursed)!.id];
+    new App(renderer, game);
+    await renderOnce();
+    const frame = captureCharFrame();
+    expect(frame).toContain("[1] Accept");
+    expect(frame).not.toContain(t("ui.panelMainMoreBelow"));
+    expect(frame).not.toContain(t("ui.panelMainMoreAbove"));
+    renderer.destroy();
   });
 });
 
