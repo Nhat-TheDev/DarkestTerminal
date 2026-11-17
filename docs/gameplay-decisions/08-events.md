@@ -69,6 +69,7 @@ EventDefinition {
   chainEscalated3Description?: string  // §8.5 Chain 2/3 tier 3 — higher threshold still, past chainTier3MinFloorDepth
   crossEventVariants?: CrossEventVariant[]  // 10-event-narrative.md Part B.1 — conditional text keyed off other events' outcomes, checked after chain states
   descriptionVariants?: string[]       // Part B.2 — random alternate base scenes, picked once per room and pinned
+  narration?: Record<string, string>  // §8.26 — required for non-scripted events; semantic action/outcome passages
   instantRewardActionLabel?: string    // overrides "Open the chest" for instantReward events whose scene isn't a chest
   reflection?: {                       // §8.6 — the exit scene's prompt and answers; absent on open-chest/collapsed-floor/the-one-who-stayed/the-gatekeeper
     prompt: string
@@ -84,7 +85,7 @@ EventDefinition {
 
 Every Artifact granted by any event in this section — whether revealed up front or rolled blind then revealed — goes through the same **decision flow** described in `07-items-artifacts.md` §7.2: Equip (any character, replacing 1 of their own ordinary artifacts if full) or Discard (unless Cursed/`forceEquip`, which skips straight to a forced Equip). None of the per-event sections below repeat that flow — they only describe what's specific to that room.
 
-On every event screen except the exit scene, each choice that costs or gives something shows it in up to two dim lines under the choice: `Cost:` (coins, HP, an artifact, a fight) and `Result:` (what the party gets, or its odds). A line is left out when there is nothing to show, so Leave and Decline have none. Every figure in them is read from `data/balance-config.json` (`events`) or the event's own record (`guaranteedArtifactId`, `guaranteedItems`, `noArtifactReward`) when the screen is drawn, and the choice labels themselves name only the action. When a `Result:` names a specific artifact (Cursed Shrine, Twin Altars, a merchant offer's detail screen, a scene with a `guaranteedArtifactId`), it ends in `*` (`**` for Twin Altars' second altar), and a note under the choices repeats the marker with the artifact's rarity, effect and description; the description above the choices stays the room's own. The lines are built in `renderMain` (`src/ui/screens/events.ts`) with `optionDetailLines` and `footnoteLines` (`src/ui/effectLine.ts`). A choice that spends the visit also asks for a second press of its key (`developer-guide.md`, "Key hints", R7).
+On event choice screens, each choice that costs or gives something shows it in up to two dim lines under the choice: `Cost:` (coins, HP, an artifact, a fight) and `Result:` (what the party gets, or its odds). A line is left out when there is nothing to show, so Leave and Decline have none. Every figure in them is read from `data/balance-config.json` (`events`) or the event's own record (`guaranteedArtifactId`, `guaranteedItems`, `noArtifactReward`) when the screen is drawn, and the choice labels themselves name only the action. When a `Result:` names a specific artifact (Cursed Shrine, Twin Altars, a merchant offer's detail screen, a scene with a `guaranteedArtifactId`), it ends in `*` (`**` for Twin Altars' second altar), and a note under the choices repeats the marker with the artifact's rarity, effect and description; the description above the choices stays the room's own. The lines are built in `renderMain` (`src/ui/screens/events.ts`) with `optionDetailLines` and `footnoteLines` (`src/ui/effectLine.ts`). A choice that spends the visit also asks for a second press of its key (`developer-guide.md`, "Key hints", R7).
 
 An event text marks what the room holds, asks for or puts in the way with `[[` and `]]`: the chest, the cup, the thing behind the altar, the stranger's "Put it on the crate." The event and gatekeeper screens draw those parts in the title colour (`eventTextLines`, `src/ui/screens/events.ts`); the log and the journal read the text with the marks dropped (`plainEventText`, `src/data/events.ts`). Every text a room can show (description, variants, chain and return texts) marks at least one part when the room gives, asks or fights; a room that gives nothing (`the-delay`, `still-breathing`, `the-wanderer`, `the-one-who-stayed`) marks none. A fight for a reward marks both, so `guardian-fight` lights the chest and whatever is waiting past the light. The marks must open and close in pairs, unnested, or the game refuses to load (`assertEventDataConsistent`), and `test/events.test.ts` holds the at-least-one rule. Docs quote event texts without the marks.
 
@@ -264,16 +265,11 @@ absence (§12.4) — nothing here ever had a stake in this party either way.
 
 ## 8.6 The Exit Scene and Post-Event Reflection
 
-Every event room ends on its own screen, after the party has dealt with the event and before it leaves the room: the **exit scene** (`eventExit`, `src/ui/screens/events.ts`). The room's path list shows only after it. The gatekeeper is not an event room and keeps its own flow. A combat event (`guardian-fight`, `desecrated-altar`) reaches the exit scene after the victory, the rewards, the artifact decision and the camp offer, still before the party moves on.
+A committed room-event action first shows its action-specific narration (§8.26). Reflection is a separate, later screen: the **exit scene** (`eventExit`, `src/ui/screens/events.ts`), shown after applicable rewards and before the party moves on. It contains the event's prompt, numbered answers with their effect lines, and `[Enter] Leave without a word`. Leaving silently applies no effect and records no stance, so a later visit still counts as a first reflection for the repeat chance. The scripted Gatekeeper keeps its own flow.
 
-The exit scene has two forms:
+`GameState.pendingEventExit: { eventId, withReflection } | null` is armed once the room clears and saved with the run. `Game.pickReflectionAnswer` applies an answer and clears it; `Game.leaveEventRoom` clears it without an effect. A combat event reaches its existing exit flow after victory, rewards, artifact decisions and the camp offer; entry narration does not add another post-victory passage.
 
-- **With a reflection**: the event's prompt, a numbered list of answers, each with its effect line under it, and `[Enter] Leave without a word`. Leaving without a word has no effect and records no stance, so a later visit still counts as a first reflection for the repeat chance.
-- **Without a reflection**: the event's name and `[Enter] Leave`. Nothing else.
-
-The plain form shows when the event has no reflection (`open-chest`, `collapsed-floor`, `the-one-who-stayed`), when the repeat roll fails, when the engagement gate below is not met, or when a journal scene took the reflection's place.
-
-The state is `GameState.pendingEventExit: { eventId, withReflection } | null`, set by `armEventExit` (`src/engine/events/shared.ts`) once the room is cleared and saved with the run, so a reload lands on the same screen. `Game.pickReflectionAnswer` applies the picked answer and clears it; `Game.leaveEventRoom` clears it without an effect.
+When an acknowledged narration belongs to an event whose pending exit has `withReflection: false`, `Game.acknowledgeChoiceNarration` also consumes that empty exit. Continue then resumes any journal work or returns to the room, without another title-only Leave screen. The plain exit form (event name and `[Enter] Leave`) remains available for existing continuations that have no pending narration, including older saves and combat resolution. A missing reflection never suppresses the action's narration.
 
 ### Reflections carry effects
 
@@ -310,7 +306,7 @@ type ReflectionEffect = {
 ```
 
 - **Sizes are never raw numbers.** An effect names a size, and `reflection.effectSizes[stat][size]` in `data/balance-config.json` resolves it, so reflection balance is tuned in one place and `data/events.json` carries no figures. Faith, Fear and Satiety sizes are points; HP and MP sizes are a share of the target's maximum.
-- **No effect kills or empties a bar.** HP clamps at 1, MP and the survival values clamp to their ranges. Deaths stay in combat and the temple.
+- **No effect kills or empties a bar.** HP clamps at 1, MP and the survival values clamp to their ranges. Accepted temple donations also preserve life (§13.4); narration adds no death path.
 - **Conditions read religion, run history and dice, never a bar.** They never look at Faith, Fear, Satiety or HP, so an answer cannot be shown or hidden by how well the party is doing. `counterAtLeast` reads a `narrativeCounters` value against an `events.*` threshold; `lastGambleOutcome` reads `GameState.lastGamblingDenOutcome`.
 - **The roll** happens when the answer is picked, from the run's rng, so a seeded run stays reproducible. The roll is drawn even when a journal scene replaces the reflection (`afterEventAction`, `src/engine/game.ts`), so the rng stream does not depend on the journal.
 - **Fear gains** land as the declared size times the Faith factor (`04-fear-combat.md`) and each member's own fear resistance, using the Faith the party had when the answer was picked, whatever order the effects list in. The line shows the declared size, not the product.
@@ -341,9 +337,9 @@ Faith appears in an answer only where the room touches belief. The gambling den 
 
 **Frequency**: always shown the first time the player resolves a given event id in a run; a `events.reflectionRepeatChance` chance every time after that (`armEventExit`).
 
-**Replaced by the journal**: when the same room clear opens a journal deduction scene, the reflection is dropped for that visit, and the journal scene shows first, then the plain exit scene. The reflection's roll is still drawn and the event is not recorded as reflected, so a later visit can still show it (`Game.afterEventAction`).
+**Replaced by the journal**: when the same room clear opens a journal deduction scene, the reflection is dropped for that visit. For a narrated action, narration comes first, then reward decisions and journal work; its empty exit is consumed by Continue. Existing continuations without narration retain their plain exit. The reflection's roll is still drawn and the event is not recorded as reflected, so a later visit can still show it (`Game.afterEventAction`).
 
-**Engagement gate**: some events (`blood-altar`, `sacrificial-circle`, `wandering-hermit`, `guardian-fight`, `desecrated-altar`) write reflection text that describes their core action having happened (a payment taken, a trade struck, a fight won). Each names the outcome tag in its `reflectionRequiresOutcome` field (`data/events.json`); `armEventExit` checks it against `GameState.eventOutcomes` and shows the plain exit scene if the party merely left, declined or could not meet the cost. `bloodAltarLeave()` and `sacrificeLeave()` show it; so does `guardianFightSkip()`, which writes an explicit `"skipped"` outcome tag, distinct from the win path's `"resolved"` (written in `game.ts`'s combat-victory block), so a skip can never be mistaken for a won fight. That also keeps `broken-seal`'s containment-reading cross-event variant (`10-event-narrative.md` Part B.1) from firing off a mere skip.
+**Engagement gate**: some events (`blood-altar`, `sacrificial-circle`, `wandering-hermit`, `guardian-fight`, `desecrated-altar`) write reflection text that describes their core action having happened (a payment taken, a trade struck, a fight won). Each names the outcome tag in its `reflectionRequiresOutcome` field (`data/events.json`); `armEventExit` checks it against `GameState.eventOutcomes` and suppresses Reflection if the party merely left or declined. These successful leave/skip actions still narrate, then Continue consumes their empty exit. An unaffordable or invalid attempt only shows its existing error. `bloodAltarLeave()` and `sacrificeLeave()` do not qualify; neither does `guardianFightSkip()`, which writes an explicit `"skipped"` outcome tag, distinct from the win path's `"resolved"` (written in `game.ts`'s combat-victory block), so a skip can never be mistaken for a won fight. That also keeps `broken-seal`'s containment-reading cross-event variant (`10-event-narrative.md` Part B.1) from firing off a mere skip.
 
 **Escalated prompt**: the 4 events with a chain (`guardian-fight`, `desecrated-altar`, `sacrificial-circle`, `blood-altar`) show `reflection.escalatedPrompt` (and the tier 2 and 3 prompts) instead of `reflection.prompt` when the resolution that just happened was the chain-escalated one, so a player who just lived through Chain 1's forced encounter gets a reflection that matches what happened. Only the lead-in line changes; the answers stay the same (`pickReflectionPrompt`, `src/engine/events/shared.ts`).
 
@@ -571,7 +567,7 @@ Flow:
 2. Roll that round's win chance.
    - **Lose**: the entire current pot is lost outright, event ends, nothing gained.
    - **Win, rounds 1–3**: pot doubles, then a fresh choice — **Stop** (`gamblingDenStop`, bank the current pot as coins, event ends) or **Continue** (`gamblingDenContinue`, restake the *whole* pot on the next round — no partial cash-out).
-   - **Win, round 4**: pot converts to **2 Epic Artifacts** instead of coins — last round regardless of outcome, no further "continue." Each of the 2 artifacts goes through the normal decision flow independently, **sequentially** (the 2nd isn't rolled/revealed until the 1st is resolved, same rule as any other multi-artifact grant, `07-items-artifacts.md` §7.2).
+   - **Win, round 4**: pot converts to **2 Epic Artifacts** instead of coins — last round regardless of outcome, no further "continue." Each of the 2 artifacts goes through the normal decision flow independently, **sequentially** (both are rolled when the jackpot resolves and named in narration; the second decision opens only after the first is resolved, `07-items-artifacts.md` §7.2).
 
 Implementation: `src/engine/events/gamblingDen.ts`.
 
@@ -671,3 +667,104 @@ The first non-institutional evidence of the containment/communion schism (§8.2)
 The single deepest-lore reveal in the game — the spiral the Covenant built its entire ritual vocabulary around was never invented by them; it was copied from something already here first. Echoes forward once resolved: `merchant` (§8.10) gains a closing line on the party's next visit — "The cloth is the weave of the strip grown into that wall."
 
 **No recurring NPC, no chain.** **Reflection**: see §8.6.
+
+
+---
+
+## 8.26 Choice narration
+
+### Purpose and screen
+
+Every successful committed choice in a non-scripted room event, and every successful temple action (§13.4), opens the shared `choiceNarration` screen. It tells what the party did and what actually happened. Reflection tells how the party interprets it; narration never chooses a stance or applies a Reflection effect.
+
+The main panel shows the source event or religion name, a short resolved passage, then a separate `Result:` block when there are reportable effects. A leave or combat-entry action with no such effects has no result block. The footer is `[Enter] Continue`. Source event/temple artwork stays visible even after the room clears or combat has been prepared; combat reveal and its input wait until Continue.
+
+Only a fresh Enter acknowledges the passage, once. Digits and Escape cannot dismiss it or execute an action behind it. The existing same-key pre-action confirmation stays in place; Continue itself does not ask for confirmation or forward its Enter. Scrolling, permitted global viewers, the log and save controls retain their normal bindings. Returning from a viewer or menu preserves the read position; each new passage starts at the top. At 150×45 and wider layouts, long names and result lists wrap and scroll while the footer remains visible. <!-- docs:intent -->
+
+Browsing an offer, opening/cancelling a payer/artifact/donor picker, changing pages, selecting donors, arming/cancelling confirmation and choosing a Reflection answer produce no new narration. Rejected actions show the existing error and spend nothing. An accepted rescue failure or gambling loss does narrate: the action and its cost have committed.
+
+### Sequence and continuation
+
+The action executes once before narration is created. Continue only consumes the reading; it never pays again, rolls, grants another reward, advances a gambling round or starts a combat turn. Existing pending game state determines the next screen, rather than a UI-only continuation.
+
+| Committed action | After narration and Continue |
+|---|---|
+| Event ends with an artifact offer | Existing equip/discard/replace decisions, then eligible journal/Reflection/room routing |
+| Event ends with no artifact offer | Eligible journal/Reflection/room routing; no empty second exit for this narrated resolution |
+| Merchant refresh | Refreshed shop choices |
+| Ritual offering | Artifact decision, then eligible journal/Reflection/room routing; the offering has already closed the visit |
+| Nonfinal gambling win | Stop/Continue choices; no automatic next roll |
+| Gambling Stop or loss | Existing exit routing |
+| Gambling jackpot | Both artifact decisions, sequentially, then existing exit routing |
+| Guardian/altar fight entry | Prepared combat; existing victory/defeat/escape presentation and follow-ups remain unchanged |
+| Temple Give blood, boon or Leave | Cleared temple room, with no temple Reflection |
+
+Narration precedes artifact decisions, event Reflection, journal finds/deductions produced by the action and combat input. Existing Gatekeeper, ending checkpoint, founder dialogue, journal pickup and game-over priorities remain ahead of narration (`App.syncUiToGameState`). Reflection keeps its existing repeat chance, engagement gates and replacement by journal scenes; narration does not force it to appear.
+
+### Event cases and scene constraints
+
+Exact passages live in each event's `narration` map in `data/events.json`. Keys describe actions and actual outcomes, not keyboard digits. The catalog below states which cases belong to which scene; the JSON is the source for wording.
+
+| Event | Narration cases | Scene and continuation constraints |
+|---|---|---|
+| Open Chest (`open-chest`) | `take.chest`, `take.lockbox`, `take.gear`, `take.habit` | Match the pinned chest, damp lockbox, stacked gear or escalated pry-bar entrance; offer the existing artifact, without taking the whole pack or claiming it equipped |
+| Guardian Fight (`guardian-fight`) | `fight`, `fight.forced1`, `fight.forced2`, `fight.forced3`, `leave` | Match the pinned forced encounter; Leave stays unavailable when forced; no new victory narration |
+| Merchant (`merchant`) | `purchase`, `refresh`, `leave` | Purchase closes the visit; refresh returns to its new offers; browsing details is not a purchase |
+| Desecrate the Altar (`desecrated-altar`) | `fight`, `fight.forced1`, `fight.forced2`, `fight.forced3`, `leave` | Match forced entry; do not claim the altar goes dark when a later Reflection can describe it glowing |
+| Blood Altar (`blood-altar`) | `pay`, `pay.tier1`, `pay.tier2`, `pay.tier3`, `leave` | Name the committed payer; capture the scene tier before payment increments its counter |
+| Cursed Shrine (`cursed-shrine`) | `accept`, `decline` | Name the offered artifact without revealing an unknown curse or claiming it equipped |
+| Twin Altars (`twin-altars`) | `chooseFirst`, `chooseSecond` | The unchosen altar breaks; first/second follow the menu, not invented left/right positions; retain compulsory equip |
+| Ritual Circle (`sacrificial-circle`) | `sacrifice`, `sacrifice.tier1`, `sacrifice.tier2`, `sacrifice.tier3`, `leave.untouched`, `leave.afterOffering`, `leave.legacy` | A successful offering closes the visit before its narration and reward decision; the leave variants retain older open-visit context, not an earlier run-wide outcome tag |
+| Gambling Den (`gambling-den`) | `enter.win`, `enter.loss`, `continue.win`, `continue.loss`, `jackpot`, `stop`, `leave` | Use the rolled outcome; any configured final-round win is jackpot; an intermediate pot is not spendable coins |
+| Wandering Hermit (`wandering-hermit`) | `exchange`, `leave` | Name the removed artifact, fee and replacement offer; fit open/closed-eye entrance variants without assuming a posture |
+| Collapsed Floor (`collapsed-floor`) | `rescue.success`, `rescue.failure`, `leave` | Name the payer and actual outcome; failure does not kill the payer; do not identify or recruit the rescued figure |
+| Old Count (`old-count`) | `moveOn`, `moveOn.habit` | Collect the existing find without completing the tally or identifying its writer |
+| Doubled Back (`doubled-back`) | `moveOn`, `moveOn.habit` | Collect the existing find; the party's new prints do not explain the older trail |
+| The Delay (`the-delay`) | `moveOn` | No reward; do not perform a later Reflection's timing experiment or decide what caused the delay |
+| Waiting Supplies (`waiting-supplies`) | `moveOn` | Divide and retie the bundle as the existing prompt establishes; report actual kits added after capacity limits and the existing artifact offer, without eating supplies |
+| Vigil (`vigil-candle`) | `moveOn` | Offer the existing cloth without tending/extinguishing the candle or using it as a bandage |
+| Broken Seal (`broken-seal`) | `moveOn` | Take the existing lock plate; fit inward/outward mortar variants without entering the hatch or explaining the broken seal |
+| Half a Warning (`half-a-warning`) | `moveOn` | Take the existing chalk; do not finish/erase the warning or claim a journal fragment unless actually granted |
+| Still Breathing (`still-breathing`) | `moveOn` | No reward; do not cut the cloth free, name the draft's source or confirm the dungeon as a creature |
+| The Wanderer (`the-wanderer`) | `moveOn` | Fit every entrance posture and the Camp Reflection variant; do not add a name, repeated dialogue, candle or vow |
+| The One Who Stayed (`the-one-who-stayed`) | `moveOn` | No reward or new Reflection; do not identify, revive or recruit the figure or promise a return |
+
+Capture the selected entrance context before changing counters, marking an NPC met or closing the event. Blood Altar and Ritual Circle use the pre-action escalation tier; guardian/altar entry uses the pinned chain variant. When a higher authored tier is absent, use the applicable lower authored tier. Habit text replaces the ordinary free-find passage where authored. Narration uses no additional RNG draw.
+
+A newly rolled ritual room starts `Room.eventSacrificesThisVisit` at zero. A successful offering increments it and closes the visit; a second offering in that visit is rejected. Leaving an untouched open visit selects `leave.untouched`. The retained `leave.afterOffering` case describes a positive room-local count in an older still-open visit, and `leave.legacy` is neutral when an older save has no room-local history. These cases preserve narration compatibility without reopening a completed visit or inferring its history from run-wide sacrifices or a persistent outcome tag.
+
+Passages preserve the world bible's ambiguity and leave subsequent Reflection gestures unperformed. They do not reveal the Sleeper, explain the spirals, settle a rescued stranger's fate, merge the four religions with the Covenant, or relocate the party outside a room whose Reflection still happens inside it. Existing prompts and answer effects remain separate, including their deliberate brief recaps.
+
+### Actual results
+
+`Result:` is a mechanical summary of committed effects, distinct from prospective Cost/Result previews and from the storyteller's passage. Values come from captured state changes, not advertised probabilities or nominal balance amounts.
+
+| Effect | What the screen reports |
+|---|---|
+| Coins/Faith | Actual signed change; Faith after rounding and its cap |
+| HP payment | Committed member name and HP before → after; include a selected zero-cost payer/donor even when rounding leaves HP unchanged |
+| Artifact reward | Actual artifact **offered**, not equipped or retained; include both jackpot offers even when they have the same ID |
+| Artifact exchange/sacrifice | Actual removed artifact and replacement offered; preserve duplicate copies when counting removals |
+| Items received | Actual quantity added after inventory limits |
+| Gambling | Round, actual outcome and pot before → after; entry stake and banked coins appear in the coin change, without subtracting a lost pot twice or banking the jackpot |
+| Boon | Actual Faith spent and the active religion's floor-length boon; no immediate healing |
+
+Empty result categories are omitted. Resource effects are not applied or logged again by rendering or acknowledgement. Full narration history is not saved as a separate log.
+
+### Content validation and persistence
+
+`src/data/events.ts` validates required action/outcome coverage, nonempty passages, supported keys and placeholders. The supported event substitutions are `{{character}}`, `{{artifact}}`, `{{oldArtifact}}` and `{{newArtifact}}`; names are resolved from the committed effects. Forced/tier/physical-scene cases must correspond to the event's declared source fields. A new event using an existing kind needs every applicable case. An unsupported additional chest scene is rejected rather than silently described as the wrong object. Temple content has its own exact action set (§13.4).
+
+`src/engine/choiceNarration.ts` captures the source and resolves the text and result; `Game` owns the pending record and acknowledgement. The UI module `src/ui/screens/choiceNarration.ts` renders it without editing game state directly. Engine/UI dispatch uses declared kinds and content fields, not literal content IDs.
+
+`GameState.pendingChoiceNarration` is nullable and saves `source`, `sourceId`, `roomId`, `floorDepth`, `caseKey`, resolved `title`/`text` and structured `result`. It survives quick save, save-menu round trips and load alongside any prepared fight, artifact offer, Reflection or journal work. Loading and Continue reuse that record without resolving the choice again. No result field is named `snapshot`, because `saveBody` replaces properties of that name with empty arrays.
+
+Supported older saves missing the record load with no pending narration; they do not fabricate a passage from a cleared room or log. Migration drops narration whose floor, current room or event/religion reference no longer matches, without replaying the action. Uncommitted picker selections and armed confirmations remain UI-only (§13.9).
+
+The scripted Gatekeeper retains its existing choice-specific presentation and save restrictions. No shared Gatekeeper narration, saved map-taking phase, temple Reflection or post-combat victory narration is implemented.
+
+### Verification contract
+
+Catalog tests cover required cases, unsupported scenes/placeholders and nonempty text. Engine tests cover committed/refused actions, success/failure branches, pinned pre-action tiers, RNG stability, ritual history, capped resources and duplicate artifacts. Disk save tests preserve resolved results and existing downstream state without another payment, roll, reward or heal. Headless UI tests cover fresh Enter, digit/Escape blocking, save/menu return, scroll reset and narration before rewards/combat.
+
+Random-play explicitly returns Continue for `choiceNarration` and keys evidence by saved source, source ID and semantic case before considering prepared combat. Donor selection policy is unchanged. Fixed evidence runs capture the branches they reach; directed tests cover uncommon outcomes, mixed donors, low-band payments, cap overflow, boon and rejection. Verification uses `bun test`, `bun run typecheck`, `bun run docs:sync --check` and targeted random-play evidence; architecture and controls are also described in `../developer-guide.md` under “Event and temple choice narration.”
