@@ -640,7 +640,7 @@ export class Game {
   }
 
   sacrifice(sacrificeArtifactId: Id): PartyActionError | null {
-    return sacrifice(this.state, this.ctx, sacrificeArtifactId);
+    return this.eventAction(() => sacrifice(this.state, this.ctx, sacrificeArtifactId));
   }
 
   sacrificeLeave(): void {
