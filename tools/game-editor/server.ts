@@ -11,6 +11,7 @@ import { DIVIDER_WIDTH } from "../../src/ui/layout";
 import type { EventDefinition } from "../../src/types";
 import { previewScene, type PreviewOptions } from "./backdropPreview";
 import { targetingConfigError, type TargetingConfig } from "../../src/data/balanceConfig";
+import { NESTED_BALANCE_SECTIONS, nestedBalanceError } from "./balanceCheck";
 
 const HTML_PATH = path.resolve(import.meta.dir, "index.html");
 const DATA_DIR = path.resolve(import.meta.dir, "../../data");
@@ -78,8 +79,6 @@ function applyNestedNumericPatch(target: Record<string, unknown>, patch: Record<
   }
   return null;
 }
-
-const NESTED_BALANCE_SECTIONS = ["faith", "temple", "rest", "reflection"] as const;
 
 const CLASS_BASE_FIELDS = ["baseAttack", "baseDefense", "baseMaxHp", "baseMaxMp", "baseMagicPower", "baseAggro", "baseSpeed"] as const;
 const CLASS_GROWTH_FIELDS = ["attack", "defense", "maxHp", "maxMp", "magicPower"] as const;
@@ -534,6 +533,10 @@ Bun.serve({
         if (patch === undefined) continue;
         if (typeof patch !== "object" || patch === null) return badRequest(`${key} must be an object.`);
         const err = applyNestedNumericPatch(balance[key] as Record<string, unknown>, patch as Record<string, unknown>, `${key}.`);
+        if (err) return badRequest(err);
+      }
+      if (NESTED_BALANCE_SECTIONS.some((key) => body[key] !== undefined)) {
+        const err = nestedBalanceError(balance);
         if (err) return badRequest(err);
       }
       if (body.currency !== undefined) {

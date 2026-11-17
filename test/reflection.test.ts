@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { BALANCE } from "../src/data/balanceConfig";
 import { assertEventDataConsistent, EVENTS, getEvent } from "../src/data/events";
 import { CAMP_REFLECTIONS } from "../src/data/loreExposure";
+import { RELIGIONS } from "../src/data/religions";
 import { formatEffectLine } from "../src/ui/effectLine";
 import { Game } from "../src/engine/game";
 import { getRoom } from "../src/engine/dungeon";
@@ -27,6 +28,8 @@ function eff(stat: ReflectionEffect["stat"], size: ReflectionEffect["size"], sig
 function opt(over: Partial<ReflectionOption> = {}): ReflectionOption {
   return { stance: "curious", text: "You wipe the dust off the lid.", outcomes: [{ effects: [eff("fear", "small", -1, "wipe the dust")] }], ...over };
 }
+
+const CAMP_RELIGION_ID = RELIGIONS[0]!.id;
 
 const BASE: ReflectionOption[] = [
   { stance: "curious", text: "You pinch the dust and sniff it.", outcomes: [{ effects: [eff("faith", "small", 1, "pinch the dust"), eff("fear", "small", 1, "sniff it")] }] },
@@ -193,6 +196,18 @@ describe("the catalog rules", () => {
     for (const event of EVENTS) {
       if (event.reflection) expect(catalogRuleErrors(event.reflection.options), event.id).toEqual([]);
     }
+  });
+
+  test("the catalog rules reject an unknown effect target or sign", () => {
+    const withTarget = (target: unknown, sign: unknown = -1): ReflectionOption[] => [
+      ...BASE.slice(0, 2),
+      { ...BASE[2]!, outcomes: [{ effects: [{ ...eff("fear", "medium", -1, "without looking"), target, sign } as ReflectionEffect, eff("mp", "small", -1, "walk on")] }] },
+    ];
+    expect(catalogRuleErrors(withTarget("mostHurt"))).toEqual([]);
+    expect(catalogRuleErrors(withTarget({ religion: CAMP_RELIGION_ID }))).toEqual([]);
+    expect(catalogRuleErrors(withTarget("mostAfriad")).join("\n")).toMatch(/unknown target/);
+    expect(catalogRuleErrors(withTarget({ religion: "no-such-religion" })).join("\n")).toMatch(/unknown target/);
+    expect(catalogRuleErrors(withTarget("party", 0)).join("\n")).toMatch(/sign must be 1 or -1/);
   });
 
   test("the loader throws on a list that breaks each rule in turn", () => {

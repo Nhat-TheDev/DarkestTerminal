@@ -933,6 +933,7 @@
   "ui.choiceNarrationArtifactRemoved": "{{artifact}} removed",
   "ui.choiceNarrationItemReceived": "{{item}} ×{{count}} received",
   "ui.choiceNarrationGamble": "Round {{round}}: {{outcome}}; pot {{potBefore}} → {{potAfter}} {{potAfter|coin|coins}}",
+  "ui.choiceNarrationGambleSettled": "Round {{round}}: {{outcome}}; pot {{potBefore}} {{potBefore|coin|coins}}",
   "ui.choiceNarrationBoon": "{{religion}} boon active until the floor ends",
   "ui.choiceNarrationGambleWin": "won",
   "ui.choiceNarrationGambleLoss": "lost",

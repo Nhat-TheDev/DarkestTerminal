@@ -19,7 +19,6 @@ export interface ChoiceNarrationCapture {
   cases: Record<string, string>;
   kind?: string;
   scene?: string;
-  description?: string;
   descriptions?: string[];
   habit?: boolean;
   tier: number;
@@ -41,14 +40,11 @@ export function captureChoiceNarration(state: GameState): ChoiceNarrationCapture
   const religion = room.type === "temple" ? RELIGIONS.find((r) => r.id === room.templeReligionId) : undefined;
   if ((!event && !religion) || event?.kind === "scripted") return null;
   const scene = event ? pickEventText(state, room, event) : undefined;
-  if (event?.narration?.["take.chest"] && scene !== event.description && !event.descriptionVariants?.includes(scene!) && scene !== event.chainEscalatedDescription) {
-    throw new Error(`Unsupported choice narration scene: ${event.id}`);
-  }
   return {
     source: event ? "event" : "temple", sourceId: (event ?? religion)!.id,
     roomId: room.id, floorDepth: state.floor.depth, title: (event ?? religion)!.name,
     cases: { ...((event ?? religion)!.narration ?? {}) }, kind: event?.kind,
-    scene, description: event?.description, descriptions: event?.descriptionVariants,
+    scene, descriptions: event?.descriptionVariants,
     habit: !!event?.freeTake && !!event.chainEscalatedDescription && scene === event.chainEscalatedDescription,
     tier: event ? escalationTier(state, event) : 0, chainVariant: room.chainVariant,
     sacrifices: room.eventSacrificesThisVisit, coins: state.coins, faith: state.faith,
@@ -98,7 +94,7 @@ export function resolveChoiceNarration(before: ChoiceNarrationCapture, after: Ga
     const outcome = caseKey === "stop" ? "banked" : active ? "win" : after.lastGamblingDenOutcome === "won" ? "jackpot" : "loss";
     result.gamble = { round: before.gamble ? before.gamble.round + (caseKey === "continue" ? 1 : 0) : 1,
       potBefore: before.gamble?.pot ?? BALANCE.events.gamblingDenRounds[0]!.stake,
-      potAfter: active?.pot ?? 0, outcome };
+      potAfter: outcome === "banked" ? before.gamble?.pot ?? 0 : active?.pot ?? 0, outcome };
     if (outcome === "jackpot") caseKey = "jackpot";
     else if (caseKey !== "stop") caseKey += `.${outcome}`;
   } else if (before.kind === "rescueGamble" && caseKey === "rescue") {
@@ -117,13 +113,12 @@ export function resolveChoiceNarration(before: ChoiceNarrationCapture, after: Ga
   } else if ((caseKey === "take" || caseKey === "moveOn") && before.habit && before.cases[`${caseKey}.habit`]) {
     caseKey += ".habit";
   } else if (caseKey === "take" && before.cases["take.chest"]) {
-    const index = before.scene === before.description ? 0 : (before.descriptions ?? []).indexOf(before.scene ?? "") + 1;
-    const suffix = [".chest", ".lockbox", ".gear"][index];
-    if (!suffix || (index === 0 && before.scene !== before.description)) throw new Error(`Unsupported choice narration scene: ${before.sourceId}`);
-    caseKey += suffix;
+    // A scene other than the base text or its variants (a return or cross-event text) reads as the plain chest.
+    const index = (before.descriptions ?? []).indexOf(before.scene ?? "") + 1;
+    caseKey += [".chest", ".lockbox", ".gear"][index] ?? ".chest";
   }
   const values: Record<string, string> = {
-    character: hpChanges[0]?.name ?? "", artifact: result.offeredArtifacts?.[0]?.name ?? "",
+    character: before.party.find((c) => c.characterId === selection.characterId)?.name ?? hpChanges[0]?.name ?? "", artifact: result.offeredArtifacts?.[0]?.name ?? "",
     oldArtifact: removed[0]?.name ?? "", newArtifact: result.offeredArtifacts?.[0]?.name ?? "",
   };
   const text = before.cases[caseKey];

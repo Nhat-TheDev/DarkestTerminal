@@ -20,6 +20,12 @@ export function recordEventOutcome(state: GameState, outcome: string): void {
   if (eventId) state.eventOutcomes[eventId] = outcome;
 }
 
+/** Refuses an action unless the current room is an uncleared event of `kind`, so a paid choice can't be taken twice. */
+export function openEventOfKindError(state: GameState, kind: EventKind): PartyActionError | null {
+  const room = getRoom(state.floor, state.currentRoomId);
+  return room.cleared || !room.rolledEventId || getEvent(room.rolledEventId).kind !== kind ? { reason: t("errors.nothingToDecide") } : null;
+}
+
 /** The pending offer state, only while it belongs to an event of `kind`. */
 export function activeEventOfKind(state: GameState, kind: EventKind): NonNullable<GameState["activeEvent"]> | null {
   const active = state.activeEvent;
@@ -50,6 +56,13 @@ export function closeEvent(state: GameState): void {
       state.loreExposureCount += 1;
     }
   }
+}
+
+/** Leaving without engaging. The run-wide outcome tag can still hold an earlier visit's engagement, so the exit skips a reflection that needs one. */
+export function leaveEvent(state: GameState): void {
+  const eventId = getRoom(state.floor, state.currentRoomId).rolledEventId;
+  closeEvent(state);
+  if (eventId && getEvent(eventId).reflectionRequiresOutcome) state.pendingEventExit = { eventId, withReflection: false };
 }
 
 /**

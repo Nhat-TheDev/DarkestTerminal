@@ -1,9 +1,11 @@
 import type { Character, ReflectionAnswer, ReflectionEffect, ReflectionOption, ReflectionOutcome, ReflectionStance } from "../types";
 import { BALANCE } from "./balanceConfig";
+import { RELIGIONS } from "./religions";
 
 const EVENT_STANCES: readonly ReflectionStance[] = ["curious", "wary", "dismissive"];
 const MIN_UNCONDITIONAL_ANSWERS = 3;
 const MAX_FAITH_DIRECTION_SHARE = 0.6;
+const NAMED_TARGETS: readonly unknown[] = [undefined, "party", "mostAfraid", "mostHurt"];
 
 /** Points for Faith, Fear and Satiety; HP and MP are a fraction of the target's maximum, rounded, or the bare fraction without a target. */
 export function effectAmount(e: ReflectionEffect, target?: Character): number {
@@ -78,6 +80,12 @@ function shapeErrors(label: string, option: ReflectionAnswer): string[] {
   for (const e of allEffects(option)) {
     if (!BALANCE.reflection.effectSizes[e.stat]?.[e.size]) errors.push(`${label}: no size "${e.size}" for ${e.stat}`);
     if ((e.stat === "faith" || e.stat === "satiety") && e.target !== undefined && e.target !== "party") errors.push(`${label}: ${e.stat} is party-wide and takes no target`);
+    if (e.sign !== 1 && e.sign !== -1) errors.push(`${label}: sign must be 1 or -1`);
+    const target: unknown = e.target;
+    const religionId = typeof target === "object" && target !== null ? (target as { religion?: unknown }).religion : undefined;
+    if (religionId !== undefined ? !RELIGIONS.some((r) => r.id === religionId) : !NAMED_TARGETS.includes(target)) {
+      errors.push(`${label}: unknown target ${JSON.stringify(target)}`);
+    }
   }
   return errors;
 }

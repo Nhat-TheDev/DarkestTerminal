@@ -15,6 +15,7 @@ import { armEventExit, pickReflectionPrompt } from "../src/engine/events/shared"
 import { makeCtx } from "./helpers";
 import { BALANCE } from "../src/data/balanceConfig";
 import { getItem } from "../src/data/items";
+import { t } from "../src/data/strings";
 
 function forceEventRoom(game: Game, eventId: string) {
   const room = getRoom(game.state.floor, game.state.currentRoomId);
@@ -713,6 +714,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     game.acknowledgeChoiceNarration();
     game.state.pendingArtifactDecision = null;
     c.hp = c.maxHp;
+    forceEventRoom(game, "collapsed-floor");
     expect(game.collapsedFloorAttempt(c.id)).toBeNull();
     expect(game.state.narrativeCounters.altarPaymentsCount).toBe(4);
 
@@ -733,6 +735,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
       const game = new Game(seed);
       const c = game.state.party[0]!;
       c.hp = c.maxHp;
+      forceEventRoom(game, "collapsed-floor");
       expect(game.collapsedFloorAttempt(c.id)).toBeNull();
       if (!game.state.pendingArtifactDecision) {
         expect(game.state.narrativeCounters.altarPaymentsCount).toBe(1);
@@ -780,6 +783,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     const c = game.state.party[0]!;
     for (let i = 0; i < BALANCE.events.bloodDebtThreshold2; i++) {
       c.hp = c.maxHp;
+      forceEventRoom(game, "blood-altar");
       expect(game.bloodAltarPay(c.id)).toBeNull();
       game.acknowledgeChoiceNarration();
       game.state.pendingArtifactDecision = null;
@@ -934,6 +938,37 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
     expect(game.state.pendingEventExit?.withReflection).toBeFalsy();
   });
 
+  test.each([
+    ["wandering-hermit", "traded", (g: Game) => g.hermitLeave()],
+    ["sacrificial-circle", "sacrificed", (g: Game) => g.sacrificeLeave()],
+  ] as const)("leaving %s after engaging on an earlier visit doesn't replay that visit's reflection", (eventId, outcome, leave) => {
+    const game = new Game(67);
+    forceEventRoom(game, eventId);
+    game.state.eventOutcomes[eventId] = outcome;
+    leave(game);
+    expect(game.state.pendingEventExit).toEqual({ eventId, withReflection: false });
+  });
+
+  test("a paid choice can't be taken twice once its room has closed", () => {
+    const game = new Game(66);
+    const c = game.state.party[0]!;
+    c.hp = c.maxHp;
+    game.state.coins = 10 * BALANCE.events.wanderingHermitExchangeCostCoins;
+    forceEventRoom(game, "blood-altar");
+    expect(game.bloodAltarPay(c.id)).toBeNull();
+    game.acknowledgeChoiceNarration();
+    game.state.pendingArtifactDecision = null;
+    const hp = c.hp;
+    expect(game.bloodAltarPay(c.id)?.reason).toBe(t("errors.nothingToDecide"));
+    expect(c.hp).toBe(hp);
+    expect(game.state.narrativeCounters.altarPaymentsCount).toBe(1);
+    expect(game.collapsedFloorAttempt(c.id)?.reason).toBe(t("errors.nothingToDecide"));
+    c.equippedArtifactIds = ["scholars-insight"];
+    const coins = game.state.coins;
+    expect(game.hermitExchangeFortune("scholars-insight")?.reason).toBe(t("errors.nothingToDecide"));
+    expect(game.state.coins).toBe(coins);
+  });
+
   test("skipping guardian-fight doesn't trigger a reflection written for having fought", () => {
     const game = new Game(68);
     const target = game.connectedRoomChoices()[0]!;
@@ -1004,6 +1039,7 @@ describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
     const c = game.state.party[0]!;
     for (let i = 0; i < BALANCE.events.bloodDebtThreshold3; i++) {
       c.hp = c.maxHp;
+      forceEventRoom(game, "blood-altar");
       expect(game.bloodAltarPay(c.id)).toBeNull();
       game.acknowledgeChoiceNarration();
       game.state.pendingArtifactDecision = null;
@@ -1448,6 +1484,7 @@ describe("waystone-shard's restricted drop source (10-event-narrative.md §F.4)"
       const c = game.state.party[0]!;
       c.hp = c.maxHp;
       game.state.narrativeCounters.altarPaymentsCount = BALANCE.events.bloodDebtThreshold2;
+      forceEventRoom(game, "blood-altar");
       game.bloodAltarPay(c.id);
       if (game.state.pendingArtifactDecision?.artifactId === "waystone-shard") sawIt = true;
       game.acknowledgeChoiceNarration();
@@ -1700,6 +1737,34 @@ describe("choice narration edge cases", () => {
     const afterRoll = game.ctx.rng.getState();
     expect(resolveChoiceNarration(before, game.state, "pay", { characterId: actor.id }).caseKey).toBe("pay");
     expect(game.ctx.rng.getState()).toBe(afterRoll);
+  });
+
+  test("stopping the den reports the pot it banked", () => {
+    const game = new Game(4);
+    forceEventRoom(game, "gambling-den");
+    game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [], gambleState: { round: 1, pot: 40, maxRounds: BALANCE.events.gamblingDenRounds.length } };
+    expect(game.gamblingDenStop()).toBeNull();
+    expect(game.state.pendingChoiceNarration?.result.gamble).toEqual({ round: 1, potBefore: 40, potAfter: 40, outcome: "banked" });
+  });
+
+  test("an open chest shown with any other scene narrates as the plain chest", () => {
+    const game = new Game(5);
+    const chest = EVENTS.find((event) => event.narration?.["take.chest"])!;
+    forceEventRoom(game, chest.id);
+    const before = { ...captureChoiceNarration(game.state)!, scene: "A text no variant holds." };
+    expect(resolveChoiceNarration(before, game.state, "take").caseKey).toBe("take.chest");
+  });
+
+  test("{{character}} names the chosen member, not the first whose HP moved", () => {
+    const game = new Game(6);
+    forceEventRoom(game, "blood-altar");
+    const [other, chosen] = [game.state.party[0]!, game.state.party[1]!];
+    const before = captureChoiceNarration(game.state)!;
+    other.hp -= 1;
+    expect(bloodAltarPay(game.state, game.ctx, chosen.id)).toBeNull();
+    const narration = resolveChoiceNarration(before, game.state, "pay", { characterId: chosen.id });
+    expect(narration.result.hpChanges?.[0]?.name).toBe(other.name);
+    expect(narration.text.startsWith(chosen.name)).toBe(true);
   });
 
   test("ritual narration uses this room history", () => {
