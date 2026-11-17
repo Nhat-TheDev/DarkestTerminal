@@ -13,7 +13,7 @@ import {
 } from "../tools/random-play/checks";
 import { spansToHtml, summarizeRuns } from "../tools/random-play/report";
 import { playRun, loopBreakKey, hasLeftFloor, GUARD_FLOORS, type RunStats } from "../tools/random-play/bot";
-import { TEAMS, FEAR_ACT_AT, BUFF_GAP_ROUNDS, allyOffenseGain, chooseExit, chooseRest, chooseRoom, chooseTemple, defenseCut, mainStriker, newFightMemory, planTurn, skillPower, type TurnPlan } from "../tools/random-play/team";
+import { TEAMS, FEAR_ACT_AT, BUFF_GAP_ROUNDS, allyOffenseGain, chooseExit, chooseRest, chooseRoom, chooseTemple, chooseTempleDonors, defenseCut, mainStriker, newFightMemory, planTurn, skillPower, type TurnPlan } from "../tools/random-play/team";
 import { shownOptions } from "../src/engine/reflection";
 import { getRoom } from "../src/engine/dungeon";
 import { BOSS_FLOOR_INTERVAL } from "../src/data/levelGrowth";
@@ -455,24 +455,29 @@ describe("random-play teams", () => {
     expect(chooseRest(game)).toBe("RETURN");
   });
 
-  test("a temple: give blood whenever it can be given, give everyone's blood only when every living member is above the cost", () => {
+  test("a temple: open the donors while the temple takes blood, then pick those who keep enough HP and give", () => {
     const game = new Game(7, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
     const room = applyDump(game, { level: 10, floorDepth: 20, roomArg: "temple" });
     const party = game.state.party;
     room.templeReligionId = religionOf(party[0]!).id;
+    game.state.faith = 100;
+    expect(chooseTemple(game)).toBe("RETURN");
+    game.state.faith = 50;
     expect(chooseTemple(game)).toBe("1");
     for (const c of party) c.hp = 1;
     expect(chooseTemple(game)).toBe("RETURN");
 
-    const outsider = RELIGIONS.find((r) => !party.some((c) => religionOf(c).id === r.id))!;
-    room.templeReligionId = outsider.id;
-    for (const c of party) c.hp = c.maxHp;
-    expect(chooseTemple(game)).toBe("1");
-    const cost = Math.round(party[0]!.maxHp * BALANCE.temple.giveAll.hpCost);
-    party[0]!.hp = cost;
+    for (const c of party) c.hp = Math.ceil(c.maxHp * 0.35);
+    expect(chooseTempleDonors(game, [])).toBe("ESCAPE");
     expect(chooseTemple(game)).toBe("RETURN");
-    party[0]!.hp = cost + 1;
-    expect(chooseTemple(game)).toBe("1");
+
+    for (const c of party) c.hp = c.maxHp;
+    expect(chooseTempleDonors(game, [])).toBe("1");
+    expect(chooseTempleDonors(game, party.map((c) => c.id))).toBe("RETURN");
+    party[0]!.hp = Math.ceil(party[0]!.maxHp * BALANCE.temple.giveBlood.matching.lowMinHpFraction);
+    expect(chooseTempleDonors(game, [])).not.toBe("1");
+    for (const c of party) c.hp = 1;
+    expect(chooseTempleDonors(game, [])).toBe("ESCAPE");
   });
 
   test("an exit scene: a random shown answer, or leaving without a word", () => {

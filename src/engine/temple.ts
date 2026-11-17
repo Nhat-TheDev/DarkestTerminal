@@ -1,12 +1,10 @@
-import type { Character, GameState, LogEntry, Room } from "../types";
+import type { Character, GameState, Id, Room } from "../types";
 import { BALANCE } from "../data/balanceConfig";
 import { religionOf } from "../data/religions";
 import { t } from "../data/strings";
 import { getRoom } from "./dungeon";
 import { recomputeAllPartyStats, type PartyActionError } from "./party";
-import { adjustFaith } from "./survival";
-
-type BloodBand = "upper" | "lower" | "none";
+import { adjustFaith, MAX_FAITH } from "./survival";
 
 function currentTemple(state: GameState): Room | null {
   const room = getRoom(state.floor, state.currentRoomId);
@@ -20,23 +18,35 @@ function templeError(state: GameState): { room: Room } | { error: PartyActionErr
   return { room };
 }
 
-function bloodBand(character: Character): BloodBand {
-  const { upperHpFraction, lowerHpFraction } = BALANCE.temple.giveBlood;
-  const share = character.hp / character.maxHp;
-  if (share >= upperHpFraction) return "upper";
-  return share >= lowerHpFraction ? "lower" : "none";
+export interface BloodGift {
+  hpAfter: number;
+  faith: number;
 }
 
-export function templeMatchingMembers(state: GameState): Character[] {
+export type GiveBloodState = "open" | "full" | "none";
+
+/** What `character` would give at this temple, or `null` when the temple will not take their blood. */
+export function bloodGift(state: GameState, character: Character): BloodGift | null {
   const room = getRoom(state.floor, state.currentRoomId);
-  return state.party.filter((c) => c.isAlive && religionOf(c).id === room.templeReligionId);
+  if (!character.isAlive || room.type !== "temple") return null;
+  const { hpFloor, matching, other } = BALANCE.temple.giveBlood;
+  const floor = Math.max(1, Math.round(character.maxHp * hpFloor));
+  const share = character.hp / character.maxHp;
+  if (religionOf(character).id === room.templeReligionId) {
+    if (share >= matching.minHpFraction) {
+      return { hpAfter: Math.max(floor, character.hp - Math.round(character.maxHp * matching.hpCost)), faith: matching.faithGain };
+    }
+    if (share >= matching.lowMinHpFraction && character.hp > floor) return { hpAfter: floor, faith: matching.lowFaithGain };
+    return null;
+  }
+  if (share < other.minHpFraction) return null;
+  return { hpAfter: Math.max(floor, character.hp - Math.round(character.maxHp * other.hpCost)), faith: other.faithGain };
 }
 
-export function templeActionsAvailable(state: GameState): { giveBlood: "open" | "locked" | "hidden"; giveAll: boolean; boon: boolean } {
-  if (!currentTemple(state)) return { giveBlood: "hidden", giveAll: false, boon: false };
-  const matching = templeMatchingMembers(state);
-  const giveBlood = matching.length === 0 ? "hidden" : matching.some((c) => bloodBand(c) !== "none") ? "open" : "locked";
-  return { giveBlood, giveAll: matching.length === 0, boon: state.faith >= BALANCE.temple.boon.faithCost };
+export function templeActionsAvailable(state: GameState): { giveBlood: GiveBloodState; boon: boolean } {
+  if (!currentTemple(state)) return { giveBlood: "none", boon: false };
+  const giveBlood = state.faith >= MAX_FAITH ? "full" : state.party.some((c) => bloodGift(state, c)) ? "open" : "none";
+  return { giveBlood, boon: state.faith >= BALANCE.temple.boon.faithCost };
 }
 
 function closeTemple(state: GameState, room: Room, lines: string[]): void {
@@ -44,51 +54,22 @@ function closeTemple(state: GameState, room: Room, lines: string[]): void {
   state.message = lines.join(" ");
 }
 
-export function templeGiveBlood(state: GameState): PartyActionError | null {
+export function templeGiveBlood(state: GameState, donorIds: readonly Id[]): PartyActionError | null {
   const checked = templeError(state);
   if ("error" in checked) return checked.error;
-  const matching = templeMatchingMembers(state);
-  if (matching.length === 0) return { reason: t("errors.templeNoBlood") };
-  const { hpCost, hpFloor, faithGain, lowerFaithGain } = BALANCE.temple.giveBlood;
-  const lines: string[] = [];
+  if (state.faith >= MAX_FAITH) return { reason: t("errors.templeTorchFull") };
+  const donors = state.party.filter((c) => donorIds.includes(c.id));
+  if (donors.length === 0) return { reason: t("errors.templeNoDonor") };
+  const gifts = donors.map((c) => ({ c, gift: bloodGift(state, c) }));
+  const refused = gifts.find((g) => !g.gift);
+  if (refused) return { reason: t("errors.templeCannotGive", { character: refused.c.name }) };
   let faith = 0;
-  for (const c of matching) {
-    const band = bloodBand(c);
-    if (band === "none") {
-      lines.push(t("game.templeTooWeak", { character: c.name }));
-      continue;
-    }
-    const floor = Math.max(1, Math.round(c.maxHp * hpFloor));
-    const cost = band === "upper" ? Math.round(c.maxHp * hpCost) : c.hp - floor;
-    c.hp = Math.min(c.hp, Math.max(floor, c.hp - cost));
-    faith += band === "upper" ? faithGain : lowerFaithGain;
-    lines.push(t("game.templeGaveBlood", { character: c.name }));
+  for (const { c, gift } of gifts) {
+    c.hp = gift!.hpAfter;
+    faith += gift!.faith;
   }
-  if (faith === 0) return { reason: t("errors.templeNoBlood") };
   adjustFaith(state, faith);
-  closeTemple(state, checked.room, lines);
-  return null;
-}
-
-export function templeGiveAll(state: GameState): PartyActionError | null {
-  const checked = templeError(state);
-  if ("error" in checked) return checked.error;
-  if (templeMatchingMembers(state).length > 0) return { reason: t("errors.templeHasFollower") };
-  const { hpCost, faithGain } = BALANCE.temple.giveAll;
-  const log: LogEntry[] = [];
-  for (const c of state.party) {
-    if (!c.isAlive) continue;
-    c.hp -= Math.round(c.maxHp * hpCost);
-    if (c.hp > 0) {
-      log.push({ text: t("game.templeGaveBlood", { character: c.name }), kind: "debuff" });
-      continue;
-    }
-    c.hp = 0;
-    c.isAlive = false;
-    log.push({ text: t("game.templeFell", { character: c.name }), kind: "death" });
-  }
-  adjustFaith(state, faithGain);
-  closeTemple(state, checked.room, log.map((entry) => entry.text));
+  closeTemple(state, checked.room, donors.map((c) => t("game.templeGaveBlood", { character: c.name })));
   return null;
 }
 

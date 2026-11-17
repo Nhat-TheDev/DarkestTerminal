@@ -34,7 +34,7 @@ import {
   dismissSummonsAtCombatEnd,
   clearCombatResources,
 } from "./combat";
-import { templeGiveBlood, templeGiveAll, templeAskBoon, templeLeave } from "./temple";
+import { templeGiveBlood, templeAskBoon, templeLeave } from "./temple";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { CAMP_KIT_ITEM_ID, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
@@ -530,14 +530,8 @@ export class Game {
     return null;
   }
 
-  templeGiveBlood(): PartyActionError | null {
-    return templeGiveBlood(this.state);
-  }
-
-  templeGiveAll(): PartyActionError | null {
-    const err = templeGiveAll(this.state);
-    if (!err) this.postMoveCheck();
-    return err;
+  templeGiveBlood(donorIds: readonly Id[]): PartyActionError | null {
+    return templeGiveBlood(this.state, donorIds);
   }
 
   templeAskBoon(): PartyActionError | null {

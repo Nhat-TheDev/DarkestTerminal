@@ -84,6 +84,10 @@ EventDefinition {
 
 Every Artifact granted by any event in this section — whether revealed up front or rolled blind then revealed — goes through the same **decision flow** described in `07-items-artifacts.md` §7.2: Equip (any character, replacing 1 of their own ordinary artifacts if full) or Discard (unless Cursed/`forceEquip`, which skips straight to a forced Equip). None of the per-event sections below repeat that flow — they only describe what's specific to that room.
 
+On every event screen except the exit scene, each choice that costs or gives something shows it in up to two dim lines under the choice: `Cost:` (coins, HP, an artifact, a fight) and `Result:` (what the party gets, or its odds). A line is left out when there is nothing to show, so Leave and Decline have none. Every figure in them is read from `data/balance-config.json` (`events`) or the event's own record (`guaranteedArtifactId`, `guaranteedItems`, `noArtifactReward`) when the screen is drawn, and the choice labels themselves name only the action. When a `Result:` names a specific artifact (Cursed Shrine, Twin Altars, a merchant offer's detail screen, a scene with a `guaranteedArtifactId`), it ends in `*` (`**` for Twin Altars' second altar), and a note under the choices repeats the marker with the artifact's rarity, effect and description; the description above the choices stays the room's own. The lines are built in `renderMain` (`src/ui/screens/events.ts`) with `optionDetailLines` and `footnoteLines` (`src/ui/effectLine.ts`). A choice that spends the visit also asks for a second press of its key (`developer-guide.md`, "Key hints", R7).
+
+An event text marks what the room holds, asks for or puts in the way with `[[` and `]]`: the chest, the cup, the thing behind the altar, the stranger's "Put it on the crate." The event and gatekeeper screens draw those parts in the title colour (`eventTextLines`, `src/ui/screens/events.ts`); the log and the journal read the text with the marks dropped (`plainEventText`, `src/data/events.ts`). Every text a room can show (description, variants, chain and return texts) marks at least one part when the room gives, asks or fights; a room that gives nothing (`the-delay`, `still-breathing`, `the-wanderer`, `the-one-who-stayed`) marks none. A fight for a reward marks both, so `guardian-fight` lights the chest and whatever is waiting past the light. The marks must open and close in pairs, unnested, or the game refuses to load (`assertEventDataConsistent`), and `test/events.test.ts` holds the at-least-one rule. Docs quote event texts without the marks.
+
 ---
 
 ## 8.2 Shared Worldview — the Sleeper & the Covenant
@@ -386,7 +390,7 @@ The answer is kept in `GameState.gatekeeperAnswer` (`"paid"` / `"refused"`). A d
 
 > "Rubble has spilled across half the floor, and a grey haze of stone dust still hangs in the torchlight. A cracked oak chest sits crooked on top of the pile, its iron bands flecked with rust. Whoever carried it this far didn't carry it any further."
 
-No combat, no price to pay. Entering the room shows the flavor text and a single **[1] Open the chest** action (`Game.openChest()`, `src/engine/events/openChest.ts`) — the artifact isn't granted until the player actively chooses to open it, so the room's description gets a beat on screen before the loot/decision flow takes over. Opening grants 1 Artifact rolled on the standard rarity table, which goes through the normal decision flow (`07-items-artifacts.md` §7.2).
+No combat, no price to pay. Entering the room shows the flavor text and a single **[1] Open it** action (`instantRewardActionLabel`, so the lockbox and the stacked pack read right too) (`Game.openChest()`, `src/engine/events/openChest.ts`) — the artifact isn't granted until the player actively chooses to open it, so the room's description gets a beat on screen before the loot/decision flow takes over. Opening grants 1 Artifact rolled on the standard rarity table, which goes through the normal decision flow (`07-items-artifacts.md` §7.2).
 
 **No recurring NPC, no chain, no reflection** — kept deliberately mundane along with Collapsed Floor (§8.21); see §8.2.
 
@@ -403,7 +407,7 @@ No combat, no price to pay. Entering the room shows the flavor text and a single
 
 **The only difference between the two ids**: flavor text.
 - `guardian-fight`: "The torch reaches only halfway across this room; the rest is a black that smells of musk and wet fur. A chest sits in the far corner. Beside it, a closed spiral is scratched into the wall, and somewhere past the light, claws scrape slowly on stone. The scraping stops."
-- `desecrated-altar`: "The room is lit from one place only: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot."
+- `desecrated-altar`: "The room is lit from one place: a stone altar giving off a pale red light that rises and falls, slow as breathing. The glow stains the walls the colour of a healing burn. A spiral is cut into the base, closed like a knot. On the far side of it, a long shape lies curled around something that glints."
 
 **Chain escalation**: repeatedly choosing "Leave without fighting" builds toward a forced encounter — see §8.5 Chain 1, "The Guardian's Grudge." **Reflection**: see §8.6.
 
@@ -429,11 +433,11 @@ Implementation: `merchantPurchase`/`merchantRefresh`/`merchantLeave` (`src/engin
 
 ## 8.11 Old Count (`old-count`) — *Common*
 
-> "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. Water has run down through the oldest. The last row stops mid-stroke."
+> "The air here is still and smells of wet chalk. Your torch finds the wall first: tally marks from knee height to as high as an arm can reach, hundreds of them, cut by one hand in rows as neat as stitching. A satchel hangs from a peg driven into the lowest row. The last row stops mid-stroke."
 
 No combat, no price to pay (`kind: "instantReward"`) — same shape as Open Chest (§8.8): the flavor text shows first, a single confirm action grants the artifact. The confirm option reads **[1] Move on** (`EventDefinition.instantRewardActionLabel`) rather than "Open the chest" — there's nothing here shaped like a container. Confirming (`Game.openChest()`) grants 1 Artifact rolled on the standard rarity table, through the normal decision flow.
 
-**Cross-event variant**: once the party has resolved `open-chest` or `collapsed-floor` this run (either outcome, for `collapsed-floor`), the description gains a closing line — "Under it, a pack strap rotted through at the buckle." (10-event-narrative.md Part B.1, pair 13; see §8.5's cross-event-continuity paragraph for the resolution mechanism).
+**Cross-event variant**: once the party has resolved `open-chest` or `collapsed-floor` this run (either outcome, for `collapsed-floor`), the satchel on the wall is described as rotted — "A satchel hangs from a peg driven into the lowest row, its strap rotted through at the buckle." (10-event-narrative.md Part B.1, pair 13; see §8.5's cross-event-continuity paragraph for the resolution mechanism).
 
 **No recurring NPC, no chain.** **Reflection**: see §8.6.
 
@@ -441,7 +445,7 @@ No combat, no price to pay (`kind: "instantReward"`) — same shape as Open Ches
 
 ## 8.12 Doubled Back (`doubled-back`) — *Common*
 
-> "Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. The room is empty to its corners."
+> "Dust lies even and grey across the floor, deep enough to hold a print sharp at the edges. Footprints lead into this room and stop in the middle. None lead back out. Where they stop, something lies on top of the dust."
 
 Same shape as §8.11 — **[1] Move on**, 1 Artifact on the standard table.
 
@@ -496,11 +500,11 @@ No combat. On entering the room, the player may:
 
 ## 8.16 Cursed Shrine (`cursed-shrine`) — *Rare*
 
-> "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other, and the stone around them is smooth from touching. One of them is open. It wasn't the same one a moment ago."
+> "Candle stubs ring the base of a statue, long cold, their wax gone grey with dust. The statue has three eyes carved one above the other. One of them is open. It wasn't the same one a moment ago. Its stone hands are held out at waist height, and something rests in the cupped palms."
 
 **No combat** (`kind: "cursedOffer"`). Pre-rolls 1 random Artifact that may be Cursed (`rollArtifactOrCursed`, `src/data/artifacts.ts` — a fixed chance of landing in the Cursed-Artifact pool from §8.4, otherwise a normal roll on the standard table) — **shown in full before you accept it** (unlike `blood-altar` — you see the specific artifact and know whether it's cursed or not, you just don't know what it will be until the single roll happens).
 
-- Step 1: roll, show the result (name + all effects, including the negative one if any).
+- Step 1: roll, show the result: Accept's `Result:` line names the artifact (and says if it is cursed), and a `*` note under the choices gives its rarity, all its effects (the negative one too) and its description.
 - Step 2: the player chooses **Accept** or **Decline** (nothing is lost by declining — unlike `blood-altar`, which requires paying up front).
 - If Accepted: it goes through the normal decision flow — forced-Equip if it turned out Cursed, optional Equip/Discard otherwise.
 
@@ -510,7 +514,7 @@ No combat. On entering the room, the player may:
 
 ## 8.17 Twin Altars (`twin-altars`) — *Rare*
 
-> "Two stone pedestals face each other across a narrow room, close enough that a person standing between them could touch both. Each is carved with a spiral, open at the center, and the air between them is a little colder than the air around. A hairline crack already runs across the floor between them."
+> "Two stone pedestals face each other across a narrow room, close enough to touch both at once. Each is carved with a spiral open at the center, and a small object sits on top of each. The air between them is a little colder than the air around. A hairline crack already runs across the floor between them."
 
 **No combat** (`kind: "pairedOffer"`, `forceEquip: true` — the only event that forces immediate equipping). No resource is paid — the price is the missed opportunity.
 
@@ -525,7 +529,7 @@ No combat. On entering the room, the player may:
 
 ## 8.18 Ritual Circle (`sacrificial-circle`) — *Rare*
 
-> "The floor here was swept once, carefully, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end, its line as even as a drawn string. The broom marks stop a full stride short of it on every side."
+> "The floor here was swept once, and the broom marks are still in the dust. In the middle, old dried blood traces a spiral across the stone, open at one end. A flat stone sits at the open end, worn hollow in the middle. The broom marks stop a stride short of the blood on every side."
 
 **No combat** (`kind: "artifactSacrifice"`). Sacrifice 1 **currently-equipped** artifact (every owned artifact is equipped somewhere) to roll a new Artifact, with the rarity bound to be **equal to or higher than** the tier of the sacrificed artifact — `rollArtifactWithMinRarity` (`src/data/artifacts.ts`), which renormalizes a fixed `50 / 30 / 15 / 5` table (common / rare / unique / epic) — deliberately not scaled by floor depth — excluding tiers below the threshold.
 
@@ -648,7 +652,7 @@ The 2 readings are opposite on purpose — identical physical evidence, read thr
 
 ## 8.24 Half a Warning (`half-a-warning`) — *Rare*
 
-> "Someone carved this fast, low on the wall where the stone is soft, and never finished it; the last letters trail off into scratches. A snapped knife blade lies in the grit below. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'"
+> "Someone carved this fast, low on the wall, and never finished it; the last letters trail off into scratches. A stub of chalk and a snapped knife blade lie in the grit below. What's left: 'saw what happened to the one who tried to carry both. I won't write what was left of them. Choose one side. Don't waver.'"
 
 Same shape as §8.22/§8.23 — **[1] Move on**, `minFloorDepth` (see the event table at the top), `onceLifetime: true`, 1 Artifact: `guaranteedArtifactId: "worn-chalk-stub"` rather than a standard-table roll.
 

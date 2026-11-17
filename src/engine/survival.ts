@@ -83,6 +83,8 @@ function statusFearResistMultiplier(character: Character): number {
   return character.activeStatusEffects.reduce((mult, s) => mult * (1 - Math.min(100, getStatusEffect(s.statusEffectId).fearResistPercent ?? 0) / 100), 1);
 }
 
+export const MAX_FAITH = 100;
+
 export function roundFaith(value: number): number {
   return Math.round(value * 10) / 10;
 }
@@ -90,13 +92,13 @@ export function roundFaith(value: number): number {
 /** The one place Faith is written. Returns the change actually made. */
 export function adjustFaith(state: GameState, delta: number): number {
   const before = state.faith;
-  state.faith = roundFaith(clamp(before + delta, 0, 100));
+  state.faith = roundFaith(clamp(before + delta, 0, MAX_FAITH));
   return roundFaith(state.faith - before);
 }
 
 export function faithFearMultiplier(faith: number): number {
   const { fearGainMultiplierAtZero: atZero, fearGainMultiplierAtFull: atFull } = BALANCE.faith;
-  return atZero + (atFull - atZero) * (clamp(faith, 0, 100) / 100);
+  return atZero + (atFull - atZero) * (clamp(faith, 0, MAX_FAITH) / MAX_FAITH);
 }
 
 export function faithDecayForRoom(faith: number, decayMultiplier: number): number {

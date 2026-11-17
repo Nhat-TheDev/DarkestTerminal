@@ -156,6 +156,7 @@ describe("floorMilestone screen module", () => {
     const ctx: ScreenContext = {
       game,
       setUi: () => {},
+      confirm: () => true,
       reportUnusable: () => {},
       logInfo: () => {},
       syncUiToGameState: () => {
@@ -183,6 +184,7 @@ describe("floorMilestone screen module", () => {
     const ctx: ScreenContext = {
       game,
       setUi: () => {},
+      confirm: () => true,
       reportUnusable: () => {},
       logInfo: () => {},
       syncUiToGameState: () => {},

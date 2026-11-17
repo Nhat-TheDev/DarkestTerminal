@@ -55,7 +55,7 @@ Four religions, each a record in `data/religions.json`: `id`, `name`, `templeDes
 | Fury and Blood | Viking, Archer, Warlock | Attack and magic power raised more |
 <!-- docs:end -->
 
-The party select screen shows each class's religion under its role tags, in the religion's color, so a player can weigh a focused or mixed party; the character info screen shows it too. Religion matters in three places: which members a temple recognises (§13.4), how much Faith Talk restores (§13.5), and which reflection answers appear (§13.7).
+The party select screen shows each class's religion under its role tags, in the religion's color, so a player can weigh a focused or mixed party; the character info screen shows it too. Religion matters in three places: which members a temple counts as its own (§13.4), how much Faith Talk restores (§13.5), and which reflection answers appear (§13.7).
 
 ### Where the four sit in the world
 
@@ -77,18 +77,27 @@ Each religion has its own temple sprite in `data/sprites.json`, linked by `templ
 
 Light and Glory has a golden sun above a stepped altar with brass lamps. Plague and Healing has a moss-green roof, pale stone columns and an arched entrance. Night and Silence has a pointed violet hood, a dark recess and ash bowls. Fury and Blood has a rust-red roof, iron-clad pillars and iron rings. Their silhouettes and architectural details differ as well as their palettes. All four can be edited in the game editor's Religion temples category.
 
-### The four actions
+### The three actions
 
-One action per visit, then the room is cleared. A **matching** member is a living member whose class religion is the temple's.
+One action per visit, then the room is cleared. A **matching** member is a living member whose class religion is the temple's; every other living member is **other**.
 
-| Action | Shown when | Effect |
+| Action | Available when | Effect |
 |---|---|---|
-| **Give blood** | at least one living member matches | Each matching member at or above `temple.giveBlood.upperHpFraction` (50%) of max HP loses `temple.giveBlood.hpCost` (50%) of max HP and adds `temple.giveBlood.faithGain` (15) Faith. A member between `temple.giveBlood.lowerHpFraction` (30%) and the upper line is brought down to `temple.giveBlood.hpFloor` (5%) of max HP and adds `temple.giveBlood.lowerFaithGain` (5). A member under the lower line cannot give and is listed as too weak. If every matching member is under it, the action shows locked with the reason. It never kills: HP never goes below the floor |
-| **Give everyone's blood** | no living member matches | Every living member loses `temple.giveAll.hpCost` (60%) of max HP and can die from it, through the normal death path. Faith rises by `temple.giveAll.faithGain` (30), once, not per member |
+| **Give blood** | Faith is under 100 and at least one living member can give | Opens a list of the party. The player toggles any members the temple will take and gives with at least one chosen. Each donor's Faith adds up, and Faith over 100 is lost |
 | **Ask a boon** | Faith is at least `temple.boon.faithCost` (20) | Pays the Faith cost. The whole party gets the temple's boon until the floor ends |
 | **Leave** | always | Nothing |
 
-Give blood takes every eligible matching member at once; there is no picking. If Give everyone's blood leaves nobody alive, the run ends the way any wipe does. The outcome lines are `game.temple*` in `data/strings.json`, one plain sentence each.
+Who can give, and for what:
+
+| Donor | HP before giving | HP lost | Faith |
+|---|---|---|---|
+| Matching | at least `temple.giveBlood.matching.minHpFraction` (50%) of max HP | `temple.giveBlood.matching.hpCost` (50%) of max HP | `temple.giveBlood.matching.faithGain` (18) |
+| Matching | from `temple.giveBlood.matching.lowMinHpFraction` (30%) up to the line above | down to `temple.giveBlood.hpFloor` (1%) of max HP | `temple.giveBlood.matching.lowFaithGain` (6) |
+| Other | at least `temple.giveBlood.other.minHpFraction` (55%) of max HP | `temple.giveBlood.other.hpCost` (55%) of max HP | `temple.giveBlood.other.faithGain` (15) |
+
+Anyone under their line cannot give and shows as such in the list. No donor ever drops below `temple.giveBlood.hpFloor` (1%) of max HP, and never below 1 HP, so Give blood never kills. When no living member can give, or the torch is already full, the action shows locked with the reason. The donor list, each row's HP after giving and the Faith it adds are drawn from `bloodGift` (`src/engine/temple.ts`), the same function `templeGiveBlood` applies.
+
+Giving, asking a boon and leaving each take a second press of the same key (`docs/developer-guide.md`, "Key hints"); opening the donor list and choosing donors do not. The outcome lines are `game.temple*` in `data/strings.json`, one plain sentence each.
 
 ### The boon
 
@@ -103,13 +112,13 @@ The word is "boon" in code and docs: "blessing" is the gatekeeper's paid blessin
 
 ### Text
 
-A temple screen shows the religion's name in its color, its `templeDescription` and the actions. Each description is one physical scene, around fifty words, in the same voice as an event room; none of them names a feeling or a god.
+A temple screen shows the religion's name in its color, its `templeDescription` and the actions. Give blood and Ask a boon each carry a dim `Cost:` and `Result:` line under them, drawn from `temple.giveBlood` and `temple.boon`; Leave has none. Ask a boon's `Result:` names the religion's boon and ends in `*`, and a `*` note under Leave spells out what that boon does, built from the religion's `boon` record and `temple.boon` (`boonEffectText`, `src/ui/screens/temple.ts`). Each description is one physical scene, around fifty words, in the same voice as an event room; none of them names a feeling or a god.
 
 ## 13.5 Pray and Talk (the rest room)
 
 The rest room's flow is in `03-survival-stats.md`. Two of its options touch Faith:
 
-- **Pray** raises Faith by `rest.pray.faith` (15) and lowers every living member's fear by `rest.pray.fearRelief` (5). No HP, MP or satiety. It is the one dependable way to feed the torch, and it costs the rest action that Eat and drink or Talk would have used.
+- **Pray** raises Faith by `rest.pray.faith` (20) and lowers every living member's fear by `rest.pray.fearRelief` (5). No HP, MP or satiety. It is the one dependable way to feed the torch, and it costs the rest action that Eat and drink or Talk would have used.
 - **Talk** keeps its HP and MP recovery and its larger fear relief (`survival.chatFearRelief`), and also raises Faith when living members share a religion. Each religion with at least two living followers adds the value for its group size, and the amounts add up across religions: a party of two pairs gets the pair amount twice. A party with no shared religion gets none. The amounts are `rest.chat.faithByGroupSize.2` (3), `rest.chat.faithByGroupSize.3` (8) and `rest.chat.faithByGroupSize.4` (12); dead members do not count.
 
 Eat and drink is unchanged. Each option's effect shows as a line under it in the format reflection answers use, with Talk's Faith computed for the party as it stands.
@@ -126,7 +135,9 @@ Every post-event reflection and every Camp Reflection answer has a visible cause
 
 - **Why a percentage decay.** A flat per-room decay cannot hold Faith in a band. The temple's yield per floor is random and swings further than the band is wide, so a flat rate tuned for "the torch goes out after two floors without temples" lost the torch by the third floor even for a party using every temple. A flat amount plus a share of the current value pulls Faith towards a resting level whatever the temples do, which is what lets "tended" and "neglected" be two different outcomes rather than one.
 - **Why Pray costs the rest action.** If Faith could be kept up for free, it would be a number to ignore. Making Pray compete with Eat and drink and Talk puts the torch into the same budget as hunger and fear.
-- **Why Give blood never kills but Give everyone's blood can.** A follower gives of their own faith and the temple takes only what the body can spare. When nobody there follows it, the party pays in a currency the temple has no reason to be gentle with.
+- **Why anyone can give, but a stranger pays more.** A temple no member follows would otherwise be a room with nothing to do but leave. Letting every member give keeps the choice open, and the steeper line and cost for a stranger keep the temple's own faithful the cheaper way to feed the torch. The player picks the donors because the body that pays is the decision: a member about to carry the next fight should be able to keep their blood.
+- **Why Give blood never kills.** The temple takes what the body can spare. A temple action that could end the run in one keypress would turn a choice about the torch into a trap.
+- **Why Give blood locks at full Faith.** Blood given to a full torch buys nothing, and an action that only costs is not a choice.
 - **Why no Faith from Elite or Boss kills.** Faith is the cost side of descending, not a reward for winning. A kill that fed the torch would make the strongest party the best-lit one, and the torch would stop being a choice.
 - **Why the boon is floor-length and live-computed.** A boon is the price of a floor, not a permanent upgrade, so it ends with the floor and never lives in a save as a status.
 - **Why Talk's Faith depends on shared religion.** It rewards a focused party for being focused, and gives a mixed party a reason to pray instead.

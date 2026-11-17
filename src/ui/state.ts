@@ -23,6 +23,7 @@ export type UiState =
   | { kind: "room" }
   | { kind: "rest" }
   | { kind: "temple" }
+  | { kind: "templeDonors"; selectedIds: Id[] }
   | { kind: "runnerNotice" }
   | { kind: "runnerShop" }
   | { kind: "runnerSell" }

@@ -3,17 +3,19 @@ import type { Character, GameState, ReflectionOption } from "../../types";
 import type { Game } from "../../engine/game";
 import { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT } from "../../engine/game";
 import { getArtifact, formatArtifactEffect } from "../../data/artifacts";
-import { getEvent } from "../../data/events";
+import { eventTextParts, getEvent } from "../../data/events";
+import { getItem } from "../../data/items";
 import { getRoom, pickEventText } from "../../engine/dungeon";
 import { getJournalEcho } from "../../data/journal";
 import { pickReflectionPrompt } from "../../engine/events/shared";
 import { shownOptions } from "../../engine/reflection";
 import { t } from "../../data/strings";
+import { gamblingJackpot } from "../../engine/events/gamblingDen";
 import { BALANCE } from "../../data/balanceConfig";
 import type { UiState } from "../state";
 import { ownedArtifactEntries } from "../state";
 import { digitHint } from "../keyHints";
-import { answerLines, formatEffectLine } from "../effectLine";
+import { answerLines, footnoteLines, footnoteMarker, formatEffectLine, optionDetailLines } from "../effectLine";
 import { PALETTE, boldColorChunk, colorChunk, joinLines } from "../theme";
 import { truncateText } from "../layout";
 import { paginate, PAGE_SIZE } from "../pagination";
@@ -52,6 +54,18 @@ function partyHpPickerLines(party: Character[]): string[] {
   return party.map((c, i) => `  [${i + 1}] ${c.name}${t("ui.hpSuffix", { hp: c.hp, maxHp: c.maxHp })}`);
 }
 
+/** An event text as panel lines, its `[[...]]` parts in the title colour. */
+export function eventTextLines(block: string): TextChunk[][] {
+  const lines: TextChunk[][] = [[]];
+  for (const part of eventTextParts(block)) {
+    part.text.split("\n").forEach((piece, i) => {
+      if (i > 0) lines.push([]);
+      if (piece) lines.at(-1)!.push(colorChunk(piece, part.highlight ? PALETTE.title : PALETTE.text));
+    });
+  }
+  return lines;
+}
+
 function currentEventDescription(state: GameState): string {
   const room = getRoom(state.floor, state.currentRoomId);
   if (!room.rolledEventId) return "";
@@ -64,6 +78,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
   switch (ui.kind) {
     case "eventInstantReward": {
       if (digit === 1) {
+        if (!ctx.confirm(key.name)) break;
         const err = ctx.game.openChest();
         if (err) ctx.reportUnusable(err.reason);
         ctx.syncUiToGameState();
@@ -80,6 +95,11 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
           break;
         }
         if (digit === 1) {
+          if (ctx.game.state.coins < MERCHANT_PRICE_COINS[getArtifact(offers[offerIndex]!).rarity]) {
+            ctx.reportUnusable(t("errors.notEnoughCoins"));
+            break;
+          }
+          if (!ctx.confirm(key.name)) break;
           const err = ctx.game.merchantPurchase(offerIndex);
           if (err) ctx.reportUnusable(err.reason);
           else ctx.logInfo(ctx.game.state.message);
@@ -90,6 +110,15 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
         break;
       }
       if (key.name === "r") {
+        if ((ctx.game.state.activeEvent?.refreshCount ?? 0) >= MERCHANT_MAX_REFRESHES) {
+          ctx.reportUnusable(t("errors.merchantMaxRefreshesReached"));
+          break;
+        }
+        if (ctx.game.state.coins < MERCHANT_REFRESH_COST_COINS) {
+          ctx.reportUnusable(t("errors.notEnoughCoins"));
+          break;
+        }
+        if (!ctx.confirm(key.name)) break;
         const err = ctx.game.merchantRefresh();
         if (err) ctx.reportUnusable(err.reason);
         else ctx.logInfo(ctx.game.state.message);
@@ -97,6 +126,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
         break;
       }
       if (key.name === "escape") {
+        if (!ctx.confirm(key.name)) break;
         ctx.game.merchantLeave();
         ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
@@ -106,6 +136,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       if (digit <= offers.length) {
         ctx.setUi({ kind: "eventArtifactShop", viewingOfferIndex: digit - 1 });
       } else if (digit === offers.length + 1) {
+        if (!ctx.confirm(key.name)) break;
         ctx.game.merchantLeave();
         ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
@@ -114,6 +145,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
     }
     case "eventCursedOffer": {
       if (digit === 1 || digit === 2) {
+        if (!ctx.confirm(key.name)) break;
         ctx.game.cursedShrineDecide(digit === 1);
         ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
@@ -122,6 +154,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
     }
     case "eventPairedOffer": {
       if (digit === 1 || digit === 2) {
+        if (!ctx.confirm(key.name)) break;
         const err = ctx.game.twinAltarsChoose((digit - 1) as 0 | 1);
         if (err) ctx.reportUnusable(err.reason);
         ctx.syncUiToGameState();
@@ -132,6 +165,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       if (digit === 1) {
         ctx.setUi({ kind: "eventHpGamblePickPayer", gamble: ui.gamble });
       } else if (digit === 2) {
+        if (!ctx.confirm(key.name)) break;
         if (ui.gamble === "hpGamble") ctx.game.bloodAltarLeave();
         else ctx.game.collapsedFloorLeave();
         ctx.logInfo(ctx.game.state.message);
@@ -143,6 +177,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       if (digit === null) break;
       const character = ctx.game.state.party[digit - 1];
       if (!character) break;
+      if (!ctx.confirm(key.name)) break;
       const err = ui.gamble === "hpGamble" ? ctx.game.bloodAltarPay(character.id) : ctx.game.collapsedFloorAttempt(character.id);
       if (err) ctx.reportUnusable(err.reason);
       else ctx.logInfo(ctx.game.state.message);
@@ -153,11 +188,13 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       if (digit === null) break;
       const { pageItems } = paginate(ownedArtifactEntries(ctx.game.state.party), ctx.getListPage(), SACRIFICE_PAGE_SIZE);
       if (digit <= pageItems.length) {
+        if (!ctx.confirm(key.name)) break;
         const err = ctx.game.sacrifice(pageItems[digit - 1]!.artifactId);
         if (err) ctx.reportUnusable(err.reason);
         else ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
       } else if (digit === pageItems.length + 1) {
+        if (!ctx.confirm(key.name)) break;
         ctx.game.sacrificeLeave();
         ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
@@ -168,11 +205,17 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       const gamble = ctx.game.state.activeEvent?.gambleState;
       if (!gamble) {
         if (digit === 1) {
+          if (ctx.game.state.coins < GAMBLING_DEN_ROUNDS[0]!.stake) {
+            ctx.reportUnusable(t("errors.notEnoughCoins"));
+            break;
+          }
+          if (!ctx.confirm(key.name)) break;
           const err = ctx.game.gamblingDenEnter();
           if (err) ctx.reportUnusable(err.reason);
           else ctx.logInfo(ctx.game.state.message);
           ctx.syncUiToGameState();
         } else if (digit === 2) {
+          if (!ctx.confirm(key.name)) break;
           ctx.game.gamblingDenLeave();
           ctx.logInfo(ctx.game.state.message);
           ctx.syncUiToGameState();
@@ -180,11 +223,13 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
         break;
       }
       if (digit === 1) {
+        if (!ctx.confirm(key.name)) break;
         const err = ctx.game.gamblingDenStop();
         if (err) ctx.reportUnusable(err.reason);
         else ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
       } else if (digit === 2) {
+        if (!ctx.confirm(key.name)) break;
         const err = ctx.game.gamblingDenContinue();
         if (err) ctx.reportUnusable(err.reason);
         else ctx.logInfo(ctx.game.state.message);
@@ -200,6 +245,7 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
         }
         ctx.setUi({ kind: "eventFortuneExchangePickArtifact" });
       } else if (digit === 2) {
+        if (!ctx.confirm(key.name)) break;
         ctx.game.hermitLeave();
         ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
@@ -211,6 +257,11 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
       const { pageItems } = paginate(ownedArtifactEntries(ctx.game.state.party), ctx.getListPage());
       const entry = pageItems[digit - 1];
       if (!entry) break;
+      if (ctx.game.state.coins < HERMIT_EXCHANGE_COST_COINS) {
+        ctx.reportUnusable(t("errors.notEnoughCoins"));
+        break;
+      }
+      if (!ctx.confirm(key.name)) break;
       const err = ctx.game.hermitExchangeFortune(entry.artifactId);
       if (err) ctx.reportUnusable(err.reason);
       else ctx.logInfo(ctx.game.state.message);
@@ -219,11 +270,13 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
     }
     case "eventCombatReward": {
       if (digit === 1) {
+        if (!ctx.confirm(key.name)) break;
         const err = ctx.game.enterGuardianFight();
         if (err) ctx.reportUnusable(err.reason);
         else ctx.logInfo(ctx.game.state.message);
         ctx.syncUiToGameState();
       } else if (digit === 2 || key.name === "escape") {
+        if (!ctx.confirm(key.name)) break;
         const err = ctx.game.skipGuardianFight();
         if (err) ctx.reportUnusable(err.reason);
         else ctx.logInfo(ctx.game.state.message);
@@ -246,13 +299,48 @@ export function handleKey(ctx: ScreenContext, ui: EventUiState, key: KeyEvent, d
   }
 }
 
+const text = (line: string): TextChunk[] => [colorChunk(line, PALETTE.text)];
+const coins = (amount: number) => t("ui.coinsCost", { coins: amount });
+
+/** The note that names an artifact's rarity, effect and description under the choices. */
+function artifactFootnote(artifactId: string, index: number): TextChunk[][] {
+  const a = getArtifact(artifactId);
+  const heading = t("ui.footnoteArtifact", { name: a.name, rarity: a.rarity, curse: a.isCursed ? t("ui.footnoteCursed") : "", effect: formatArtifactEffect(a) });
+  return footnoteLines(footnoteMarker(index), heading, a.description);
+}
+
+const withMarker = (result: string, index: number) => `${result} ${footnoteMarker(index)}`;
+
+function chestDetails(eventId: string | undefined): { result: string | null; notes: TextChunk[][] } {
+  if (!eventId) return { result: null, notes: [] };
+  const event = getEvent(eventId);
+  const parts: string[] = [];
+  let notes: TextChunk[][] = [];
+  if (!event.noArtifactReward) {
+    if (event.guaranteedArtifactId) {
+      parts.push(t("ui.receiveResult", { name: getArtifact(event.guaranteedArtifactId).name }));
+      notes = artifactFootnote(event.guaranteedArtifactId, 0);
+    } else parts.push(t("ui.randomArtifact"));
+  }
+  for (const { itemId, count } of event.guaranteedItems ?? []) parts.push(t("ui.itemCount", { name: getItem(itemId).name, count }));
+  const result = parts.length > 0 ? parts.join(", ") : null;
+  return { result: result && notes.length > 0 ? withMarker(result, 0) : result, notes };
+}
+
 export function renderMain(game: Game, ui: EventUiState, page = 0): string | StyledText {
   const s = game.state;
   switch (ui.kind) {
     case "eventInstantReward": {
       const room = getRoom(s.floor, s.currentRoomId);
       const event = room.rolledEventId ? getEvent(room.rolledEventId) : undefined;
-      return [currentEventDescription(s), "", event?.instantRewardActionLabel ?? t("ui.openChestOption")].join("\n");
+      const { result, notes } = chestDetails(room.rolledEventId);
+      return joinLines([
+        ...eventTextLines(currentEventDescription(s)),
+        [],
+        text(event?.instantRewardActionLabel ?? t("ui.openChestOption")),
+        ...optionDetailLines(null, result),
+        ...(notes.length > 0 ? [[], ...notes] : []),
+      ]);
     }
 
     case "eventArtifactShop": {
@@ -261,61 +349,61 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
         const artifactId = offers[ui.viewingOfferIndex];
         if (!artifactId) return "";
         const a = getArtifact(artifactId);
-        const price = MERCHANT_PRICE_COINS[a.rarity];
         const cursedTag = a.isCursed ? t("ui.merchantDetailCursedTag") : "";
-        const lines = [
-          t("ui.merchantDetailTitle", { name: a.name, rarity: a.rarity, price }) + cursedTag,
-          "",
-          t("ui.merchantDetailDesc", { desc: a.description }),
-          "",
-          t("ui.merchantDetailBuyOption"),
-          t("ui.merchantDetailCancelOption"),
-        ];
-        return lines.join("\n");
+        return joinLines([
+          text(t("ui.merchantDetailTitle", { name: a.name, rarity: a.rarity }) + cursedTag),
+          [],
+          text(t("ui.merchantDetailBuyOption")),
+          ...optionDetailLines(coins(MERCHANT_PRICE_COINS[a.rarity]), withMarker(t("ui.receiveResult", { name: a.name }), 0)),
+          text(t("ui.merchantDetailCancelOption")),
+          [],
+          ...artifactFootnote(artifactId, 0),
+        ]);
       }
       const refreshCount = s.activeEvent?.refreshCount ?? 0;
-      const lines = [currentEventDescription(s), "", t("ui.merchantOffers")];
+      const lines = [...eventTextLines(currentEventDescription(s)), [], text(t("ui.merchantOffers"))];
       offers.forEach((id, i) => {
         const a = getArtifact(id);
-        lines.push(t("ui.merchantOfferLineCoins", { i: i + 1, name: a.name, rarity: a.rarity, price: MERCHANT_PRICE_COINS[a.rarity], desc: truncateText(a.description, 34) }));
+        lines.push(text(t("ui.merchantOfferLine", { i: i + 1, name: a.name, rarity: a.rarity, desc: truncateText(a.description, 34) })), ...optionDetailLines(coins(MERCHANT_PRICE_COINS[a.rarity]), null));
       });
-      lines.push(t("ui.leaveEmptyHandedOption", { i: offers.length + 1 }));
-      lines.push(
-        refreshCount >= MERCHANT_MAX_REFRESHES
-          ? t("ui.merchantMaxRefreshesReached")
-          : t("ui.merchantRefreshOption", { cost: MERCHANT_REFRESH_COST_COINS, remaining: MERCHANT_MAX_REFRESHES - refreshCount })
-      );
-      return lines.join("\n");
+      lines.push(text(t("ui.leaveEmptyHandedOption", { i: offers.length + 1 })));
+      if (refreshCount >= MERCHANT_MAX_REFRESHES) lines.push(text(t("ui.merchantMaxRefreshesReached")));
+      else {
+        const remaining = MERCHANT_MAX_REFRESHES - refreshCount - 1;
+        lines.push(text(t("ui.merchantRefreshOption")), ...optionDetailLines(coins(MERCHANT_REFRESH_COST_COINS), t("ui.merchantRefreshResult", { count: BALANCE.events.merchantOfferCount, remaining })));
+      }
+      return joinLines(lines);
     }
 
     case "eventCursedOffer": {
       const artifactId = s.activeEvent?.offerArtifactIds[0];
       const a = artifactId ? getArtifact(artifactId) : null;
-      const curseTag = a?.isCursed ? t("ui.cursedTag") : "";
-      return [
-        currentEventDescription(s),
-        "",
-        a ? `${a.name} (${a.rarity})${curseTag} — ${a.description}` : "...",
-        "",
-        t("ui.acceptOption"),
-        t("ui.declineOption"),
-      ].join("\n");
+      return joinLines([
+        ...eventTextLines(currentEventDescription(s)),
+        [],
+        text(t("ui.acceptOption")),
+        ...optionDetailLines(null, a ? withMarker(t(a.isCursed ? "ui.cursedArtifactResult" : "ui.receiveResult", { name: a.name }), 0) : null),
+        text(t("ui.declineOption")),
+        ...(artifactId ? [[], ...artifactFootnote(artifactId, 0)] : []),
+      ]);
     }
 
     case "eventPairedOffer": {
       const offers = s.activeEvent?.offerArtifactIds ?? [];
-      const lines = [currentEventDescription(s), "", t("ui.twinAltarsIntro")];
+      const lines = [...eventTextLines(currentEventDescription(s)), [], text(t("ui.twinAltarsIntro"))];
       offers.forEach((id, i) => {
         const a = getArtifact(id);
-        lines.push(t("ui.twinAltarsOfferLine", { i: i + 1, name: a.name, rarity: a.rarity, effect: formatArtifactEffect(a) }));
+        lines.push(text(t("ui.twinAltarsOfferLine", { i: i + 1, name: a.name, rarity: a.rarity })), ...optionDetailLines(null, withMarker(t("ui.twinAltarsResult", { name: a.name }), i)));
       });
-      return lines.join("\n");
+      if (offers.length > 0) lines.push([]);
+      offers.forEach((id, i) => lines.push(...artifactFootnote(id, i)));
+      return joinLines(lines);
     }
 
     case "eventHpGamble": {
       const percent = ui.gamble === "hpGamble" ? BLOOD_ALTAR_HP_PERCENT : COLLAPSED_FLOOR_HP_PERCENT;
-      const resultLine = ui.gamble === "hpGamble" ? t("ui.bloodAltarResult") : t("ui.collapsedFloorResult", { chance: Math.round(BALANCE.events.collapsedFloorSuccessChance * 100) });
-      return [currentEventDescription(s), "", t("ui.payToTry", { percent }), resultLine, "", t("ui.payOption"), t("ui.leaveOption")].join("\n");
+      const result = ui.gamble === "hpGamble" ? t("ui.randomArtifact") : t("ui.collapsedFloorResult", { chance: Math.round(BALANCE.events.collapsedFloorSuccessChance * 100) });
+      return joinLines([...eventTextLines(currentEventDescription(s)), [], text(t("ui.payOption")), ...optionDetailLines(t("ui.hpGambleCost", { percent }), result), text(t("ui.leaveOption"))]);
     }
 
     case "eventHpGamblePickPayer": {
@@ -326,48 +414,57 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
     case "eventArtifactSacrifice": {
       const candidates = ownedArtifactEntries(s.party);
       const { pageItems, page: p, pages } = paginate(candidates, page, SACRIFICE_PAGE_SIZE);
-      const lines = [currentEventDescription(s), "", t("ui.chooseSacrifice")];
+      const lines = [...eventTextLines(currentEventDescription(s)), [], text(t("ui.chooseSacrifice")), ...optionDetailLines(t("ui.sacrificeCost"), t("ui.sacrificeResult"))];
       pageItems.forEach(({ artifactId }, i) => {
         const a = getArtifact(artifactId);
-        lines.push(`  [${i + 1}] ${a.name} (${a.rarity})`);
+        lines.push(text(`  [${i + 1}] ${a.name} (${a.rarity})`));
       });
-      lines.push(`  [${pageItems.length + 1}] ${t("ui.leaveRitualOption")}`);
-      if (candidates.length === 0) lines.push(t("ui.noSuitableArtifacts"));
-      if (pages > 1) lines.push(t("ui.pageIndicator", { page: p + 1, pages }));
-      return lines.join("\n");
+      lines.push(text(`  [${pageItems.length + 1}] ${t("ui.leaveRitualOption")}`));
+      if (candidates.length === 0) lines.push(text(t("ui.noSuitableArtifacts")));
+      if (pages > 1) lines.push(text(t("ui.pageIndicator", { page: p + 1, pages })));
+      return joinLines(lines);
     }
 
     case "eventCoinGamble": {
       const gamble = s.activeEvent?.gambleState;
+      const multiplier = BALANCE.events.gamblingDenPotMultiplier;
+      const winLine = (roundIndex: number, pot: number) => {
+        const round = GAMBLING_DEN_ROUNDS[roundIndex]!;
+        const chance = Math.round(round.winChance * 100);
+        return roundIndex === GAMBLING_DEN_ROUNDS.length - 1
+          ? t("ui.gamblingDenWinJackpot", { chance, ...gamblingJackpot() })
+          : t("ui.gamblingDenWinPot", { chance, pot: pot * multiplier });
+      };
       if (!gamble) {
         const round1 = GAMBLING_DEN_ROUNDS[0]!;
-        return [
-          currentEventDescription(s),
-          "",
-          t("ui.gamblingDenEntryPrompt", { stake: round1.stake, chance: Math.round(round1.winChance * 100) }),
-          "",
-          t("ui.gamblingDenEnterOption", { stake: round1.stake }),
-          t("ui.gamblingDenLeaveOption"),
-        ].join("\n");
+        return joinLines([
+          ...eventTextLines(currentEventDescription(s)),
+          [],
+          text(t("ui.gamblingDenEnterOption")),
+          ...optionDetailLines(coins(round1.stake), winLine(0, round1.stake)),
+          text(t("ui.gamblingDenLeaveOption")),
+        ]);
       }
-      const nextRound = GAMBLING_DEN_ROUNDS[gamble.round]!;
-      return [
-        t("ui.gamblingDenRoundLine", { round: gamble.round, pot: gamble.pot, chance: Math.round(nextRound.winChance * 100) }),
-        "",
-        t("ui.gamblingDenStopOption", { pot: gamble.pot }),
-        t("ui.gamblingDenContinueOption"),
-      ].join("\n");
+      return joinLines([
+        text(t("ui.gamblingDenRoundLine", { round: gamble.round, pot: gamble.pot })),
+        [],
+        text(t("ui.gamblingDenStopOption")),
+        ...optionDetailLines(null, t("ui.gamblingDenBank", { pot: gamble.pot })),
+        text(t("ui.gamblingDenContinueOption")),
+        ...optionDetailLines(t("ui.gamblingDenPotCost", { pot: gamble.pot }), winLine(gamble.round, gamble.pot)),
+      ]);
     }
 
     case "eventFortuneExchange": {
       const hasAny = ownedArtifactEntries(s.party).length > 0;
-      return [
-        currentEventDescription(s),
-        "",
-        t("ui.hermitExchangeOnlyIntro"),
-        t("ui.hermitExchangeOption", { cost: HERMIT_EXCHANGE_COST_COINS, suffix: hasAny ? "" : t("ui.hermitNoArtifactSuffix") }),
-        t("ui.hermitLeaveOption"),
-      ].join("\n");
+      return joinLines([
+        ...eventTextLines(currentEventDescription(s)),
+        [],
+        text(t("ui.hermitExchangeOnlyIntro")),
+        text(t("ui.hermitExchangeOption", { suffix: hasAny ? "" : t("ui.hermitNoArtifactSuffix") })),
+        ...optionDetailLines(t("ui.hermitExchangeCost", { cost: HERMIT_EXCHANGE_COST_COINS }), t("ui.equalOrHigherArtifact")),
+        text(t("ui.hermitLeaveOption")),
+      ]);
     }
 
     case "eventFortuneExchangePickArtifact": {
@@ -380,10 +477,18 @@ export function renderMain(game: Game, ui: EventUiState, page = 0): string | Sty
 
     case "eventCombatReward": {
       const room = getRoom(s.floor, s.currentRoomId);
-      const lines = [t("ui.guardianFightIntro", { room: room.name }), "", currentEventDescription(s), "", t("ui.guardianFightEnterOption")];
+      const { min, max } = BALANCE.events.eventGuardianCount;
+      const lines = [
+        text(t("ui.guardianFightIntro", { room: room.name })),
+        [],
+        ...eventTextLines(currentEventDescription(s)),
+        [],
+        text(t("ui.guardianFightEnterOption")),
+        ...optionDetailLines(t("ui.guardianFightCost", { min, max }), t("ui.guardianFightResult")),
+      ];
       // Skip is hidden past the forced threshold; `guardianFightSkip` also rejects it.
-      if (room.chainVariant !== "forced" && room.chainVariant !== "forced2" && room.chainVariant !== "forced3") lines.push(t("ui.guardianFightSkipOption"));
-      return lines.join("\n");
+      if (room.chainVariant !== "forced" && room.chainVariant !== "forced2" && room.chainVariant !== "forced3") lines.push(text(t("ui.guardianFightSkipOption")));
+      return joinLines(lines);
     }
 
     case "eventExit": {

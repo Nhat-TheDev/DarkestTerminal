@@ -41,6 +41,19 @@ export const TORCH_SPRITES: Record<string, Sprite> = SPRITES.torch;
 
 const TORCH_FRAME_ORDER = ["full", "strong", "low", "embers"];
 
+/** Why `thresholds` cannot drive the torch frames, or `null` when they can. */
+export function torchThresholdsError(thresholds: unknown, frames: Record<string, Sprite> = TORCH_SPRITES): string | null {
+  if (!Array.isArray(thresholds) || thresholds.length !== TORCH_FRAME_ORDER.length || !thresholds.every((v) => typeof v === "number")) {
+    return `balance-config faith.torchFrameThresholds must list ${TORCH_FRAME_ORDER.length} numbers, one per frame (${TORCH_FRAME_ORDER.join(", ")})`;
+  }
+  if (thresholds.some((v, i) => i > 0 && v >= thresholds[i - 1]!)) return "balance-config faith.torchFrameThresholds must be strictly descending";
+  const missing = TORCH_FRAME_ORDER.find((name) => !frames[name]);
+  return missing ? `data/sprites.json torch has no "${missing}" frame` : null;
+}
+
+const torchError = torchThresholdsError(BALANCE.faith.torchFrameThresholds);
+if (torchError) throw new Error(torchError);
+
 export const TOMBSTONE_SPRITE: Sprite = {
   rows: [
     ".............",

@@ -31,8 +31,67 @@ export function assertConditionValid(where: string, c: ReflectionCondition): voi
   }
 }
 
+/** A run of an event text, `highlight` when it sat between `[[` and `]]` in the data. */
+export interface EventTextPart {
+  text: string;
+  highlight: boolean;
+}
+
+/** Splits an event text on its `[[...]]` marks; `null` when they don't open and close in pairs. */
+function splitHighlights(text: string): EventTextPart[] | null {
+  const parts: EventTextPart[] = [];
+  let rest = text;
+  while (rest.length > 0) {
+    const open = rest.indexOf("[[");
+    const close = rest.indexOf("]]");
+    if (open < 0) {
+      if (close >= 0) return null;
+      parts.push({ text: rest, highlight: false });
+      break;
+    }
+    const end = rest.indexOf("]]", open + 2);
+    const nested = rest.indexOf("[[", open + 2);
+    if (close < open || end < 0 || (nested >= 0 && nested < end)) return null;
+    if (open > 0) parts.push({ text: rest.slice(0, open), highlight: false });
+    parts.push({ text: rest.slice(open + 2, end), highlight: true });
+    rest = rest.slice(end + 2);
+  }
+  return parts;
+}
+
+export function eventTextParts(text: string): EventTextPart[] {
+  return splitHighlights(text) ?? [{ text, highlight: false }];
+}
+
+/** The text as a log line or journal reads it: the `[[...]]` marks dropped. */
+export function plainEventText(text: string): string {
+  return eventTextParts(text)
+    .map((part) => part.text)
+    .join("");
+}
+
+/** Every text an event can show in place of its description: variants, chain texts and return visits. */
+export function eventTexts(event: EventDefinition): string[] {
+  const returns = typeof event.returnDescription === "string" ? [event.returnDescription] : Object.values(event.returnDescription ?? {});
+  return [
+    event.description,
+    ...(event.descriptionVariants ?? []),
+    ...(event.crossEventVariants ?? []).map((v) => v.description),
+    event.chainBuildupDescription,
+    event.chainEscalatedDescription,
+    event.chainEscalated2Description,
+    event.chainEscalated3Description,
+    event.chainForcedDescription,
+    event.chainForced2Description,
+    event.chainForced3Description,
+    ...returns,
+  ].filter((text): text is string => typeof text === "string");
+}
+
 export function assertEventDataConsistent(events: EventDefinition[]): void {
   for (const event of events) {
+    const unpaired = eventTexts(event).find((text) => splitHighlights(text) === null);
+    if (unpaired !== undefined) throw new Error(`data/events.json: "${event.id}" has a text whose [[ ]] marks don't pair up: ${unpaired}`);
     if (event.escalation) {
       if (!NARRATIVE_COUNTERS.has(event.escalation.counter)) throw new Error(`data/events.json: "${event.id}" escalation counter "${event.escalation.counter}" is not a narrative counter`);
       for (const key of event.escalation.thresholds) {

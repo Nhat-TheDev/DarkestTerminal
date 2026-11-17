@@ -410,6 +410,7 @@ describe("journal UI", () => {
     const app = new App(renderer, game);
     await renderOnce();
     mockInput.pressKey("1");
+    mockInput.pressKey("1");
     await renderOnce();
     if (app.debugUiState.kind === "artifactDecision") {
       mockInput.pressKey("2");
@@ -442,6 +443,7 @@ describe("journal UI", () => {
     forceEventRoom(game, "doubled-back");
     const app = new App(renderer, game);
     await renderOnce();
+    mockInput.pressKey("1");
     mockInput.pressKey("1");
     await renderOnce();
     if (app.debugUiState.kind === "artifactDecision") {
