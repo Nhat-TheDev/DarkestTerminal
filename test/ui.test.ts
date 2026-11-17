@@ -2024,8 +2024,9 @@ describe("Temple screen", () => {
       for (const part of ["Coins −3", "Faith +2", "Knight HP 100 → 50", "Offered offered", "Lost removed", "Potion ×2 received", "pot 10 → 20 coins", "Light boon active"]) expect(text).toContain(part);
       narration.result = { coinsDelta: 40, gamble: { round: 1, potBefore: 40, potAfter: 40, outcome: "banked" } };
       const banked = choiceNarrationScreen.renderMain(game).chunks.map((c) => c.text).join("");
-      expect(banked).toContain("Round 1: banked; pot 40 coins");
-      expect(banked).not.toContain("→ 0");
+      expect(banked).toContain("Round 1: banked; pot 40 → +40 coins");
+      narration.result = { offeredArtifacts: [{ artifactId: "a", name: "First" }, { artifactId: "b", name: "Second" }], gamble: { round: 3, potBefore: 160, potAfter: 0, outcome: "jackpot" } };
+      expect(choiceNarrationScreen.renderMain(game).chunks.map((c) => c.text).join("")).toContain("Round 3: jackpot; pot 160 → 2 artifacts");
       narration.result = {};
       expect(choiceNarrationScreen.renderMain(game).chunks.map((c) => c.text).join("")).not.toContain("Result:");
     } finally { renderer.destroy(); }

@@ -25,8 +25,8 @@ export function renderMain(game: Game): StyledText {
   for (const item of result.receivedItems ?? []) details.push(t("ui.choiceNarrationItemReceived", { item: item.name, count: item.count }));
   if (result.gamble) {
     const gamble = result.gamble;
-    const settled = gamble.outcome === "banked" || gamble.outcome === "jackpot";
-    details.push(t(settled ? "ui.choiceNarrationGambleSettled" : "ui.choiceNarrationGamble", { ...gamble, outcome: t(`ui.choiceNarrationGamble${{ win: "Win", loss: "Loss", banked: "Banked", jackpot: "Jackpot" }[gamble.outcome]}`) }));
+    const key = { win: "ui.choiceNarrationGamble", loss: "ui.choiceNarrationGamble", banked: "ui.choiceNarrationGambleBankedLine", jackpot: "ui.choiceNarrationGambleJackpotLine" }[gamble.outcome];
+    details.push(t(key, { ...gamble, count: result.offeredArtifacts?.length ?? 0, outcome: t(`ui.choiceNarrationGamble${{ win: "Win", loss: "Loss", banked: "Banked", jackpot: "Jackpot" }[gamble.outcome]}`) }));
   }
   if (result.boon) details.push(t("ui.choiceNarrationBoon", { religion: result.boon.name }));
   return joinLines([

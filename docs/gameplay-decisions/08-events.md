@@ -747,7 +747,7 @@ Passages preserve the world bible's ambiguity and leave subsequent Reflection ge
 | Artifact reward | Actual artifact **offered**, not equipped or retained; include both jackpot offers even when they have the same ID |
 | Artifact exchange/sacrifice | Actual removed artifact and replacement offered; preserve duplicate copies when counting removals |
 | Items received | Actual quantity added after inventory limits |
-| Gambling | Round, actual outcome and pot before → after; a banked pot or a jackpot shows the pot alone. Entry stake and banked coins appear in the coin change, without subtracting a lost pot twice or banking the jackpot |
+| Gambling | Round, actual outcome and pot before → after; a banked pot points to the coins it adds, and a jackpot to the number of artifacts it offers. Entry stake and banked coins appear in the coin change, without subtracting a lost pot twice or banking the jackpot |
 | Boon | Actual Faith spent and the active religion's floor-length boon; no immediate healing |
 
 Empty result categories are omitted. Resource effects are not applied or logged again by rendering or acknowledgement. Full narration history is not saved as a separate log.
