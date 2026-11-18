@@ -13,7 +13,7 @@ import { previewScene, type PreviewOptions } from "./backdropPreview";
 import { targetingConfigError, type TargetingConfig } from "../../src/data/balanceConfig";
 import { NESTED_BALANCE_SECTIONS, nestedBalanceError } from "./balanceCheck";
 import { type CombatFxConfig } from "../../src/data/combatFx";
-import { isCombatFxEffect, mergeCombatFxEffect, previewCombatFx } from "./combatFxPreview";
+import { editCombatFxPreset, isCombatFxEffect, mergeCombatFxDraft, mergeCombatFxEffect, previewCombatFx, type CombatFxPlayback } from "./combatFxPreview";
 import { IMPACT_TICKS, REVEAL_TICK_MS, SESSION_MIN_TICKS } from "../../src/ui/revealQueue";
 
 const HTML_PATH = path.resolve(import.meta.dir, "index.html");
@@ -23,6 +23,13 @@ const MONSTERS_PATH = path.join(DATA_DIR, "monsters.json");
 const BACKDROPS_PATH = path.join(DATA_DIR, "backdrops.json");
 const ROOM_NAMES_PATH = path.join(DATA_DIR, "room-names.json");
 const PORT = 4592;
+let combatFxWrites: Promise<void> = Promise.resolve();
+
+function queueCombatFxWrite<T>(operation: () => Promise<T>): Promise<T> {
+  const write = combatFxWrites.then(operation);
+  combatFxWrites = write.then(() => {}, () => {});
+  return write;
+}
 
 function json(data: unknown, status = 200): Response {
   return Response.json(data, { status });
@@ -211,6 +218,31 @@ const ENTITY_FILES: Record<EntityType, string> = {
   "monster-skill": "monster-skills.json",
 };
 
+const COMBAT_FX_CATALOG_MAPPINGS: Partial<Record<EntityType, (file: CombatFxConfig) => [string, Record<string, string | null>]>> = {
+  item: (file) => ["items", file.items],
+  status: (file) => ["statuses", file.statuses],
+  monster: (file) => ["basicAttacks.monsters", file.basicAttacks.monsters],
+  "monster-skill": (file) => ["skills", file.skills],
+};
+
+async function assertNewCombatFxMappingsOnDisk(current: CombatFxConfig, next: CombatFxConfig): Promise<void> {
+  for (const type of ENTITY_TYPES) {
+    const mapping = COMBAT_FX_CATALOG_MAPPINGS[type];
+    if (!mapping) continue;
+    const [section, table] = mapping(next);
+    const [, before] = mapping(current);
+    const ids = Object.keys(table).filter((id) => !Object.hasOwn(before, id));
+    if (ids.length === 0) continue;
+    const entries = await readJsonFile(ENTITY_FILES[type]) as { id: string }[];
+    if (type === "monster-skill") {
+      const [classes, summons] = await Promise.all([readJsonFile("classes.json"), readJsonFile("summons.json")]) as [{ skills: { id: string }[] }[], { skills: { id: string }[] }];
+      entries.push(...classes.flatMap((entry) => entry.skills), ...summons.skills);
+    }
+    const missing = ids.find((id) => !entries.some((entry) => entry.id === id));
+    if (missing) throw new Error(`Catalog entry for ${section}.${missing} no longer exists. Reload to refresh the catalogs.`);
+  }
+}
+
 /**
  * The same checks the game runs when data/monsters.json and data/monster-skills.json load, run on the
  * catalog as it would be after this write — so the editor refuses an edit that would stop the game
@@ -287,23 +319,42 @@ Bun.serve({
       return json(await readJsonFile("combat-fx.json"));
     }
 
+    if (req.method === "GET" && url.pathname === "/api/combat-fx-catalogs") {
+      const files = { classes: "classes.json", monsters: "monsters.json", summons: "summons.json", items: "items.json", statuses: "status-effects.json", monsterSkills: "monster-skills.json" };
+      return json(Object.fromEntries(await Promise.all(Object.entries(files).map(async ([key, name]) => [key, await readJsonFile(name)]))));
+    }
+
     if (req.method === "POST" && url.pathname === "/api/combat-fx") {
       try {
-        const body = await req.json() as { effect?: unknown; animation?: unknown };
-        const current = await readJsonFile("combat-fx.json") as CombatFxConfig;
-        const next = mergeCombatFxEffect(current, body.effect, body.animation);
-        await writeJsonFile("combat-fx.json", next);
-        return json({ ok: true });
+        const body = await req.json() as { base?: unknown; draft?: unknown; effect?: unknown; animation?: unknown };
+        const write = queueCombatFxWrite(async () => {
+          const current = await readJsonFile("combat-fx.json") as CombatFxConfig;
+          const next = Object.hasOwn(body, "draft") ? mergeCombatFxDraft(current, body.base, body.draft) : mergeCombatFxEffect(current, body.effect, body.animation);
+          await assertNewCombatFxMappingsOnDisk(current, next);
+          await writeJsonFile("combat-fx.json", next);
+          return next;
+        });
+        return json({ ok: true, file: await write });
       } catch (error) {
-        return badRequest(error instanceof Error ? error.message : "Invalid combat animation.");
+        const message = error instanceof Error ? error.message : "Invalid combat animation.";
+        return json({ error: message }, message.startsWith("Conflict at ") ? 409 : 400);
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/combat-fx-preset") {
+      try {
+        const body = await req.json() as { file: CombatFxConfig; action?: unknown; id?: unknown; newId?: unknown };
+        return json(editCombatFxPreset(body.file, body.action, body.id, body.newId));
+      } catch (error) {
+        return badRequest(error instanceof Error ? error.message : "Invalid preset action.");
       }
     }
 
     if (req.method === "POST" && url.pathname === "/api/combat-fx-preview") {
       try {
-        const body = await req.json() as { file: CombatFxConfig; effect?: unknown; frameIndex: number; reverse?: unknown; classId?: unknown; monsterId?: unknown };
-        if (!isCombatFxEffect(body.effect) || typeof body.reverse !== "boolean" || typeof body.classId !== "string" || typeof body.monsterId !== "string") return badRequest("Invalid preview options.");
-        return json({ cells: previewCombatFx(body.file, { effect: body.effect, frameIndex: body.frameIndex, reverse: body.reverse, classId: body.classId, monsterId: body.monsterId }), timing: { tickMs: REVEAL_TICK_MS, impactTicks: IMPACT_TICKS, minTicks: SESSION_MIN_TICKS } });
+        const body = await req.json() as { file: CombatFxConfig; effect?: unknown; frameIndex?: number; playback?: CombatFxPlayback; reverse?: unknown; classId?: unknown; monsterId?: unknown };
+        if (!isCombatFxEffect(body.effect, body.file) || typeof body.reverse !== "boolean" || typeof body.classId !== "string" || typeof body.monsterId !== "string") return badRequest("Invalid preview options.");
+        return json({ cells: previewCombatFx(body.file, { effect: body.effect, frameIndex: body.frameIndex, playback: body.playback, reverse: body.reverse, classId: body.classId, monsterId: body.monsterId }), timing: { tickMs: REVEAL_TICK_MS, impactTicks: IMPACT_TICKS, minTicks: SESSION_MIN_TICKS } });
       } catch (error) {
         return badRequest(error instanceof Error ? error.message : "Invalid combat preview.");
       }
@@ -679,36 +730,34 @@ Bun.serve({
         return json({ ok: true });
       }
 
-      if (req.method === "PUT" && id) {
-        let body: unknown;
-        try { body = await req.json(); } catch { return badRequest("Body is not valid JSON."); }
-        const entryError = validateEntry(body);
-        if (entryError) return badRequest(entryError);
-        const entry = body as { id: string };
-        const entries = (await readJsonFile(file)) as { id: string }[];
-        const index = entries.findIndex((e) => e.id === id);
-        if (index === -1) return badRequest(`"${id}" does not exist.`);
-        if (entry.id !== id && entries.some((e) => e.id === entry.id)) return badRequest(`"${entry.id}" already exists.`);
-        const pairingError = entityType === "item" ? trophyPairingError(entries[index], entry) : null;
-        if (pairingError) return badRequest(pairingError);
-        entries[index] = entry;
-        const catalogError = monsterCatalogError(entityType, entries);
-        if (catalogError) return badRequest(catalogError);
-        await writeJsonFile(file, entries);
-        return json({ ok: true });
-      }
-
-      if (req.method === "DELETE" && id) {
-        const entries = (await readJsonFile(file)) as { id: string }[];
-        const index = entries.findIndex((e) => e.id === id);
-        if (index === -1) return badRequest(`"${id}" does not exist.`);
-        const pairingError = entityType === "item" ? trophyPairingError(entries[index], undefined) : null;
-        if (pairingError) return badRequest(pairingError);
-        entries.splice(index, 1);
-        const catalogError = monsterCatalogError(entityType, entries);
-        if (catalogError) return badRequest(catalogError);
-        await writeJsonFile(file, entries);
-        return json({ ok: true });
+      if ((req.method === "PUT" || req.method === "DELETE") && id) {
+        let entry: { id: string } | undefined;
+        if (req.method === "PUT") {
+          let body: unknown;
+          try { body = await req.json(); } catch { return badRequest("Body is not valid JSON."); }
+          const entryError = validateEntry(body);
+          if (entryError) return badRequest(entryError);
+          entry = body as { id: string };
+        }
+        return queueCombatFxWrite(async () => {
+          const entries = (await readJsonFile(file)) as { id: string }[];
+          const index = entries.findIndex((e) => e.id === id);
+          if (index === -1) return badRequest(`"${id}" does not exist.`);
+          if (entry && entry.id !== id && entries.some((e) => e.id === entry.id)) return badRequest(`"${entry.id}" already exists.`);
+          const pairingError = entityType === "item" ? trophyPairingError(entries[index], entry) : null;
+          if (pairingError) return badRequest(pairingError);
+          const mapping = COMBAT_FX_CATALOG_MAPPINGS[entityType];
+          if (mapping && entry?.id !== id) {
+            const [section, table] = mapping(await readJsonFile("combat-fx.json") as CombatFxConfig);
+            if (Object.hasOwn(table, id)) return badRequest(`Saved Combat Effects mapping ${section}.${id} references this ID. Select Unmapped (game default) and save Combat Effects first.`);
+          }
+          if (entry) entries[index] = entry;
+          else entries.splice(index, 1);
+          const catalogError = monsterCatalogError(entityType, entries);
+          if (catalogError) return badRequest(catalogError);
+          await writeJsonFile(file, entries);
+          return json({ ok: true });
+        });
       }
     }
 

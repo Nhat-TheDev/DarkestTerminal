@@ -432,53 +432,114 @@ the change read from the `fear` that snapshots carry for characters. Party-wide 
 victory) has no line in the log, so its session (`runFearSession`) rides on one `LogEntry` with
 `hidden: true`, which `logLines` never renders; its beat starts at the impact.
 
-Direct hits also drive cell-based attack effects (`src/ui/combatFx.ts`). Units stay in their
-slots: a thrust advances a pointed tip, a slash reveals a downward circular arc, and a blunt
-strike drops a hammer head. At impact only the target sprite's opaque cells flash; a killing
-hit flashes the unit before its tombstone replaces it. A summon uses its owner's sprite and
-anchor. Misses, over-time ticks, reflection and overkill that removes no HP do not flash.
+Combat effects are cell overlays (`src/ui/combatFx.ts`); characters and monsters stay in their
+slots. Melee attacks advance a pointed tip, reveal a downward arc or drop a hammer head.
+Projectiles travel between the actual source and target, beams span their centres, and spells
+can erupt at the target. Arrows, knives, shuriken, axes, rocks, bones, dice, fire, ice, holy and
+shadow magic, thrown flasks, webs and area attacks have authored frames and palettes.
+At impact the target's opaque sprite cells flash. A killing hit flashes the living sprite
+before its tombstone appears. Summons use their owner's sprite and anchor.
 
-`data/combat-fx.json` holds the animation frames, palettes and explicit mappings. `skills` maps a skill
-id to `thrust`, `slash`, `blunt`, or `null`; `basicAttacks` maps class, monster and summon
-archetype ids to the same choices. `src/data/combatFx.ts` checks references and frame data.
-Unmapped skills, items and ranged attacks have no weapon trail; direct damage can still flash.
-Projectiles and spell, support and summon-cast effects are not implemented here.
+`data/combat-fx.json` owns the frames and explicit mappings. `skills`, `items` and
+`basicAttacks` select a preset or `null`; `statuses` selects a target effect for each status.
+`outcomes` supplies heal, mana, buff, debuff, cleanse and dispel visuals. `damageTypes` selects
+the visual when a status replaces a basic attack. A Command uses its executed summon skill's
+visual, while retaining its own costs, power and cooldown. The loader (`src/data/combatFx.ts`)
+validates content references, palettes, frames and support placement. Mappings may be omitted to use the game defaults; attack overrides may also be `null`
+to suppress their trail. An omitted status mapping follows its current buff/debuff outcome
+default. Tests check that configured choices and those defaults resolve to valid presets.
 
-Each `presets` entry contains a `palette` and a non-empty `frames` array. A frame contains
-`rows` (equal-width pixel strings), `offsetX` and `offsetY` (integer cell offsets from the target
-sprite's centre). A single-character palette key paints a cell; `.` leaves the cell underneath
-unchanged. Positive X points in the attacker's direction of travel, and positive Y points down.
-The renderer mirrors X for an incoming attack. Edit the rows to change the shape, the offsets
-to change its path, and the palette to change its colours. No shape is generated in TypeScript.
-The existing approach ticks sample the frame sequence from first to last, so adding frames
-does not lengthen a turn or introduce another timer.
+Each preset contains `palette` and `frames`. A frame has equal-width `rows` and integer
+`offsetX`/`offsetY` cell offsets. Single-character palette keys paint cells; `.` is transparent.
+`placement` is `target` (the default), `projectile` or `beam`. Target frames are positioned
+around the target's centre; projectile frames follow the source-to-target line, with their
+per-frame offsets adding an authored arc or trail. Beam frames are short segments repeated
+at their original cell size between the two centres, following the connecting line's height.
+The final segment is cropped at the target; pixels, transparent gaps and thickness are never
+stretched. Author matching left and right edges for continuous joins. Each animation frame
+supplies its own repeating segment, editable with the existing pixel grid, palette and
+Copy/Parse controls. Positive X follows the attack and
+positive Y points down; incoming attacks mirror horizontally. The renderer places JSON
+pixels without generating weapon or spell shapes.
 
-`flash.mask` is `target`: the target sprite's opaque cells form the mask. Each `flash.frames`
-entry supplies `partyColor` and `monsterColor`, either a hex colour or `null` to leave that side
-unchanged on that frame. Each flash frame lasts one reveal tick; the array's length determines
-the flash's duration. Shapes, positions, colours and flash frames are authored only in this JSON;
-`src/ui/combatFx.ts` only places and mirrors pixel frames or applies the target mask.
+`phase` is `approach` by default or `impact`. Approach frames sample the existing wind-up,
+so adding frames adds detail without lengthening it. Impact frames use `ticks` (one to one
+hundred reveal ticks), defaulting to their frame count. Support presets must use target
+placement and impact timing. `flash.mask` remains `target`; each `flash.frames` entry has
+nullable `partyColor` and `monsterColor`, and lasts one reveal tick.
 
-The **Combat Effects** tab in `bun run game-editor` edits these animations visually. Choose
-an effect and frame, paint or erase cells, adjust its palette, dimensions and offsets, or add,
-duplicate, remove and reorder frames. Flash frames have separate character and monster tint
-controls, including transparency. **Copy frame** copies the selected frame as JSON;
-**Parse frame** validates pasted JSON before replacing that frame, using the effect's shared
-palette. Invalid input leaves the draft unchanged.
+The resolver records optional `LogEntry.effect` cues when healing actually restores HP/MP,
+a status is applied or refreshed, a stat changes, or an explicit removal succeeds. Immune and
+resisted applications have no success cue. A full HP/MP bar produces no recovery effect.
+Regeneration, lifesteal, shared lifesteal and revival use recovery cues when they restore HP.
+Applying a regeneration status shows its status effect; its later recovery shows the heal.
+Explicitly removing a harmful status shows cleanse; removing a helpful one shows dispel.
+Natural expiry does not pretend to be either. Mixed skills can show damage on enemies and
+support effects on allies in the same session.
 
-The preview renders the unsaved draft with the game's renderer and wind-up timing, with
-character/monster selectors and a reverse-attack toggle. Saving writes only the selected
-effect into the latest `combat-fx.json`, retaining other effects and skill mappings. The editor
-verifies the saved effect after the dev server's watch-mode restart; edits made while saving
-remain marked as unsaved. Switching effects or reloading prompts before discarding a draft;
-a Reload response is ignored if the draft changes while the request is pending.
+Replay places support effects at their originating hit beat, deduplicating the same visual
+on the same target within that beat. Each effect finishes before the session's fear feedback;
+long authored effects extend the hold. HP snapshots still update once at session impact,
+while multi-hit numbers and weapon effects follow their own beats. Misses, damage-over-time
+ticks, reflection and pure overkill do not flash as direct damage. Existing logs without the
+optional metadata remain readable. Effects use the existing reveal clock, consume no gameplay
+RNG and disappear when replay is skipped or finishes.
 
-Combat records an optional source id and visual on each direct hit; replay uses that hit's
-actual target and beat, rather than guessing from the text or the session's actor. The
-overlay uses the existing reveal clock and clears when the beat ends or the reveal is skipped.
-It never draws from gameplay RNG or changes combat results. Existing logs without visual
-metadata remain readable. The HP snapshot still updates once at the session's impact, while
-multi-hit numbers and weapon effects follow their individual beats.
+The **Combat Effects** tab in `bun run game-editor` edits the full configuration. Its effect
+choices come from JSON. Select a frame, paint or erase cells, edit its shared palette, resize
+it or change its offsets. Palette keys can be renamed; every frame using that key updates
+together. Add, duplicate, delete and reorder frames; choose placement and timing for attacks,
+or edit target-effect duration. **Use frame count as duration** removes the explicit `ticks`
+override. Support presets retain their required target/impact settings. Flash frames have
+independent nullable character/monster tints and display their fixed target mask.
+**Copy frame** copies one frame as JSON; **Parse frame** validates pasted JSON with the
+selected effect's palette before replacing it. Invalid input leaves the draft intact.
+
+Expand **Effect mappings** to choose visuals for skills, items, class/monster/summon basic
+attacks, statuses, recovery/status defaults and damage-type overrides. Search by name, ID or
+effect. **Unmapped (game default)** removes an optional override, including a previously
+saved one. **No effect** writes `null` only where allowed. Status and recovery choices are limited
+to target/impact presets. Attack mappings apply to the damaging component of mixed skills;
+their healing and status components use the corresponding outcome/status mappings. **View**
+opens the mapped preset without discarding any draft changes.
+
+A class's first skill uses its **Class basic attacks** mapping during normal casts. Its
+Skills row links to that mapping rather than offering an override the cast would ignore.
+If an older file has a stored skill override for that row, an explicit clear action removes
+it without changing the class mapping; this also releases any preset it referenced.
+Catalog entries with a saved effect mapping cannot be deleted or given a new ID in the
+Data Editor. Select **Unmapped (game default)** for the reported mapping and save first;
+**No effect** still stores a reference to the entry. Edits that keep the same ID remain
+available.
+
+Create a blank preset or duplicate an existing one with a new lowercase ID. Rename updates
+all mappings that reference the old ID; deletion is refused while any mapping uses it.
+`thrust`, `slash` and `blunt` are required preset IDs, so their frames remain editable but the
+IDs cannot be renamed or deleted. New presets preview before saving through the same renderer
+as the game. Reverse direction and character/monster selectors remain available.
+Selecting a frame inspects that frame on its own. Playback follows the effect's timing;
+attack playback includes the target's damage flash at impact, while support playback
+shows the target effect without a damage flash. A preset shared by attacks and support
+effects can be previewed in either context.
+
+All changes share one draft: switching effects or mapping groups keeps edits. **Save all
+changes** sends the draft and its loaded baseline. The server reads the latest file and merges
+only changed mapping rows and presets, preserving unrelated edits on disk. A concurrent change
+to the same preset, mapping row or flash configuration is rejected with its location; no part
+of that save is written and the draft stays available. Rename and delete are revalidated
+against all references after merging. Writes from the editor are serialized.
+
+The editor verifies a save after the server's watch-mode restart, merges unrelated saved
+changes into its baseline and retains newer edits made while saving as unsaved. If those newer edits overlap a preset or mapping
+changed on disk, the draft and its original baseline remain intact and the editor reports the
+conflict instead of silently accepting the other version as its baseline. Preview retries
+a brief network interruption during restart. Reload asks before discarding changes, and its
+response cannot overwrite a draft edited in flight or a newer save.
+Reload also refreshes the catalogs used by mapping search. Returning to Combat Effects
+refreshes those catalogs and the preview actors while keeping the current effect draft.
+Actor selections remain selected when they are still available. Saving unrelated draft
+edits keeps mappings removed on disk absent, even if their catalog entries were also deleted
+while the draft was open.
 
 The row holding this panel and the Log is `UNIT_BLOCK_HEIGHT` + 2 rows tall (`src/ui/layout.ts`):
 2 icon rows + 15 pixels + 3 label rows, plus the border, 22 rows in all. With the header and the

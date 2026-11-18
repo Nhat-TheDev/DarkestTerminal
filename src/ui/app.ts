@@ -1,6 +1,7 @@
 import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
 import type { Character, Monster, Id, LogEntry, LogSession, CombatantSnapshot, CombatState, PartyStateSnapshot, Floor } from "../types";
 import { Game } from "../engine/game";
+import { COMBAT_FX } from "../data/combatFx";
 import { paintCombatFx, sideCombatFxAnchors, type CombatFxAnchor } from "./combatFx";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
@@ -156,6 +157,7 @@ export class App implements ScreenContext {
   private narratedCombat: CombatState | null = null;
   private backdropCache: { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } | null = null;
   private composedBattlefield: { backdropKey: string; content: TextChunk[][]; rows: TextChunk[][] } | null = null;
+  private renderedBattlefieldRows: TextChunk[][] | null = null;
   /** The map only changes when the party moves or reaches a new floor. */
   private floorMapCache: { floor: Floor; pathLength: number; currentRoomId: Id; exitKeys: boolean; map: ReturnType<typeof renderFloorMap> } | null = null;
   /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
@@ -1012,7 +1014,11 @@ export class App implements ScreenContext {
     if (composed?.backdropKey !== backdropKey || !sameContent(composed.content, battlefieldRows)) {
       this.composedBattlefield = { backdropKey, content: battlefieldRows, rows: composeBattlefield(battlefieldRows, backdrop, battlefieldWidth, contentLeft, shadow) };
     }
-    this.battlefield.content = joinLines(paintCombatFx(this.composedBattlefield!.rows, anchors, this.reveal.attackFrames, contentLeft));
+    const rows = paintCombatFx(this.composedBattlefield!.rows, anchors, this.reveal.attackFrames, contentLeft, COMBAT_FX, this.reveal.supportFrames);
+    if (rows !== this.renderedBattlefieldRows) {
+      this.battlefield.content = joinLines(rows);
+      this.renderedBattlefieldRows = rows;
+    }
     this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];

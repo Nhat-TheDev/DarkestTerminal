@@ -222,6 +222,8 @@ export interface SkillDefinition {
   unlockLevel: number;
   /** Set only on the stand-in skill for a used item: item damage and heals never crit. */
   fromItem?: true;
+  visualSourceId?: Id;
+  visualDamageType?: DamageType;
   usesPerCombat?: number;
   cooldownTurns?: number;
   isUltimate?: boolean;
@@ -1191,6 +1193,12 @@ export interface LogSession {
 
 export type PhysicalAttackVisual = "thrust" | "slash" | "blunt";
 
+export interface CombatEffectCue {
+  targetId: Id;
+  sourceId?: Id;
+  visual: string;
+}
+
 export interface HitMark {
   amount: number;
   /** Absent = the target took all of `amount`; a hit after the target has fallen is all overkill. */
@@ -1207,7 +1215,8 @@ export interface LogEntry {
   /** Carries a session that has no line to show; never rendered. */
   hidden?: true;
   /** Direct hits only, not damage-over-time ticks. */
-  hit?: HitMark & { targetId: Id; sourceId?: Id; visual?: PhysicalAttackVisual };
+  hit?: HitMark & { targetId: Id; sourceId?: Id; visual?: string };
+  effect?: CombatEffectCue;
   healCritOf?: Id;
   /** Unit (a summon's owner) that lost a status whose `statusRole` is "buff". */
   buffLostOf?: Id;

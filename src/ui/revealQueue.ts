@@ -1,10 +1,20 @@
-import type { CombatantSnapshot, HitMark, Id, LogEntry, LogSession } from "../types";
+import type { CombatEffectCue, CombatantSnapshot, HitMark, Id, LogEntry, LogSession } from "../types";
 import { COMBAT_FX } from "../data/combatFx";
 
 export interface AttackFrame {
   hit: NonNullable<LogEntry["hit"]>;
   progress: number;
   impactAge: number;
+}
+
+export interface SupportFrame {
+  effect: CombatEffectCue;
+  age: number;
+}
+
+function effectTicks(visual: string | undefined): number {
+  const animation = visual ? COMBAT_FX.presets[visual] : undefined;
+  return animation?.phase === "impact" ? animation.ticks ?? animation.frames.length : 0;
 }
 
 export const REVEAL_TICK_MS = 100;
@@ -56,6 +66,10 @@ function toGroups(entries: LogEntry[]): Group[] {
     // Party-wide fear (end of round, victory) has nothing else to show, so it starts at the impact; otherwise it follows the session's own hold.
     let hold = group.session.cause === "fear" ? IMPACT_TICKS : Math.max(SESSION_MIN_TICKS, IMPACT_TICKS + group.entries.length - 1) + group.hitBeats * HIT_BEAT_TICKS;
     if (group.hits.size > 0) hold = Math.max(hold, IMPACT_TICKS + group.hitBeats * HIT_BEAT_TICKS + COMBAT_FX.flash.frames.length);
+    for (const entry of group.entries) {
+      const duration = Math.max(effectTicks(entry.hit?.visual), effectTicks(entry.effect?.visual));
+      hold = Math.max(hold, IMPACT_TICKS + group.hitBeats * HIT_BEAT_TICKS + duration);
+    }
     group.fearStart = group.session.fearChangedIds.length > 0 ? hold : null;
     group.span = group.fearStart === null ? hold : group.fearStart + FEAR_BEAT_TICKS;
   }
@@ -140,8 +154,32 @@ export class RevealQueue {
       const beat = rank.get(hit.targetId) ?? 0;
       rank.set(hit.targetId, beat + 1);
       const impactAge = this.ticks - 1 - IMPACT_TICKS - beat * HIT_BEAT_TICKS;
-      if (impactAge < -IMPACT_TICKS || impactAge >= COMBAT_FX.flash.frames.length) continue;
+      if (impactAge < -IMPACT_TICKS || impactAge >= Math.max(COMBAT_FX.flash.frames.length, effectTicks(hit.visual))) continue;
       frames.push({ hit, progress: Math.min(1, (impactAge + IMPACT_TICKS) / (IMPACT_TICKS - 1)), impactAge });
+    }
+    return frames;
+  }
+
+  get supportFrames(): SupportFrame[] {
+    if (!this.current?.session) return [];
+    const elapsed = this.ticks - 1 - IMPACT_TICKS;
+    if (elapsed < 0) return [];
+    const seen = new Set<string>();
+    const frames: SupportFrame[] = [];
+    const ranks = new Map<Id, number>();
+    let beat = 0;
+    for (const { hit, effect } of this.current.entries) {
+      if (hit) {
+        beat = ranks.get(hit.targetId) ?? 0;
+        ranks.set(hit.targetId, beat + 1);
+      }
+      const age = elapsed - beat * HIT_BEAT_TICKS;
+      if (age < 0) continue;
+      if (!effect || age >= effectTicks(effect.visual)) continue;
+      const key = JSON.stringify([effect.targetId, effect.visual, beat]);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      frames.push({ effect, age });
     }
     return frames;
   }

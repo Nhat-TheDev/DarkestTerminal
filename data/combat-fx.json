@@ -86,115 +86,3243 @@
       },
       "frames": [
         {
-          "offsetX": -10,
-          "offsetY": -3,
+          "offsetX": -8,
+          "offsetY": -5,
           "rows": [
             "C"
           ]
         },
         {
-          "offsetX": -10,
-          "offsetY": -3,
+          "offsetX": -8,
+          "offsetY": -5,
           "rows": [
-            "ACCC",
-            "...C"
+            "AC.",
+            ".AC",
+            "..C"
           ]
         },
         {
-          "offsetX": -10,
-          "offsetY": -3,
+          "offsetX": -8,
+          "offsetY": -5,
           "rows": [
-            "AAAAC..",
-            "..AACCC"
+            "BB...",
+            ".BC..",
+            "..AC.",
+            "...AC",
+            "....C"
           ]
         },
         {
-          "offsetX": -10,
-          "offsetY": -3,
+          "offsetX": -8,
+          "offsetY": -5,
           "rows": [
-            "BBBAA....",
-            "..BAAAAC.",
-            ".......CC"
+            ".B....",
+            ".BA...",
+            "..AA..",
+            "...AA.",
+            "....AC",
+            "....CC",
+            "....C."
           ]
         },
         {
-          "offsetX": -10,
-          "offsetY": -3,
+          "offsetX": -8,
+          "offsetY": -5,
           "rows": [
-            "BBBBB......",
-            "..BBBBAA...",
-            ".......AAC.",
-            ".........CC"
+            ".B....",
+            ".BB...",
+            "..BA..",
+            "...AA.",
+            "....AC",
+            "....CC",
+            "...CC.",
+            "...C.."
           ]
         }
       ]
     },
     "blunt": {
       "palette": {
-        "A": "#8f9dae",
-        "B": "#596575",
-        "C": "#d5dfe8",
+        "A": "#9eae8f",
+        "B": "#5e7458",
+        "C": "#cfeab8",
         "D": "#92754b"
       },
       "frames": [
         {
-          "offsetX": -3,
-          "offsetY": -13,
+          "offsetX": -5,
+          "offsetY": -10,
           "rows": [
-            "...D...",
-            "...D...",
-            "...D...",
-            "CCCCCCB",
-            "CAAAAAB",
-            "CBBBBBB"
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
           ]
         },
         {
-          "offsetX": -3,
-          "offsetY": -12,
+          "offsetX": -5,
+          "offsetY": -9,
           "rows": [
-            "...D...",
-            "...D...",
-            "...D...",
-            "CCCCCCB",
-            "CAAAAAB",
-            "CBBBBBB"
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
           ]
         },
         {
-          "offsetX": -3,
-          "offsetY": -11,
-          "rows": [
-            "...D...",
-            "...D...",
-            "...D...",
-            "CCCCCCB",
-            "CAAAAAB",
-            "CBBBBBB"
-          ]
-        },
-        {
-          "offsetX": -3,
+          "offsetX": -5,
           "offsetY": -8,
           "rows": [
-            "...D...",
-            "...D...",
-            "...D...",
-            "CCCCCCB",
-            "CAAAAAB",
-            "CBBBBBB"
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -8,
+          "rows": [
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -7,
+          "rows": [
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
+          ]
+        }
+      ]
+    },
+    "arrow": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#8f9dae",
+        "C": "#ffffff",
+        "D": "#afb5bb"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            ".....D..",
+            "B.....C.",
+            ".AAAAACC",
+            "B.....C.",
+            ".....D.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            ".....D..",
+            "B.....C.",
+            ".AAAAACC",
+            "B.....C.",
+            ".....D.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            ".....D..",
+            "B.....C.",
+            ".AAAAACC",
+            "B.....C.",
+            ".....D.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            ".....D..",
+            "B.....C.",
+            ".AAAAACC",
+            "B.....C.",
+            ".....D.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            ".....D..",
+            "B.....C.",
+            ".AAAAACC",
+            "B.....C.",
+            ".....D.."
+          ]
+        }
+      ]
+    },
+    "knife": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#8f9dae",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        }
+      ]
+    },
+    "shuriken": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#8f9dae",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..AB.",
+            "AACAA",
+            ".BA..",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..AB.",
+            "AACAA",
+            ".BA..",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            ".ABA.",
+            "..C..",
+            ".ABA.",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            ".ABA.",
+            "..C..",
+            ".ABA.",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..AB.",
+            "AACAA",
+            ".BA..",
+            "..A.."
+          ]
+        }
+      ]
+    },
+    "axe": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#8f9dae",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "AAAAC",
+            "..ACC",
+            ".AAAC",
+            "..B..",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "AAAAC",
+            "..ACC",
+            ".AAAC",
+            "..B..",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "..B..",
+            "..B..",
+            "CAAA.",
+            "CCA..",
+            "CAAAA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "..B..",
+            "..B..",
+            "CAAA.",
+            "CCA..",
+            "CAAAA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "AAAAC",
+            "..ACC",
+            ".AAAC",
+            "..B..",
+            "..B.."
+          ]
+        }
+      ]
+    },
+    "rock": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#bcb19b",
+        "B": "#706759",
+        "C": "#e4ddcd"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        }
+      ]
+    },
+    "bone": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ded5bd",
+        "B": "#9e967e",
+        "C": "#fff9df"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "AA......AA",
+            "..AAAAAA..",
+            "AA......AA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "AA......AA",
+            "..AAAAAA..",
+            "AA......AA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "AA..AA",
+            "..AA..",
+            "..AA..",
+            "..AA..",
+            "AA..AA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "AA..AA",
+            "..AA..",
+            "..AA..",
+            "..AA..",
+            "AA..AA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "AA......AA",
+            "..AAAAAA..",
+            "AA......AA"
+          ]
+        }
+      ]
+    },
+    "dice": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#e6dcc3",
+        "B": "#7c6d58",
+        "C": "#a43f3f"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "AAA",
+            "ACA",
+            "AAA"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "AAA",
+            "CAC",
+            "AAA"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "AAA",
+            "CAC",
+            "AAA"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "AAA",
+            "CAC",
+            "AAA"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "AAA",
+            "CAC",
+            "AAA"
+          ]
+        }
+      ]
+    },
+    "fireball": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".AABA.",
+            "ABCCBA",
+            ".AABA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".AABA.",
+            "ABCCBA",
+            ".AABA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".AABA.",
+            "ABCCBA",
+            ".AABA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".AABA.",
+            "ABCCBA",
+            ".AABA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".AABA.",
+            "ABCCBA",
+            ".AABA."
+          ]
+        }
+      ]
+    },
+    "arcane": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#9bc8ef",
+        "B": "#5c79bc",
+        "C": "#ecf7ff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            ".ACA.",
+            "ACCCA",
+            ".ACA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            ".ACA.",
+            "ACCCA",
+            ".ACA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            ".ACA.",
+            "ACCCA",
+            ".ACA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            ".ACA.",
+            "ACCCA",
+            ".ACA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            ".ACA.",
+            "ACCCA",
+            ".ACA.",
+            "..A.."
+          ]
+        }
+      ]
+    },
+    "ice": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#c9f5ff",
+        "B": "#66bce3",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..CCCC.",
+            "CAAAAAC",
+            "..BBAC."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..CCCC.",
+            "CAAAAAC",
+            "..BBAC."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..CCCC.",
+            "CAAAAAC",
+            "..BBAC."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..CCCC.",
+            "CAAAAAC",
+            "..BBAC."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "C.C...C",
+            "AC.C.AC",
+            ".B.....",
+            "....AC.",
+            "BC...B."
+          ]
+        }
+      ]
+    },
+    "holy": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#fff0b0",
+        "B": "#d4b95e",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -5,
+          "rows": [
+            ".......",
+            "...C...",
+            "..CCC..",
+            "...C...",
+            ".......",
+            ".......",
+            "......."
           ]
         },
         {
           "offsetX": -3,
           "offsetY": -5,
           "rows": [
-            "...D...",
-            "...D...",
-            "...D...",
-            "CCCCCCB",
-            "CAAAAAB",
-            "CBBBBBB"
+            "...A...",
+            "...C...",
+            ".ACCCA.",
+            "...C...",
+            "...A...",
+            "...A...",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -5,
+          "rows": [
+            ".A.A.A.",
+            "...C...",
+            "BACCCAB",
+            "...C...",
+            ".A.A.A.",
+            "...A...",
+            "...B..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -5,
+          "rows": [
+            ".A.A.A.",
+            "..CCC..",
+            "BACCCAB",
+            "..CCC..",
+            ".A.A.A.",
+            "...A...",
+            "...B..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -5,
+          "rows": [
+            "B..C..B",
+            ".......",
+            "AC...CA",
+            ".......",
+            "B..C..B",
+            "...C...",
+            "...A..."
+          ]
+        }
+      ]
+    },
+    "shadow": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#b19be5",
+        "B": "#725593",
+        "C": "#e0ceff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        }
+      ]
+    },
+    "flask": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#a6db67",
+        "B": "#527f42",
+        "C": "#d9f4ad"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "ACAA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        }
+      ]
+    },
+    "fire-flask": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "ACAA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        }
+      ]
+    },
+    "ice-flask": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#c9f5ff",
+        "B": "#66bce3",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "ACAA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        }
+      ]
+    },
+    "thunder-flask": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#a8cafa",
+        "B": "#7597c9",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "ACAA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        }
+      ]
+    },
+    "lightning": {
+      "placement": "beam",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#b6d5ff",
+        "B": "#668bc4",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".ABB.....",
+            ".CCCA....",
+            "BABBCA..B",
+            "CA..BCACC",
+            "B....ACAB",
+            ".....BBB.",
+            "......B.."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".ABB.....",
+            ".CCCA....",
+            "BABBCA..B",
+            "CA..BCACC",
+            "B....ACAB",
+            ".....BBB.",
+            "......B.."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".B....B..",
+            ".CA..BCA.",
+            "BACA.CABB",
+            "CABCAA.AC",
+            "B..BCB..B",
+            "...BB....",
+            "....B...."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".B....B..",
+            ".CA..BCA.",
+            "BACA.CABB",
+            "CABCAA.AC",
+            "B..BCB..B",
+            "...BB....",
+            "....B...."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".ABB.....",
+            ".CCCA....",
+            "BABBCA..B",
+            "CA..BCACC",
+            "B....ACAB",
+            ".....BBB.",
+            "......B.."
+          ]
+        }
+      ]
+    },
+    "shadow-beam": {
+      "placement": "beam",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#604899",
+        "B": "#3e2a55",
+        "C": "#8a6fb8"
+      },
+      "frames": [
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "..........",
+            "..........",
+            "AAAAAABCCC",
+            "CCCBAAAAAA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "..........",
+            "..........",
+            "AAAAAABCCC",
+            "CCCBAAAAAA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "..........",
+            "..........",
+            "ABCCCAAAAA",
+            "AAAAACCCBA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "..........",
+            "..........",
+            "ABCCCAAAAA",
+            "AAAAACCCBA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "..........",
+            "..........",
+            "AAAAAABCCC",
+            "CCCBAAAAAA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        }
+      ]
+    },
+    "fire-breath": {
+      "placement": "beam",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".......CC",
+            ".CBCBBBBB",
+            "CBCAAACAA",
+            "AAAACAAAC",
+            "BCBAABCBA",
+            ".BC.CCBCB",
+            "........C"
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".......CC",
+            ".CBCBBBBB",
+            "CBCAAACAA",
+            "AAAACAAAC",
+            "BCBAABCBA",
+            ".BC.CCBCB",
+            "........C"
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "..CC.....",
+            "CBAB.CCBC",
+            "ACAACCABA",
+            "BACAAABAC",
+            "CAAC.CCBA",
+            "CBCC...BC",
+            "...C....."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "..CC.....",
+            "CBAB.CCBC",
+            "ACAACCABA",
+            "BACAAABAC",
+            "CAAC.CCBA",
+            "CBCC...BC",
+            "...C....."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".......CC",
+            "..CCCCBAB",
+            "CBBCAACAB",
+            "ACAABAAAC",
+            "BBACABABA",
+            ".CCCBCCBB",
+            "......CC."
+          ]
+        }
+      ]
+    },
+    "fire-pillar": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -12,
+          "rows": [
+            "CBAAACBAA",
+            "BACAAAAC.",
+            ".AABCABA.",
+            ".BBAAACB.",
+            "B.CBAA.B.",
+            "B..ACAA.B",
+            "...AAB...",
+            ".B.CAA.B.",
+            "..BBAC...",
+            "..CAABB..",
+            "B.BACAA.B",
+            "..CAACBA.",
+            "..ABCABC.",
+            ".CAAABCBC",
+            "AABACAAAB"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -12,
+          "rows": [
+            "CBAAACBAA",
+            "BACAAAAC.",
+            "..ABCABA.",
+            ".BBAAACB.",
+            "B.CBAA.B.",
+            "B.AACAA.B",
+            "...AAB...",
+            ".B.CAA.B.",
+            "..BBAC...",
+            "..CAABB..",
+            "B..ACAA.B",
+            "..CAACB..",
+            ".AABCABC.",
+            ".CAAABCBC",
+            "AABACAAAB"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -12,
+          "rows": [
+            "BAABCAAAB",
+            ".CAAABCAA",
+            ".ABCAAAB.",
+            ".CAABCBA.",
+            "B.CBAAAC.",
+            "..CACBA.B",
+            ".B.AAAB..",
+            "B..CAB..A",
+            ".A.AAC.B.",
+            "..CBAAA..",
+            "B.AACAAC.",
+            ".CBAABCB.",
+            ".AACAABA.",
+            ".CBABCABC",
+            "CAACAABCB"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -12,
+          "rows": [
+            "BAABCAAAB",
+            ".CAAABCAA",
+            ".ABCAAAB.",
+            ".CAABCBA.",
+            "B.CBAAAC.",
+            "..CACBA.B",
+            ".B.AAAB..",
+            "B..CAB..A",
+            ".A.AAC.B.",
+            "..CBAAA..",
+            "B.AACAAC.",
+            ".CBAABCB.",
+            ".AACAABA.",
+            ".CBABCABC",
+            "CAACAABCB"
+          ]
+        },
+        {
+          "offsetX": 54,
+          "offsetY": -12,
+          "rows": [
+            "CBAAACBAA",
+            "BACAAAAC.",
+            ".AABCABA.",
+            ".BBAAACB.",
+            "B.CBAAAB.",
+            "B.AACAA.B",
+            "...AAB...",
+            ".B.CAA.B.",
+            "..BBAC...",
+            "..CAABB..",
+            "B.BACAA.B",
+            "..CAACBA.",
+            ".AABCABC.",
+            ".CAAABCBC",
+            "AABACAAAB"
+          ]
+        }
+      ]
+    },
+    "ice-burst": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#c9f5ff",
+        "B": "#66bce3",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            "...C.C...",
+            "....C....",
+            "...C.C...",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A...A..",
+            "...C.C...",
+            "AAA.C.AAA",
+            "...C.C...",
+            "..A...A.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "C.A...A.C",
+            "...B.B...",
+            "AAB...BAA",
+            "...B.B...",
+            "C.A...A.C"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "C.A...A.C",
+            "...B.B...",
+            "AAB...BAA",
+            "...B.B...",
+            "C.A...A.C"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "C.B...B.C",
+            "....C....",
+            "AB.CCC.BA",
+            "....C....",
+            "C.B...B.C"
+          ]
+        }
+      ]
+    },
+    "storm": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#b6d5ff",
+        "B": "#668bc4",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -12,
+          "rows": [
+            "..A...A..",
+            ".AC..AC..",
+            "AC..AC...",
+            "A.C.A.C..",
+            "A..AC..C.",
+            "AC..AC...",
+            ".AC..AC..",
+            "..AC..AC.",
+            ".A.AC..AA",
+            "A...A...A",
+            "....AC..A",
+            "....A.CAC",
+            "...AC.AC.",
+            "..AC..C.C",
+            ".AC...A.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -12,
+          "rows": [
+            "..A...A..",
+            ".AC..AC..",
+            "AC..AC...",
+            "A.C.A.C..",
+            "A..AC..C.",
+            "AC..AC..C",
+            ".AC..AC..",
+            "..AC..AC.",
+            ".A.AC..AA",
+            "A...A...A",
+            "A...AC..A",
+            ".A..A.CAC",
+            "...AC.AC.",
+            "..AC..C.C",
+            ".AC...A.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -12,
+          "rows": [
+            "AC...AC..",
+            ".AC...AC.",
+            "..AC...AC",
+            ".C.AC...A",
+            "A..A.C..C",
+            "..AC..CAC",
+            ".AC...AC.",
+            "AC...AC..",
+            "A.A.AC...",
+            "C..AA....",
+            "A...C....",
+            "C...AC...",
+            "AC...AC..",
+            ".AC...AC.",
+            "..A....A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -12,
+          "rows": [
+            "AC...AC..",
+            ".AC...AC.",
+            "..AC...AC",
+            ".C.AC...A",
+            "A..A.C..C",
+            "..AC..CAC",
+            ".AC...AC.",
+            "AC...AC..",
+            "A.A.AC...",
+            "C..AA.C..",
+            "A...C..C.",
+            "C...AC..C",
+            "AC...AC..",
+            ".AC...AC.",
+            "..A....A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -12,
+          "rows": [
+            "..A...A..",
+            ".AC..AC..",
+            "AC..AC...",
+            "A.C.A.C..",
+            "A..AC..C.",
+            "AC..AC..A",
+            ".AC..AC.A",
+            "..AC..AC.",
+            ".A.AC..AA",
+            "A...A...A",
+            "A...AC..A",
+            ".A..A.CAC",
+            ".A.AC.AC.",
+            "..AC..C.C",
+            ".AC...A.."
+          ]
+        }
+      ]
+    },
+    "poison-cloud": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#a6db67",
+        "B": "#527f42",
+        "C": "#d9f4ad"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..AA...",
+            ".ABAAA.",
+            "AACAABA",
+            ".AAABAA",
+            "..AAA.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AA.AA.",
+            "AAABAAB",
+            "BAACAAB",
+            "AABAAAA",
+            ".AAAAA."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AA.AA.",
+            "AAABAAB",
+            "BAACAAB",
+            "AABAAAA",
+            ".AAAAA."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AA.AA.",
+            "AAABAAB",
+            "BAACAAB",
+            "AABAAAA",
+            ".AAAAA."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AA.AA.",
+            "AAABAAB",
+            "BAACAAB",
+            "AABAAAA",
+            ".AAAAA."
+          ]
+        }
+      ]
+    },
+    "shockwave": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#c0aa84",
+        "B": "#7d6c51",
+        "C": "#e7d9bb"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..AAA..",
+            ".A...A.",
+            "A.....A",
+            ".A...A.",
+            "..AAA.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AAAAA.",
+            "A.....A",
+            "A.....A",
+            "A.....A",
+            ".AAAAA."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AAAAA.",
+            "A.....A",
+            "A.....A",
+            "A.....A",
+            ".AAAAA."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AAAAA.",
+            "A.....A",
+            "A.....A",
+            "A.....A",
+            ".AAAAA."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AAAAA.",
+            "A.....A",
+            "A.....A",
+            "A.....A",
+            ".AAAAA."
+          ]
+        }
+      ]
+    },
+    "web": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ddd9c8",
+        "B": "#9e9b90",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A.AAA.A.",
+            "A.A.A.A.A",
+            "AAAAAAAAA",
+            "A.A.A.A.A",
+            ".A.AAA.A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A.AAA.A.",
+            "A.A.A.A.A",
+            "AAAAAAAAA",
+            "A.A.A.A.A",
+            ".A.AAA.A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A.AAA.A.",
+            "A.A.A.A.A",
+            "AAAAAAAAA",
+            "A.A.A.A.A",
+            ".A.AAA.A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A.AAA.A.",
+            "A.A.A.A.A",
+            "AAAAAAAAA",
+            "A.A.A.A.A",
+            ".A.AAA.A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A.AAA.A.",
+            "A.A.A.A.A",
+            "AAAAAAAAA",
+            "A.A.A.A.A",
+            ".A.AAA.A.",
+            "A...A...A"
+          ]
+        }
+      ]
+    },
+    "shadow-burst": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#b19be5",
+        "B": "#725593",
+        "C": "#e0ceff"
+      },
+      "frames": [
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            "..A...A..",
+            "...ABA...",
+            "AAABCBAAA",
+            "...ABA...",
+            "..A...A.."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            "A...A...A",
+            ".AAABAAA.",
+            "AABCACBAA",
+            ".AAABAAA.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            "A...A...A",
+            ".AAABAAA.",
+            "AABCACBAA",
+            ".AAABAAA.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            "A...A...A",
+            ".AAABAAA.",
+            "AABCACBAA",
+            ".AAABAAA.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            "A...A...A",
+            ".AAABAAA.",
+            "AABCACBAA",
+            ".AAABAAA.",
+            "A...A...A"
+          ]
+        }
+      ]
+    },
+    "tentacle": {
+      "placement": "beam",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#c28b9c",
+        "B": "#755565",
+        "C": "#eed0d4"
+      },
+      "frames": [
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            ".AA......",
+            "ACCA..AAA",
+            "CBBCAACCC",
+            "B..BCCBBB",
+            "....BB...",
+            "........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            ".A.....A.",
+            "ACA..AACA",
+            "CBCAACCBC",
+            "B.BCCBB.B",
+            "...BB....",
+            "........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            "......AA.",
+            "AA..AACCA",
+            "CCAACCBBC",
+            "BBCCBB..B",
+            "..BB.....",
+            "........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            ".....AA..",
+            "A..AACCAA",
+            "CAACCBBCC",
+            "BCCBB..BB",
+            ".BB......",
+            "........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            "....AA...",
+            "A.AACCA.A",
+            "CACCBBCAC",
+            "BCBB..BCB",
+            ".B.....B.",
+            "........."
+          ]
+        }
+      ]
+    },
+    "heal": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#80d89d",
+        "B": "#69d38e",
+        "C": "#d6ffe2"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": 1,
+          "rows": [
+            ".....",
+            ".....",
+            "..B..",
+            ".....",
+            "....."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            ".....",
+            "..B..",
+            ".BAB.",
+            "..B..",
+            "....."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "..B..",
+            "..A..",
+            "BACAB",
+            "..A..",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "..B..",
+            ".BAB.",
+            "BACAB",
+            ".BAB.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            "A.A.A",
+            "..C..",
+            "AC.CA",
+            "..C..",
+            "A.A.A"
+          ]
+        }
+      ]
+    },
+    "mana": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#91bfff",
+        "B": "#516da8",
+        "C": "#e6f1ff"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": 1,
+          "rows": [
+            "..A..",
+            ".ACA.",
+            "ACCCA",
+            ".ACA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            "A...A",
+            "..A..",
+            ".ACA.",
+            "..A..",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "A...A",
+            "..A..",
+            ".ACA.",
+            "..A..",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "A...A",
+            "..A..",
+            ".ACA.",
+            "..A..",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            "..A..",
+            ".ACA.",
+            "..A..",
+            "A...A"
+          ]
+        }
+      ]
+    },
+    "buff": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#7a81e1",
+        "B": "#3e5ae5"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        }
+      ]
+    },
+    "ward": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#a8cee2",
+        "B": "#69899a",
+        "C": "#eaf8ff"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            "A..C..A",
+            "A.....A",
+            ".A...A.",
+            "..AAA..",
+            "...A..."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            "A..C..A",
+            "A.....A",
+            ".A...A.",
+            "..AAA..",
+            "...A..."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            "A..C..A",
+            "A.....A",
+            ".A...A.",
+            "..AAA..",
+            "...A..."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            "A..C..A",
+            "A.....A",
+            ".A...A.",
+            "..AAA..",
+            "...A..."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            "A..C..A",
+            "A.....A",
+            ".A...A.",
+            "..AAA..",
+            "...A..."
+          ]
+        }
+      ]
+    },
+    "focus": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#fff0b0",
+        "B": "#d4b95e",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "A.A.A",
+            ".ACA.",
+            "A.A.A",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "A.A.A",
+            ".ACA.",
+            "A.A.A",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "A.A.A",
+            ".ACA.",
+            "A.A.A",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "A.A.A",
+            ".ACA.",
+            "A.A.A",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "A.A.A",
+            ".ACA.",
+            "A.A.A",
+            "..A.."
+          ]
+        }
+      ]
+    },
+    "haste": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#9ce1cf",
+        "B": "#61a08e",
+        "C": "#e1fff6"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            ".A...",
+            ".CA..",
+            ".A...",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".A..A",
+            "..A..",
+            "..CA.",
+            "..A..",
+            ".A..A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".A..A",
+            "..A..",
+            "..CA.",
+            "..A..",
+            ".A..A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".A..A",
+            "..A..",
+            "..CA.",
+            "..A..",
+            ".A..A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".A..A",
+            "..A..",
+            "..CA.",
+            "..A..",
+            ".A..A"
+          ]
+        }
+      ]
+    },
+    "debuff": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#c795c4",
+        "B": "#80577e",
+        "C": "#f0d4ed"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            "AAAAA",
+            ".AAA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            "AAAAA",
+            ".AAA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            "AAAAA",
+            ".AAA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            "AAAAA",
+            ".AAA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            "AAAAA",
+            ".AAA.",
+            "..A.."
+          ]
+        }
+      ]
+    },
+    "poison": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#a6db67",
+        "B": "#527f42",
+        "C": "#d9f4ad"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".A...A.",
+            "..A.A..",
+            "...C...",
+            "..ABA..",
+            ".A...A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".A...A.",
+            "..A.A..",
+            "...C...",
+            "..ABA..",
+            ".A...A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".A...A.",
+            "..A.A..",
+            "...C...",
+            "..ABA..",
+            ".A...A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".A...A.",
+            "..A.A..",
+            "...C...",
+            "..ABA..",
+            ".A...A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".A...A.",
+            "..A.A..",
+            "...C...",
+            "..ABA..",
+            ".A...A."
+          ]
+        }
+      ]
+    },
+    "burn": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".A...A.",
+            "..A.A..",
+            "..ACA..",
+            ".AACAA.",
+            "AAAAAAA"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A.A..",
+            ".AA.AA.",
+            ".AACAA.",
+            "AAACAAA",
+            ".AAAAA."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A.A..",
+            ".AA.AA.",
+            ".AACAA.",
+            "AAACAAA",
+            ".AAAAA."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A.A..",
+            ".AA.AA.",
+            ".AACAA.",
+            "AAACAAA",
+            ".AAAAA."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A.A..",
+            ".AA.AA.",
+            ".AACAA.",
+            "AAACAAA",
+            ".AAAAA."
+          ]
+        }
+      ]
+    },
+    "bleed": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#d76c73",
+        "B": "#8c3b4b",
+        "C": "#f6b1ac"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            ".ACA.",
+            "AAAAA",
+            ".AAA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            ".ACA.",
+            "AAAAA",
+            ".AAA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            ".ACA.",
+            "AAAAA",
+            ".AAA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            ".ACA.",
+            "AAAAA",
+            ".AAA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..A..",
+            "..A..",
+            ".ACA.",
+            "AAAAA",
+            ".AAA."
+          ]
+        }
+      ]
+    },
+    "stun": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#f0d483",
+        "B": "#af934a",
+        "C": "#fff5cc"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -6,
+          "rows": [
+            "A...A",
+            "..C..",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -6,
+          "rows": [
+            "..A..",
+            "A.C.A",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -6,
+          "rows": [
+            "..A..",
+            "A.C.A",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -6,
+          "rows": [
+            "..A..",
+            "A.C.A",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -6,
+          "rows": [
+            "..A..",
+            "A.C.A",
+            "..A.."
+          ]
+        }
+      ]
+    },
+    "blind": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#9e98ad",
+        "B": "#605a70",
+        "C": "#d0cada"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            ".B...B.",
+            "..AAA..",
+            ".B...B.",
+            "AAAAAAA"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            ".B...B.",
+            "..AAA..",
+            ".B...B.",
+            "AAAAAAA"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            ".B...B.",
+            "..AAA..",
+            ".B...B.",
+            "AAAAAAA"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            ".B...B.",
+            "..AAA..",
+            ".B...B.",
+            "AAAAAAA"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AAAAAAA",
+            ".B...B.",
+            "..AAA..",
+            ".B...B.",
+            "AAAAAAA"
+          ]
+        }
+      ]
+    },
+    "silence": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#b19be5",
+        "B": "#725593",
+        "C": "#e0ceff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            ".A.A.",
+            "..C..",
+            ".A.A.",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            ".A.A.",
+            "..C..",
+            ".A.A.",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            ".A.A.",
+            "..C..",
+            ".A.A.",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            ".A.A.",
+            "..C..",
+            ".A.A.",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            ".A.A.",
+            "..C..",
+            ".A.A.",
+            "A...A"
+          ]
+        }
+      ]
+    },
+    "fear": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#b99bc9",
+        "B": "#6c526e",
+        "C": "#e2c9e9"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AA...AA",
+            "A.....A",
+            "...C...",
+            "A.....A",
+            "AA...AA"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AA...AA",
+            "A.....A",
+            "...C...",
+            "A.....A",
+            "AA...AA"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AA...AA",
+            "A.....A",
+            "...C...",
+            "A.....A",
+            "AA...AA"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AA...AA",
+            "A.....A",
+            "...C...",
+            "A.....A",
+            "AA...AA"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "AA...AA",
+            "A.....A",
+            "...C...",
+            "A.....A",
+            "AA...AA"
+          ]
+        }
+      ]
+    },
+    "mark": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#df9e9e",
+        "B": "#9c626e",
+        "C": "#ffe3d5"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..AAA..",
+            ".A...A.",
+            "A..C..A",
+            ".A...A.",
+            "..AAA.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..AAA..",
+            ".A...A.",
+            "A..C..A",
+            ".A...A.",
+            "..AAA.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..AAA..",
+            ".A...A.",
+            "A..C..A",
+            ".A...A.",
+            "..AAA.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..AAA..",
+            ".A...A.",
+            "A..C..A",
+            ".A...A.",
+            "..AAA.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..AAA..",
+            ".A...A.",
+            "A..C..A",
+            ".A...A.",
+            "..AAA.."
+          ]
+        }
+      ]
+    },
+    "cleanse": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#d6f4dc",
+        "B": "#7fa595",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "..A..",
+            "A.C.A",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "A...A",
+            "..C..",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "..A..",
+            ".....",
+            "A.C.A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "..A..",
+            ".....",
+            "A.C.A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "..A..",
+            ".....",
+            "A.C.A"
+          ]
+        }
+      ]
+    },
+    "dispel": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#b19be5",
+        "B": "#725593",
+        "C": "#e0ceff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "A.A.A",
+            ".ACA.",
+            "A.A.A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "A...A",
+            "..C..",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "A...A",
+            ".....",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "A...A",
+            ".....",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "A...A",
+            ".....",
+            "A...A"
+          ]
+        }
+      ]
+    },
+    "web-status": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#ddd9c8",
+        "B": "#9e9b90",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A..A..A.",
+            "..AAAAA..",
+            "AAAAAAAAA",
+            "..AAAAA..",
+            ".A..A..A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A..A..A.",
+            "..AAAAA..",
+            "AAAAAAAAA",
+            "..AAAAA..",
+            ".A..A..A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A..A..A.",
+            "..AAAAA..",
+            "AAAAAAAAA",
+            "..AAAAA..",
+            ".A..A..A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A..A..A.",
+            "..AAAAA..",
+            "AAAAAAAAA",
+            "..AAAAA..",
+            ".A..A..A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "A...A...A",
+            ".A..A..A.",
+            "..AAAAA..",
+            "AAAAAAAAA",
+            "..AAAAA..",
+            ".A..A..A.",
+            "A...A...A"
           ]
         }
       ]
@@ -240,29 +3368,149 @@
     "skullsplitter": "blunt",
     "rout": "blunt",
     "sealing-blow": "blunt",
-    "stomp": "blunt"
+    "stomp": "shockwave",
+    "quick-shot": "arrow",
+    "aimed-shot": "arrow",
+    "volley-shot": "arrow",
+    "crippling-shot": "arrow",
+    "piercing-arrow": "arrow",
+    "deadeye-shot": "arrow",
+    "arrow-shot": "arrow",
+    "knife-throw": "knife",
+    "throwing-knives": "knife",
+    "knife-flick": "knife",
+    "shuriken-storm": "shuriken",
+    "throw-axe": "axe",
+    "loaded-dice": "dice",
+    "arcane-bolt": "arcane",
+    "hollow-pulse": "arcane",
+    "fireball": "fireball",
+    "hellfire-strike": "fireball",
+    "summon-hellfire-imp": "fireball",
+    "lightning-bolt": "lightning",
+    "lightning-storm": "storm",
+    "thunder-gods-fury": "storm",
+    "fire-pillar": "fire-pillar",
+    "inferno": "fire-pillar",
+    "brand": "fire-pillar",
+    "dragon-fire-breath": "fire-breath",
+    "ember-lash": "fire-breath",
+    "frost-lance": "ice",
+    "grave-chill": "ice",
+    "ice-age": "ice-burst",
+    "smite": "holy",
+    "purify": "holy",
+    "divine-descent": "holy",
+    "vigil": "holy",
+    "vial-toss": "flask",
+    "blinding-vial": "flask",
+    "poison-bomb": "flask",
+    "acid-spit": "flask",
+    "fire-vial": "fire-flask",
+    "volatile-flask": "fire-flask",
+    "spreading-toxic-fog": "poison-cloud",
+    "total-plague": "poison-cloud",
+    "rock-throw": "rock",
+    "bone-throw": "bone",
+    "summon-golem": "shockwave",
+    "tremor": "shockwave",
+    "self-destruct": "shockwave",
+    "barbed-net": "web",
+    "web-spit": "web",
+    "web-barrage": "web",
+    "cocoon": "web",
+    "eldritch-bolt": "shadow",
+    "whispered-name": "shadow",
+    "soul-rend": "shadow-beam",
+    "withering-touch": "shadow-beam",
+    "hex": "shadow-burst",
+    "bind-tongue": "shadow-burst",
+    "withering-curse": "shadow-burst",
+    "doom": "shadow-burst",
+    "rigged-game": "shadow-burst",
+    "unravelling-tide": "shadow-burst",
+    "subsume": "shadow-burst",
+    "name-struck-out": "shadow-burst",
+    "grasping-remnants": "tentacle",
+    "paid-in-full": "tentacle",
+    "the-same-price": "tentacle",
+    "whats-left-listening": "tentacle",
+    "everything-you-asked-for": "tentacle",
+    "ask-properly": "tentacle",
+    "the-answer": "tentacle",
+    "rotting-embrace": "blunt",
+    "abyssal-judgment": "slash",
+    "interpose": null,
+    "rally": null,
+    "poison-coat": null,
+    "prayer": null,
+    "heal": null,
+    "mass-heal": null,
+    "sanctuary": null,
+    "lightning-axe": null,
+    "healing-draught": null,
+    "overwatch": null,
+    "smoke-bomb": null,
+    "summon-goblin": null,
+    "summon-spirit": null,
+    "totem-recall": null,
+    "command": null,
+    "jeer": null,
+    "battle-ballad": null,
+    "finale": "dice",
+    "lay-on-hands": null,
+    "defiance": null,
+    "guardian-angel": null,
+    "martyrs-oath": null,
+    "blood-pact": null,
+    "regeneration": null,
+    "settle-into-stone": null,
+    "guard-stance": null,
+    "hold-the-line": null,
+    "riposte-stance": null,
+    "into-the-rafters": null,
+    "old-fire-wakes": null,
+    "guard-position": null,
+    "undying": null,
+    "salute": null,
+    "parry-stance": null,
+    "dread-presence": null,
+    "second-salute": null,
+    "call-the-warband": null,
+    "war-cry": null,
+    "gets-up": null,
+    "bat-swarm": null,
+    "old-work": null,
+    "crumbling-shell": null,
+    "raise-the-dead": null,
+    "ledger-mark": null,
+    "unhurried": null,
+    "hung-lower": null,
+    "the-last-of-it": null,
+    "spirit-heal-single": null,
+    "spirit-heal-party": null
   },
   "basicAttacks": {
     "classes": {
       "knight": "slash",
-      "mage": null,
+      "mage": "arcane",
       "rogue": "thrust",
-      "acolyte": null,
+      "acolyte": "holy",
       "viking": "slash",
-      "plague-doctor": null,
-      "archer": null,
+      "plague-doctor": "flask",
+      "archer": "arrow",
       "ninja": "thrust",
-      "summoner": null,
-      "jester": null,
+      "summoner": "arcane",
+      "jester": "knife",
       "paladin": "blunt",
-      "warlock": null
+      "warlock": "shadow"
     },
     "monsters": {
       "dungeon-rat": "thrust",
       "black-bat": "thrust",
       "slime": "blunt",
       "goblin": "slash",
-      "cultist-initiate": null,
+      "cultist-initiate": "shadow",
       "ghoulish-crawler": "thrust",
       "vampire-bat": "thrust",
       "toxic-toad": "thrust",
@@ -271,21 +3519,21 @@
       "snake": "thrust",
       "lizard": "thrust",
       "spider": "thrust",
-      "goblin-shaman": null,
-      "cultist-zealot": null,
-      "ghost": null,
-      "skeleton-mage": null,
+      "goblin-shaman": "arcane",
+      "cultist-zealot": "shadow",
+      "ghost": "shadow",
+      "skeleton-mage": "arcane",
       "dire-wolf": "thrust",
       "swamp-slime": "blunt",
       "lava-slime": "blunt",
-      "fire-elemental": null,
+      "fire-elemental": "fireball",
       "water-elemental": "blunt",
       "gargoyle": "slash",
       "lesser-vampire": "thrust",
-      "skeleton-archer": null,
+      "skeleton-archer": "arrow",
       "skeleton-warrior": "slash",
       "orc-brute": "blunt",
-      "wraith": null,
+      "wraith": "shadow",
       "armored-beetle": "blunt",
       "cave-bear": "blunt",
       "lesser-golem": "blunt",
@@ -299,16 +3547,277 @@
       "vampire-lord": "slash",
       "void-amalgamation": "blunt",
       "ancient-golem": "blunt",
-      "lich": null,
-      "the-founder": null
+      "lich": "shadow",
+      "the-founder": "tentacle"
     },
     "summons": {
       "shadow-clone": "thrust",
-      "goblin-thrower": null,
+      "goblin-thrower": "rock",
       "stone-golem": "blunt",
-      "hellfire-imp": null,
+      "hellfire-imp": "fireball",
       "healer-spirit": null,
       "recall-totem": null
     }
+  },
+  "items": {
+    "small-health-potion": null,
+    "large-health-potion": null,
+    "small-mana-potion": null,
+    "large-mana-potion": null,
+    "exploration-kit": null,
+    "calming-draught": null,
+    "antidote": null,
+    "whetstone": null,
+    "temporary-ward": null,
+    "cracker-string": "flask",
+    "pitch-bomb": "fire-flask",
+    "frost-flask": "ice-flask",
+    "thunder-charge": "thunder-flask",
+    "blister-bomb": "fire-flask",
+    "rot-bomb": "flask",
+    "honing-oil": null,
+    "marrow-broth": null,
+    "serpent-oil": null,
+    "tar-flask": null,
+    "smoke-pellet": null,
+    "bandage-roll": null,
+    "resin-wrap": null,
+    "repelling-smoke-powder": null,
+    "acid-vial": null,
+    "war-paint": null,
+    "fracture-charge": null,
+    "deafening-charge": null,
+    "rally-standard": null,
+    "bulwark-draught": null,
+    "field-tonic": null,
+    "spark-salt": null,
+    "scholars-candle": null,
+    "hushed-bell": null,
+    "etched-lens": null,
+    "pitch-pipe": null,
+    "burn-salve": null,
+    "styptic-powder": null,
+    "eyewash": null,
+    "thread-knife": null,
+    "lye-wash": null,
+    "smelling-salts": null,
+    "mending-paste": null,
+    "purge-draught": null,
+    "greater-health-potion": null,
+    "greater-mana-potion": null,
+    "vermin-hide": null,
+    "predator-sinew": null,
+    "chitin-shard": null,
+    "cult-rag": null,
+    "grave-cloth": null,
+    "old-bone": null,
+    "ooze-residue": null,
+    "warband-trophy": null,
+    "elemental-core": null,
+    "wraith-essence": null,
+    "stone-core": null,
+    "bat-blood": null,
+    "bear-claw": null,
+    "silk-gland": null,
+    "prayer-beads": null,
+    "rotten-bandage": null,
+    "bone-shield-fragment": null,
+    "slime-solution": null,
+    "knuckle-guard": null,
+    "ember": null,
+    "hollow-plate": null,
+    "core-fragment": null,
+    "venom-thorn": null,
+    "warped-vambrace": null,
+    "broken-oath-sigil": null,
+    "warlords-trophy-chain": null,
+    "nobles-signet": null,
+    "dragon-scale": null,
+    "unraveled-fragment": null,
+    "weathered-keystone": null,
+    "phylactery-shard": null,
+    "grave-dust": null,
+    "rotten-flesh": null,
+    "broken-blade-fragment": null,
+    "rat-tail": null,
+    "venom-gland": null
+  },
+  "damageTypes": {
+    "physical": "slash",
+    "magic": "arcane",
+    "fire": "fireball",
+    "ice": "ice",
+    "lightning": "lightning",
+    "holy": "holy",
+    "poison": "poison-cloud",
+    "bleed": "bleed"
+  },
+  "outcomes": {
+    "heal": "heal",
+    "mana": "mana",
+    "buff": "buff",
+    "debuff": "debuff",
+    "cleanse": "cleanse",
+    "dispel": "dispel"
+  },
+  "statuses": {
+    "guard": "ward",
+    "guard-ii": "ward",
+    "guard-iii": "ward",
+    "held-ground": "ward",
+    "interposed": "buff",
+    "breached": "debuff",
+    "breached-ii": "debuff",
+    "breached-iii": "debuff",
+    "through-the-breach": "focus",
+    "through-the-breach-ii": "focus",
+    "through-the-breach-iii": "focus",
+    "taunt": "mark",
+    "challenge": "mark",
+    "rallied": "focus",
+    "rallied-ii": "focus",
+    "rallied-iii": "focus",
+    "poison-coated": "poison",
+    "venom-edge": "poison",
+    "venom-edge-ii": "buff",
+    "poisoned": "poison",
+    "poisoned-ii": "poison",
+    "poisoned-iii": "poison",
+    "burning": "burn",
+    "weakened": "debuff",
+    "weakened-ii": "debuff",
+    "stunned": "stun",
+    "stagger": "stun",
+    "empower": "buff",
+    "fortify": "ward",
+    "distracted": "debuff",
+    "mending": "buff",
+    "mending-ii": "buff",
+    "mending-iii": "buff",
+    "regeneration": "buff",
+    "poison-vulnerable": "poison",
+    "burning-vulnerable": "burn",
+    "bleeding-vulnerable": "bleed",
+    "acid-burn-vulnerable": "poison",
+    "acid-burn": "poison",
+    "corroded": "poison",
+    "webbed": "web-status",
+    "storm-empowered": "buff",
+    "storm-empowered-ii": "buff",
+    "storm-empowered-iii": "buff",
+    "storm-recoil": "debuff",
+    "bleeding": "bleed",
+    "deep-wound": "bleed",
+    "deep-wound-ii": "bleed",
+    "stealthed": "buff",
+    "stealthed-ii": "buff",
+    "stealthed-iii": "buff",
+    "smoke-cover": "haste",
+    "smoke-cover-ii": "haste",
+    "smoke-cover-iii": "haste",
+    "skittish": "haste",
+    "spirit-bound": "buff",
+    "stone-skin": "ward",
+    "hellfire-kindled": "burn",
+    "overwatched": "mark",
+    "overwatched-ii": "buff",
+    "overwatched-iii": "buff",
+    "blinded": "blind",
+    "blinded-ii": "blind",
+    "blinded-iii": "blind",
+    "agony": "bleed",
+    "totems-strength": "buff",
+    "bloodrage": "buff",
+    "bloodrage-ii": "buff",
+    "bloodrage-iii": "buff",
+    "shredded": "debuff",
+    "shredded-ii": "debuff",
+    "shredded-iii": "debuff",
+    "slowed": "debuff",
+    "enfeebled": "debuff",
+    "whetstones-edge": "buff",
+    "temporary-wards-hold": "ward",
+    "honing-oils-edge": "buff",
+    "marrow-broths-mend": "buff",
+    "tar-flasks-drag": "debuff",
+    "smoke-pellets-haze": "blind",
+    "bandage-rolls-mend": "buff",
+    "resin-wraps-ward": "ward",
+    "repelling-powders-veil": "debuff",
+    "acid-vials-breach": "debuff",
+    "war-paints-edge": "buff",
+    "fracture-charges-breach": "debuff",
+    "deafening-charges-din": "stun",
+    "rally-standards-edge": "buff",
+    "bulwark-draughts-ward": "ward",
+    "spark-salts-focus": "focus",
+    "scholars-candles-focus": "focus",
+    "hushed-bells-focus": "focus",
+    "etched-lens-focus": "focus",
+    "pitch-pipes-focus": "focus",
+    "blooded": "buff",
+    "attuned": "buff",
+    "hardened": "buff",
+    "quickened": "buff",
+    "knitting": "buff",
+    "knitting-ii": "buff",
+    "knitting-iii": "buff",
+    "knitting-iv": "buff",
+    "knitting-v": "buff",
+    "knitting-vi": "buff",
+    "challenged": "mark",
+    "marked": "mark",
+    "withered": "fear",
+    "riposte": "buff",
+    "airborne": "buff",
+    "engaged": "mark",
+    "engaged-ii": "mark",
+    "engaged-iii": "mark",
+    "sanctified": "buff",
+    "sanctified-ii": "buff",
+    "sanctified-iii": "buff",
+    "steadfast": "buff",
+    "consoled": "buff",
+    "absolved": "buff",
+    "absolved-ii": "buff",
+    "absolved-iii": "buff",
+    "netted": "web-status",
+    "ballad": "focus",
+    "ballad-ii": "focus",
+    "ballad-iii": "focus",
+    "hexed": "fear",
+    "pact": "focus",
+    "pact-ii": "focus",
+    "pact-iii": "focus",
+    "silenced": "silence",
+    "provoked": "mark",
+    "confused": "fear",
+    "rigged": "buff",
+    "sharp-face": "buff",
+    "dull-face": "debuff",
+    "bright-face": "focus",
+    "dim-face": "debuff",
+    "defiance": "buff",
+    "defiance-ii": "buff",
+    "defiance-iii": "buff",
+    "guardian-angel": "buff",
+    "guardian-angel-ii": "buff",
+    "guardian-angel-iii": "buff",
+    "vigil-channel": "holy",
+    "vigil-light": "buff",
+    "searing-light": "burn",
+    "condemned": "mark",
+    "condemned-ii": "mark",
+    "condemned-iii": "mark",
+    "martyrs-grace": "buff",
+    "martyrs-grace-ii": "buff",
+    "martyrs-grace-iii": "buff",
+    "cleansing-light": "buff",
+    "cleansing-light-ii": "buff",
+    "cleansing-light-iii": "buff",
+    "chilled": "ice-burst",
+    "frozen": "ice-burst",
+    "cocooned": "web-status",
+    "blessed": "buff"
   }
 }
