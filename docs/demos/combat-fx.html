@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Darkest Terminal — Combat effects demo</title>
+<style>
+  :root { color-scheme:dark; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:#100d0a; color:#d8cbb0 }
+  * { box-sizing:border-box }
+  body { margin:0; padding:28px 24px 20px }
+  main { max-width:1350px; margin:auto }
+  header { display:flex; justify-content:space-between; gap:16px; align-items:end; margin-bottom:22px }
+  h1 { margin:4px 0 0; font-size:21px; font-weight:500; letter-spacing:-.6px }
+  .eyebrow { color:#c9a227; font-size:11px; letter-spacing:2px }
+  .note, .help { color:#8a7d68; font-size:12px; line-height:1.7 }
+  .note { text-align:right; margin:0 }
+  .window { border:1px solid #4a3a2a; background:#171310 }
+  .titlebar { padding:10px 15px; border-bottom:1px solid #4a3a2a; color:#8a7d68; font-size:11px; display:flex; justify-content:space-between }
+  canvas { display:block; width:100%; height:auto; image-rendering:pixelated }
+  .controls { display:flex; flex-wrap:wrap; gap:7px; padding:14px 0 12px; border-bottom:1px solid #4a3a2a }
+  button,select { font:inherit; font-size:12px; border:1px solid #4a3a2a; background:#171310; color:#d8cbb0; padding:9px 12px; cursor:pointer; border-radius:0 }
+  button:hover,select:hover { border-color:#8a5a2a; background:#241c14 }
+  button[aria-pressed="true"] { color:#e8cd77; border-color:#c9a227; background:#2b2414 }
+  button:focus-visible,select:focus-visible { outline:2px solid #e8cd77; outline-offset:3px }
+  .transport { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:13px 0 }
+  label { margin-left:auto; color:#8a7d68; font-size:12px }
+  .help { margin:0 }
+  #status { color:#c9a227; margin-left:8px; font-size:12px }
+  @media(max-width:700px) { body { padding:18px 10px } header { align-items:start } h1 { font-size:17px } .note { display:none } label { margin-left:0 } button { padding:9px } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><span class="eyebrow">DARKEST TERMINAL / FIELD TEST</span><h1>Combat effects</h1></div>
+    <p class="note">Cell-based rendering · stationary units<br>Standalone visual demo</p>
+  </header>
+  <section class="window" aria-label="Terminal combat preview">
+    <div class="titlebar"><span>darkest-terminal — combat-fx</span><span>150 × 42 cells</span></div>
+    <canvas id="screen" width="1350" height="672" role="img" aria-label="Terminal battlefield with four heroes and three monsters. Attack effects play over stationary sprites."></canvas>
+  </section>
+  <nav class="controls" aria-label="Attack effects" id="effects"></nav>
+  <div class="transport">
+    <button id="play">Pause</button><button id="replay">Replay [R]</button>
+    <button id="direction" aria-pressed="false">Direction: party → monsters [D]</button>
+    <button id="autoplay" aria-pressed="true">Cycle all [A]</button>
+    <label for="speed">Playback </label><select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+    <span id="status" role="status" aria-live="polite"></span>
+  </div>
+  <p class="help">[1–7] Select effect &nbsp; [Space] Pause / play &nbsp; [R] Replay &nbsp; [D] Reverse &nbsp; [A] Cycle all<br>Sprites stay fixed. Only projectiles, weapon trails and impact cells animate. Browser playback is a visual preview of terminal effects.</p>
+</main>
+<script id="sprite-data" type="application/json">{"knight":{"rows":["..HHHFFFFFF....","...HHFFBEBEB...","D..H.FFBEBEB...","DG..KKKAARRRRRR",".DGIIKKKKRLFFLR","..DGAAAAARLLLLR","...DSCCCARFLLFR","...IIMCCCCRRRR.","..IIICCAJACC...",".JJJJNNN.NNN..."],"palette":{"H":"#cc6300","S":"#f2ce9c","E":"#342923","A":"#abc1d9","C":"#8f9dae","F":"#7a96b3","R":"#c3d6e9","N":"#a9bbcb","B":"#dfdce5","D":"#ffffff","G":"#c3b7b7","I":"#b4591d","J":"#c9a227","K":"#b60707","L":"#7a86a8","M":"#696249"}},"mage":{"rows":["..DBDBBDB..O.",".DBDBBSSSS.W.","B..BDSSSES.W.","...AAASAAA.W.","..AACCCCCAAW.","..AAACACAAAS.","..SCAACAAC.W.","...ACACACA.W.","..AAACCCAAAW.",".AAAAACAAAAA."],"palette":{"S":"#f2ce9c","E":"#2a1f18","A":"#8a5cc4","C":"#3d2560","W":"#8a6a3a","O":"#d070ff","B":"#706d97","D":"#9584ae"}},"archer":{"rows":["..JJJHHH.....","..HHJJSSS....","..HHHSSES.F..","..AAICIAAEF..",".AAAICIBEAF..",".AAAICIEBAF..",".SAICCCEAS...","..GGGGGEF.B..","..GGG.GFG..D.","..CCC.CCC...."],"palette":{"H":"#787573","S":"#f2ce9c","E":"#454545","A":"#deae4f","G":"#322511","B":"#ffffff","D":"#adadad","F":"#4fc467","C":"#54471c","I":"#a58622","J":"#bababa"}},"plague-doctor":{"rows":[".....HHHHH.....","...HHHHHHHHH...","....SSSSEES....","....SSSSSSSSS..","...AAIICIIAA...","DDAAAAICIAAAADD",".FFFAAICIAABBB.",".FFFAAICIAABBB.","...AAAICIAAA...","..AAAAICIAAAA.."],"palette":{"H":"#8a7050","S":"#786f64","E":"#d9d9d9","A":"#9eb18c","C":"#685f41","B":"#8d5fd3","D":"#ffffff","F":"#f9c824","I":"#cdc29d"}},"skeleton-guard":{"rows":[".....SSS...","...SS.S.SS.","....SS.SS..",".CCCCCAAAL.","CDEDDBHHHL.","CDDEDCHHHL.","..CCCLLL.L.","....LL.LL..","....LL.LL.."],"palette":{"H":"#3a3830","S":"#c9c2b0","A":"#5a5548","B":"#3a372e","L":"#8a8579","C":"#a2a4ae","D":"#6f757b","E":"#222022"}},"goblin":{"rows":["..DG...GD....","..DGGGGGD....","...GRGRG.....","..GGGCGGG....",".GGGGGGGGG.EA",".G.GGGGG.GEAE",".G.GGGGG.GAEE",".G.BBBBB.A...","...BB.BBA....","...GG.GG....."],"palette":{"G":"#6b8442","R":"#c4471c","C":"#27231b","B":"#364e18","D":"#748764","A":"#2b2512","E":"#989486"}},"slime":{"rows":[".........","...OOO...",".OOEOEOO.","OOOOEOOOO",".OOOOOOO."],"palette":{"E":"#1f3a15","O":"#4a8a3a"}}}</script>
+<script>
+'use strict';
+const sprites = JSON.parse(document.getElementById('sprite-data').textContent);
+const canvas = document.getElementById('screen'), ctx = canvas.getContext('2d');
+const C = { bg:'#100d0a', panel:'#171310', border:'#4a3a2a', text:'#d8cbb0', dim:'#8a7d68', gold:'#c9a227', red:'#e5484d', green:'#5fa85f', blue:'#5b8fc9' };
+const W = 9, H = 16, COLS = 150, ROWS = 42;
+const attacks = [
+  { name:'Arrow', kind:'arrow', color:'#e4d4a1', actor:2, impact:700, damage:24 },
+  { name:'Fireball', kind:'fire', color:'#f18d35', actor:1, impact:700, damage:38 },
+  { name:'Lightning', kind:'lightning', color:'#a8cafa', actor:1, impact:700, damage:46 },
+  { name:'Thrown flask', kind:'flask', color:'#8fd694', actor:3, impact:700, damage:21 },
+  { name:'Thrust', kind:'thrust', color:'#d5dfe8', actor:0, impact:420, damage:27 },
+  { name:'Slash', kind:'slash', color:'#e4d4a1', actor:0, impact:420, damage:32 },
+  { name:'Blunt strike', kind:'blunt', color:'#d1a23a', actor:0, impact:420, damage:35 }
+];
+const party = [
+  { sprite:'knight', name:'Knight', abbr:'KN', x:5, hp:148, mp:32 },
+  { sprite:'mage', name:'Mage', abbr:'MG', x:21, hp:87, mp:96 },
+  { sprite:'archer', name:'Archer', abbr:'AR', x:37, hp:106, mp:48 },
+  { sprite:'plague-doctor', name:'Plague Doctor', abbr:'PD', x:53, hp:94, mp:67 }
+];
+const monsters = [
+  { sprite:'skeleton-guard', name:'Skeleton Guard', abbr:'SK', x:77, hp:180 },
+  { sprite:'goblin', name:'Goblin', abbr:'GB', x:93, hp:96 },
+  { sprite:'slime', name:'Slime', abbr:'SL', x:103, hp:120 }
+];
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let selected = 0, reverse = false, playing = !reducedMotion.matches, cycle = !reducedMotion.matches;
+let elapsed = 0, speed = 1, lastTime = null, logged = false;
+let logs = ['The party holds its ground.', 'Choose an effect, or watch the sequence.'];
+function cell(x,y,color) {
+  x=Math.round(x); y=Math.round(y);
+  if(x<1 || x>112 || y<5 || y>22) return;
+  ctx.fillStyle=color; ctx.fillRect(x*W,y*H,W,H);
+}
+function text(x,y,value,color=C.text) {
+  ctx.font='13px ui-monospace, SFMono-Regular, Consolas, monospace';
+  ctx.textBaseline='top'; ctx.fillStyle=color; ctx.fillText(value,x*W,y*H+2);
+}
+function line(x0,y0,x1,y1,color) {
+  x0=Math.round(x0); y0=Math.round(y0); x1=Math.round(x1); y1=Math.round(y1);
+  const dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;
+  let err=dx+dy;
+  for (;;) { cell(x0,y0,color); if(x0===x1 && y0===y1) break; const e=2*err; if(e>=dy){err+=dy;x0+=sx} if(e<=dx){err+=dx;y0+=sy} }
+}
+function frame(x,y,w,h,label) {
+  ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.strokeRect(x*W+.5,y*H+.5,w*W-1,h*H-1);
+  ctx.fillStyle=C.panel; ctx.fillRect((x+2)*W,y*H,Math.min(w-4,label.length+2)*W,H);
+  text(x+3,y,label,C.gold);
+}
+function sourceTarget() {
+  const a=attacks[selected];
+  return reverse ? { source:monsters[0], target:party[a.actor] } : { source:party[a.actor], target:monsters[0] };
+}
+function unitCenter(unit) { return { x:unit.x+Math.floor(sprites[unit.sprite].rows[0].length/2),y:16 }; }
+function drawUnit(unit,isParty,t) {
+  const sprite=sprites[unit.sprite], top=22-sprite.rows.length;
+  const {source,target}=sourceTarget(), impact=attacks[selected].impact;
+  const flash=unit===target && t>=impact && t<impact+200 && Math.floor((t-impact)/50)%2===0;
+  const engaged=unit===source || unit===target;
+  sprite.rows.forEach((row,y)=>[...row].forEach((key,x)=>{
+    if(key==='.') return;
+    let color=sprite.palette[key];
+    if(flash) color=reverse?'#c96458':'#f2dfba';
+    else if(!engaged && t<impact+650) {
+      const n=parseInt(color.slice(1),16), grey=Math.round((((n>>16)&255)*.299+((n>>8)&255)*.587+(n&255)*.114)*.55);
+      color='#'+grey.toString(16).padStart(2,'0').repeat(3);
+    }
+    cell(unit.x+x,top+y,color);
+  }));
+  const center=unitCenter(unit).x;
+  text(center-2,23,unit.abbr,engaged?C.gold:C.dim);
+  const hp=unit.hp-(unit===target && t>=impact?attacks[selected].damage:0);
+  text(center-4,24,`${hp}/${unit.hp}`,C.green);
+  if(unit===source && t<impact) text(center-1,top-2,'ATK',isParty?C.blue:C.red);
+  if(unit===target && t>=impact && t<impact+750) text(center-2,top-2,`-${attacks[selected].damage}`,isParty?C.red:'#f2f2f2');
+}
+function drawBackground() {
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,canvas.width,canvas.height);
+  text(2,1,'DARKEST TERMINAL',C.gold); text(27,1,'The Forgotten Passage',C.text);
+  text(78,1,'Floor 7   Round 1   Coins 120',C.dim);
+  text(2,2,'HP and damage below are sample values. Units remain stationary.',C.dim);
+  frame(0,4,114,22,'Battlefield'); frame(115,4,35,22,'Combat log');
+  for(let y=5;y<23;y++) for(let x=1;x<113;x++) {
+    const seed=(x*17+y*31)%13;
+    const mortar=y<20 && (y%4===0 || (x+(Math.floor(y/4)%2)*6)%14===0);
+    cell(x,y,y>=21?(seed<3?'#252019':'#211b15'):mortar?'#17130f':seed<3?'#211a14':'#1d1813');
+  }
+  // Keep all scenery static so only the attack reads as movement.
+  for(const x of [16,68,103]) { line(x,8,x,20,'#30271c'); line(x+1,8,x+1,20,'#282015'); }
+  for(let y=8;y<21;y++) line(72,y,73,y,'#30271c');
+  cell(72,15,'#ae602b');cell(72,14,'#ecac49');cell(73,14,'#e1bf63');cell(72,13,'#c87c30');
+  logs.slice(-9).forEach((entry,i)=>{
+    const words=entry.split(' '); let row='',dy=0;
+    for(const word of words) { if((row+' '+word).length>29){text(117,6+i*2+dy,row,i===logs.slice(-9).length-1?C.text:C.dim);row=word;dy++} else row+=(row?' ':'')+word; }
+    text(117,6+i*2+dy,row,i===logs.slice(-9).length-1?C.text:C.dim);
+  });
+  frame(0,27,34,14,'Expedition party'); frame(35,27,79,14,'Actions'); frame(115,27,35,14,'Monsters');
+  const {source,target}=sourceTarget(),a=attacks[selected];
+  party.forEach((u,i)=>{
+    const y=29+i*3; text(2,y,`${u.abbr}  ${u.name}`,u===source?C.gold:C.text);
+    const hp=u.hp-(u===target && elapsed>=a.impact?a.damage:0);
+    text(3,y+1,`HP ${String(hp).padStart(3)} / ${u.hp}  MP ${u.mp}`,C.dim);
+  });
+  text(38,29,`${source.name}  →  ${target.name}`,C.gold);
+  text(38,31,`[${selected+1}] ${a.name}`);
+  text(38,33,elapsed<a.impact?'Attack → impact → recover':elapsed<a.impact+300?'Impact':'Recover',a.color);
+  text(38,35,'Select an attack below. Reverse to preview damage on the party.',C.dim);
+  text(38,38,'[Space] Pause    [R] Replay    [D] Direction    [A] Cycle',C.dim);
+  monsters.forEach((u,i)=>{const y=29+i*3; text(117,y,u.name);text(117,y+1,`HP ${u.hp-(u===target && elapsed>=a.impact?a.damage:0)} / ${u.hp}`,C.dim)});
+}
+function drawAttack(t) {
+  const a=attacks[selected],{source,target}=sourceTarget(),s=unitCenter(source),d=unitCenter(target);
+  const sign=Math.sign(d.x-s.x),p=Math.max(0,Math.min(1,(t-120)/(a.impact-120)));
+  const x=s.x+(d.x-s.x)*p,y=s.y+(d.y-s.y)*p;
+  if(t>=120 && t<a.impact) {
+    if(a.kind==='arrow') { line(x-sign*5,y,x,y,a.color);cell(x-sign,y-1,a.color);cell(x-sign,y+1,a.color);cell(x-sign*5,y-1,'#8a7d68'); }
+    if(a.kind==='fire') {
+      for(let i=6;i>0;i--) {cell(x-sign*i,y,'#'+['','8a3824','a34422','bc5625','783520','602b20','48251c'][i]);if(i<4)cell(x-sign*i,y+1,'#a34c26')}
+      cell(x,y-1,'#f6bf53');cell(x+sign,y,'#ffdf80');cell(x,y,'#ffdf80');cell(x,y+1,'#f6bf53');cell(x-sign,y,'#f18d35');
+    }
+    if(a.kind==='flask') {
+      const fy=y-Math.sin(p*Math.PI)*6;
+      cell(x,fy-1,'#cbb98d');cell(x,fy,'#b3d1be');cell(x+1,fy,'#6cbf90');cell(x,fy+1,a.color);cell(x+1,fy+1,'#3c8058');
+      cell(x-sign*3,fy+1,'#3c5540');
+    }
+    if(a.kind==='lightning' && t>370) {
+      const points=[s];
+      for(let i=1;i<9;i++) points.push({x:s.x+(d.x-s.x)*i/9,y:s.y+(((i*7+Math.floor(t/70))%5)-2)*.9});
+      points.push(d);
+      for(let i=1;i<points.length;i++) line(points[i-1].x,points[i-1].y,points[i].x,points[i].y,Math.floor(t/50)%2?a.color:'#e9edf4');
+    }
+    if(a.kind==='thrust') {
+      const tip=d.x-sign*(1-p*p)*12;
+      for(let i=5;i>=0;i--) {
+        const half=Math.floor(i/2);
+        line(tip-sign*i,d.y-half,tip-sign*i,d.y+half,'#8f9dae');
+        line(tip-sign*i,d.y-half,tip-sign*i,d.y,a.color);
+      }
+      cell(tip,d.y,'#ffffff');
+    }
+    if(a.kind==='slash') {
+      const startAngle=-Math.PI/2, sweep=Math.PI/3, angle=startAngle+p*sweep;
+      const radius=12, radiusY=radius*W/H, cx=d.x-sign*radius*Math.cos(startAngle+sweep), cy=d.y-radiusY*Math.sin(startAngle+sweep);
+      for(let b=startAngle;b<=angle;b+=.025) {
+        const color=angle-b<.13?'#fff0c6':angle-b<.4?a.color:'#796d50';
+        cell(cx+Math.cos(b)*radius*sign,cy+Math.sin(b)*radiusY,color);
+        cell(cx+Math.cos(b)*(radius-.7)*sign,cy+Math.sin(b)*(radius-.7)*W/H,color);
+      }
+    }
+    if(a.kind==='blunt') {
+      const by=Math.round(d.y-8*(1-p*p));
+      line(d.x,by-5,d.x,by-2,'#92754b');
+      for(let row=-2;row<=0;row++) line(d.x-3,by+row,d.x+3,by+row,row===-2?'#d5dfe8':row===-1?'#8f9dae':'#596575');
+      line(d.x-3,by-2,d.x-3,by,'#e3e8ee');
+      line(d.x+3,by-2,d.x+3,by,'#596575');
+    }
+  }
+  const age=t-a.impact;
+  if(age>=0 && age<400) {
+    const progress=age/400;
+    for(let i=0;i<8;i++) {
+      const angle=i*Math.PI/4,r=1+progress*6;
+      cell(d.x+Math.cos(angle)*r*1.4,d.y+Math.sin(angle)*r*.65,progress<.4?a.color:i%2?'#5b4a37':'#806b4c');
+    }
+    if(age<100){line(d.x-2,d.y,d.x+2,d.y,'#f9ebc9');line(d.x,d.y-1,d.x,d.y+1,'#f9ebc9')}
+  }
+}
+function draw() {
+  const t=Math.floor(elapsed/50)*50;
+  drawBackground();party.forEach(u=>drawUnit(u,true,t));monsters.forEach(u=>drawUnit(u,false,t));drawAttack(t);
+  ctx.fillStyle=attacks[selected].color;
+  ctx.fillRect(0,canvas.height-3,canvas.width*Math.min(1,elapsed/1900),3);
+}
+const buttons=attacks.map((a,i)=>{
+  const button=document.createElement('button');button.textContent=`${i+1} ${a.name}`;button.onclick=()=>start(i);
+  document.getElementById('effects').append(button);return button;
+});
+function syncControls() {
+  buttons.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===selected)));
+  document.getElementById('play').textContent=playing?'Pause [Space]':'Play [Space]';
+  document.getElementById('direction').textContent=`Direction: ${reverse?'monsters → party':'party → monsters'} [D]`;
+  document.getElementById('direction').setAttribute('aria-pressed',String(reverse));
+  document.getElementById('autoplay').setAttribute('aria-pressed',String(cycle));
+  document.getElementById('status').textContent=`${attacks[selected].name} · ${reverse?'Incoming':'Outgoing'}`;
+}
+function start(index=selected) { selected=index;elapsed=0;logged=false;playing=true;syncControls();draw(); }
+document.getElementById('play').onclick=()=>{playing=!playing;syncControls()};
+document.getElementById('replay').onclick=()=>start();
+document.getElementById('direction').onclick=()=>{reverse=!reverse;start()};
+document.getElementById('autoplay').onclick=()=>{cycle=!cycle;if(cycle)start();syncControls()};
+document.getElementById('speed').onchange=e=>{speed=Number(e.target.value)};
+document.addEventListener('keydown',e=>{
+  if(e.target.closest('button,select,input,textarea')) return;
+  if(/^[1-7]$/.test(e.key)){e.preventDefault();start(Number(e.key)-1)}
+  const key={ ' ':'play',r:'replay',d:'direction',a:'autoplay' }[e.key.toLowerCase()];
+  if(key){e.preventDefault();document.getElementById(key).click()}
+});
+document.addEventListener('visibilitychange',()=>{lastTime=null});
+function tick(now) {
+  const dt=lastTime===null?0:Math.min(100,now-lastTime);lastTime=now;
+  if(playing) {
+    elapsed+=dt*speed;
+    if(elapsed>=attacks[selected].impact && !logged) {
+      const {source,target}=sourceTarget();logs.push(`${source.name}: ${attacks[selected].name}.`,`${target.name} takes ${attacks[selected].damage} damage.`);
+      logs=logs.slice(-8);logged=true;
+    }
+    if(elapsed>=1900) {if(cycle)start((selected+1)%attacks.length);else{elapsed=1900;playing=false;syncControls()}}
+    draw();
+  }
+  requestAnimationFrame(tick);
+}
+syncControls();draw();requestAnimationFrame(tick);
+</script>
+</body>
+</html>

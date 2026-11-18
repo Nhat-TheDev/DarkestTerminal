@@ -12,6 +12,9 @@ import type { EventDefinition } from "../../src/types";
 import { previewScene, type PreviewOptions } from "./backdropPreview";
 import { targetingConfigError, type TargetingConfig } from "../../src/data/balanceConfig";
 import { NESTED_BALANCE_SECTIONS, nestedBalanceError } from "./balanceCheck";
+import { type CombatFxConfig } from "../../src/data/combatFx";
+import { isCombatFxEffect, mergeCombatFxEffect, previewCombatFx } from "./combatFxPreview";
+import { IMPACT_TICKS, REVEAL_TICK_MS, SESSION_MIN_TICKS } from "../../src/ui/revealQueue";
 
 const HTML_PATH = path.resolve(import.meta.dir, "index.html");
 const DATA_DIR = path.resolve(import.meta.dir, "../../data");
@@ -278,6 +281,32 @@ Bun.serve({
     if (req.method === "GET" && url.pathname === "/api/sprites") {
       const data = await readFile(SPRITES_PATH, "utf8");
       return new Response(data, { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/combat-fx") {
+      return json(await readJsonFile("combat-fx.json"));
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/combat-fx") {
+      try {
+        const body = await req.json() as { effect?: unknown; animation?: unknown };
+        const current = await readJsonFile("combat-fx.json") as CombatFxConfig;
+        const next = mergeCombatFxEffect(current, body.effect, body.animation);
+        await writeJsonFile("combat-fx.json", next);
+        return json({ ok: true });
+      } catch (error) {
+        return badRequest(error instanceof Error ? error.message : "Invalid combat animation.");
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/combat-fx-preview") {
+      try {
+        const body = await req.json() as { file: CombatFxConfig; effect?: unknown; frameIndex: number; reverse?: unknown; classId?: unknown; monsterId?: unknown };
+        if (!isCombatFxEffect(body.effect) || typeof body.reverse !== "boolean" || typeof body.classId !== "string" || typeof body.monsterId !== "string") return badRequest("Invalid preview options.");
+        return json({ cells: previewCombatFx(body.file, { effect: body.effect, frameIndex: body.frameIndex, reverse: body.reverse, classId: body.classId, monsterId: body.monsterId }), timing: { tickMs: REVEAL_TICK_MS, impactTicks: IMPACT_TICKS, minTicks: SESSION_MIN_TICKS } });
+      } catch (error) {
+        return badRequest(error instanceof Error ? error.message : "Invalid combat preview.");
+      }
     }
 
     if (req.method === "GET" && url.pathname === "/api/monsters") {

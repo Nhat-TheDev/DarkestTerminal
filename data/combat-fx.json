@@ -1,0 +1,314 @@
+{
+  "flash": {
+    "mask": "target",
+    "frames": [
+      {
+        "partyColor": "#e5484d",
+        "monsterColor": "#fff0c6"
+      },
+      {
+        "partyColor": "#e5484d",
+        "monsterColor": "#fff0c6"
+      }
+    ]
+  },
+  "presets": {
+    "thrust": {
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#8f9dae",
+        "C": "#ffffff",
+        "D": "#939495"
+      },
+      "frames": [
+        {
+          "offsetX": -17,
+          "offsetY": -4,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        },
+        {
+          "offsetX": -16,
+          "offsetY": -4,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        },
+        {
+          "offsetX": -14,
+          "offsetY": -4,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        },
+        {
+          "offsetX": -10,
+          "offsetY": -4,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -4,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        }
+      ]
+    },
+    "slash": {
+      "palette": {
+        "A": "#e4d4a1",
+        "B": "#796d50",
+        "C": "#fff0c6"
+      },
+      "frames": [
+        {
+          "offsetX": -10,
+          "offsetY": -3,
+          "rows": [
+            "C"
+          ]
+        },
+        {
+          "offsetX": -10,
+          "offsetY": -3,
+          "rows": [
+            "ACCC",
+            "...C"
+          ]
+        },
+        {
+          "offsetX": -10,
+          "offsetY": -3,
+          "rows": [
+            "AAAAC..",
+            "..AACCC"
+          ]
+        },
+        {
+          "offsetX": -10,
+          "offsetY": -3,
+          "rows": [
+            "BBBAA....",
+            "..BAAAAC.",
+            ".......CC"
+          ]
+        },
+        {
+          "offsetX": -10,
+          "offsetY": -3,
+          "rows": [
+            "BBBBB......",
+            "..BBBBAA...",
+            ".......AAC.",
+            ".........CC"
+          ]
+        }
+      ]
+    },
+    "blunt": {
+      "palette": {
+        "A": "#8f9dae",
+        "B": "#596575",
+        "C": "#d5dfe8",
+        "D": "#92754b"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -13,
+          "rows": [
+            "...D...",
+            "...D...",
+            "...D...",
+            "CCCCCCB",
+            "CAAAAAB",
+            "CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -12,
+          "rows": [
+            "...D...",
+            "...D...",
+            "...D...",
+            "CCCCCCB",
+            "CAAAAAB",
+            "CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -11,
+          "rows": [
+            "...D...",
+            "...D...",
+            "...D...",
+            "CCCCCCB",
+            "CAAAAAB",
+            "CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -8,
+          "rows": [
+            "...D...",
+            "...D...",
+            "...D...",
+            "CCCCCCB",
+            "CAAAAAB",
+            "CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -5,
+          "rows": [
+            "...D...",
+            "...D...",
+            "...D...",
+            "CCCCCCB",
+            "CAAAAAB",
+            "CBBBBBB"
+          ]
+        }
+      ]
+    }
+  },
+  "skills": {
+    "slash": "slash",
+    "breach": "slash",
+    "engage": "slash",
+    "sword-judgment": "slash",
+    "axe-slash": "slash",
+    "frenzied-slash": "slash",
+    "spinning-axe": "slash",
+    "desperate-cleave": "slash",
+    "cross-slash": "slash",
+    "venom-brand": "slash",
+    "overhead-cut": "slash",
+    "claw-rake": "slash",
+    "diseased-blade": "slash",
+    "measured-cut": "slash",
+    "crimson-talon": "slash",
+    "stoneshear": "slash",
+    "stab": "thrust",
+    "backstab": "thrust",
+    "flurry-assault": "thrust",
+    "kunai-strike": "thrust",
+    "shadow-strike": "thrust",
+    "death-mark": "thrust",
+    "double-or-nothing": "thrust",
+    "bite": "thrust",
+    "blood-drain": "thrust",
+    "poison-bite": "thrust",
+    "quick-bite": "thrust",
+    "venom-bite": "thrust",
+    "feed": "thrust",
+    "drink": "thrust",
+    "final-draught": "thrust",
+    "heavy-charge": "blunt",
+    "mace-strike": "blunt",
+    "bone-breaker": "blunt",
+    "maul": "blunt",
+    "shield-bash": "blunt",
+    "skullsplitter": "blunt",
+    "rout": "blunt",
+    "sealing-blow": "blunt",
+    "stomp": "blunt"
+  },
+  "basicAttacks": {
+    "classes": {
+      "knight": "slash",
+      "mage": null,
+      "rogue": "thrust",
+      "acolyte": null,
+      "viking": "slash",
+      "plague-doctor": null,
+      "archer": null,
+      "ninja": "thrust",
+      "summoner": null,
+      "jester": null,
+      "paladin": "blunt",
+      "warlock": null
+    },
+    "monsters": {
+      "dungeon-rat": "thrust",
+      "black-bat": "thrust",
+      "slime": "blunt",
+      "goblin": "slash",
+      "cultist-initiate": null,
+      "ghoulish-crawler": "thrust",
+      "vampire-bat": "thrust",
+      "toxic-toad": "thrust",
+      "skeleton": "slash",
+      "zombie": "slash",
+      "snake": "thrust",
+      "lizard": "thrust",
+      "spider": "thrust",
+      "goblin-shaman": null,
+      "cultist-zealot": null,
+      "ghost": null,
+      "skeleton-mage": null,
+      "dire-wolf": "thrust",
+      "swamp-slime": "blunt",
+      "lava-slime": "blunt",
+      "fire-elemental": null,
+      "water-elemental": "blunt",
+      "gargoyle": "slash",
+      "lesser-vampire": "thrust",
+      "skeleton-archer": null,
+      "skeleton-warrior": "slash",
+      "orc-brute": "blunt",
+      "wraith": null,
+      "armored-beetle": "blunt",
+      "cave-bear": "blunt",
+      "lesser-golem": "blunt",
+      "mimic": "thrust",
+      "skeleton-guard": "slash",
+      "giant-spider": "thrust",
+      "dragon": "slash",
+      "zombie-knight": "slash",
+      "dark-knight": "slash",
+      "orc-chieftain": "slash",
+      "vampire-lord": "slash",
+      "void-amalgamation": "blunt",
+      "ancient-golem": "blunt",
+      "lich": null,
+      "the-founder": null
+    },
+    "summons": {
+      "shadow-clone": "thrust",
+      "goblin-thrower": null,
+      "stone-golem": "blunt",
+      "hellfire-imp": null,
+      "healer-spirit": null,
+      "recall-totem": null
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { BoxRenderable, ScrollBoxRenderable, TextRenderable, StyledText, type CliRenderer, type KeyEvent, type TextChunk } from "@opentui/core";
 import type { Character, Monster, Id, LogEntry, LogSession, CombatantSnapshot, CombatState, PartyStateSnapshot, Floor } from "../types";
 import { Game } from "../engine/game";
+import { paintCombatFx, sideCombatFxAnchors, type CombatFxAnchor } from "./combatFx";
 import { getActorByRef } from "../engine/combat";
 import { getArtifact } from "../data/artifacts";
 import { getAbility } from "../data/abilities";
@@ -154,7 +155,7 @@ export class App implements ScreenContext {
   /** A combat that ended before its last round was narrated; the enemy side is drawn from it until that reveal drains. */
   private narratedCombat: CombatState | null = null;
   private backdropCache: { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } | null = null;
-  private composedBattlefield: { backdropKey: string; content: TextChunk[][] } | null = null;
+  private composedBattlefield: { backdropKey: string; content: TextChunk[][]; rows: TextChunk[][] } | null = null;
   /** The map only changes when the party moves or reaches a new floor. */
   private floorMapCache: { floor: Floor; pathLength: number; currentRoomId: Id; exitKeys: boolean; map: ReturnType<typeof renderFloorMap> } | null = null;
   /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
@@ -1006,12 +1007,12 @@ export class App implements ScreenContext {
     ]);
 
     const battlefieldWidth = battlefieldInnerWidth(this.renderer.width);
-    const { battlefieldRows, contentLeft, backdropKey, backdrop, shadow } = this.battlefieldScene(shownCombat, hpOverride, focus, battlefieldWidth);
+    const { battlefieldRows, contentLeft, backdropKey, backdrop, shadow, anchors } = this.battlefieldScene(shownCombat, hpOverride, focus, battlefieldWidth);
     const composed = this.composedBattlefield;
     if (composed?.backdropKey !== backdropKey || !sameContent(composed.content, battlefieldRows)) {
-      this.composedBattlefield = { backdropKey, content: battlefieldRows };
-      this.battlefield.content = joinLines(composeBattlefield(battlefieldRows, backdrop, battlefieldWidth, contentLeft, shadow));
+      this.composedBattlefield = { backdropKey, content: battlefieldRows, rows: composeBattlefield(battlefieldRows, backdrop, battlefieldWidth, contentLeft, shadow) };
     }
+    this.battlefield.content = joinLines(paintCombatFx(this.composedBattlefield!.rows, anchors, this.reveal.attackFrames, contentLeft));
     this.keepScrollInRange(this.battlefield);
 
     const partyLines: TextChunk[][] = [];
@@ -1323,9 +1324,10 @@ export class App implements ScreenContext {
         backdropKey: `${FLOOR_MAP_BACKDROP_KEY}|${width}`,
         backdrop: null,
         shadow: null,
+        anchors: new Map<Id, CombatFxAnchor>(),
       };
     }
-    const { rows, dimmed, torchLight } = this.renderBattlefield(combat, hpOverride, focus);
+    const { rows, dimmed, torchLight, anchors } = this.renderBattlefield(combat, hpOverride, focus);
     const contentLeft = Math.max(0, Math.floor((width - BATTLEFIELD_CONTENT_WIDTH) / 2));
     const room = getRoom(s.floor, s.currentRoomId);
     const sceneId = s.pendingGatekeeper ? (getEvent(GATEKEEPER_EVENT_ID).backdrop ?? null) : backdropIdForRoomName(room.name);
@@ -1337,7 +1339,7 @@ export class App implements ScreenContext {
       color: TORCH_SPRITES["full"]!.palette["Y"] ?? PALETTE.title,
       dimFactor: dimmed ? (sceneById(sceneId)?.render.dimFactor ?? 1) : 1,
     }) : backdrop;
-    return { battlefieldRows: rows, contentLeft, backdropKey: `${key}|torch:${torchLight ? s.faith : "hidden"}`, backdrop: litBackdrop, shadow };
+    return { battlefieldRows: rows, contentLeft, backdropKey: `${key}|torch:${torchLight ? s.faith : "hidden"}`, backdrop: litBackdrop, shadow, anchors };
   }
 
   private backdropFor(sceneId: string | null, width: number, contentLeft: number, dimmed: boolean): { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } {
@@ -1353,6 +1355,7 @@ export class App implements ScreenContext {
     const s = this.game.state;
     let dimmed = false;
     const impact = focus !== null && !this.reveal.holding;
+    const receivingHits = new Set(this.reveal.attackFrames.filter((frame) => frame.hit.amount > (frame.hit.overkill ?? 0)).map((frame) => frame.hit.targetId));
 
     const partyUnits = s.party.map((c) => {
       const view = hpOverride?.get(c.id);
@@ -1365,13 +1368,15 @@ export class App implements ScreenContext {
       const lens = unitFocus(c.id, "party", focus, mark?.amount, impact, this.summonFocus(c.id), fearChange, mark?.crit);
       dimmed ||= lens.dim;
       const frameHeight = tierFrameHeight("party");
-      if (!isAlive) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
+      if (!isAlive && !receivingHits.has(c.id)) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.fallen"), statusColor: PALETTE.dead, frameHeight }, lens);
       // Read from the replayed snapshot so a clone spawned later in the round isn't shown early.
       const summonCount = this.game.ctx.summons.filter((m) => m.ownerId === c.id && (hpOverride ? hpOverride.get(m.id)?.isAlive === true : m.hp > 0)).length;
       const label = summonCount > 0 ? `${style.abbr} ${FOCUS_GLYPH.summon.repeat(summonCount)}` : style.abbr;
       return focusedUnit({ sprite: spriteForClass(c.classId), label, labelColor: style.color, statusText: `${hp}/${maxHp}`, statusColor: hpColorFor(hp, maxHp), frameHeight }, lens);
     });
     const partyBlock = this.buildSideBlock(partyUnits);
+    const partyWidth = Math.max(...partyBlock.map((row) => row.reduce((sum, chunk) => sum + chunk.text.length, 0)));
+    const anchors = sideCombatFxAnchors(partyUnits.map((unit, i) => ({ id: s.party[i]!.id, sprite: unit.sprite })), "party");
 
     const room = getRoom(s.floor, s.currentRoomId);
     const isRestRoom = !combat && room.type === "rest";
@@ -1395,10 +1400,11 @@ export class App implements ScreenContext {
           const lens = unitFocus(m.id, "monster", focus, mark?.amount, impact, undefined, 0, mark?.crit);
           dimmed ||= lens.dim;
           const frameHeight = tierFrameHeight(m.tier);
-          if (hp <= 0) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead, frameHeight }, lens);
+          if (hp <= 0 && !receivingHits.has(m.id)) return focusedUnit({ sprite: TOMBSTONE_SPRITE, label: style.abbr, labelColor: PALETTE.dead, statusText: t("ui.defeated"), statusColor: PALETTE.dead, frameHeight }, lens);
           return focusedUnit({ sprite: spriteForMonster(m.archetypeId, m.tier), label: style.abbr, labelColor: style.color, statusText: `${hp}/${m.maxHp}`, statusColor: hpColorFor(hp, m.maxHp), frameHeight }, lens);
         });
         enemyBlock = this.buildSideBlock(enemyUnits);
+        for (const [id, anchor] of sideCombatFxAnchors(enemyUnits.map((unit, i) => ({ id: shownMonsters[i]!.id, sprite: unit.sprite })), "monster", partyWidth + DIVIDER_WIDTH)) anchors.set(id, anchor);
       }
     } else if (isRestRoom) {
       enemyBlock = this.buildCampfireBlock();
@@ -1415,13 +1421,16 @@ export class App implements ScreenContext {
 
     const torch = s.pendingGatekeeper ? null : torchFrameForFaith(s.faith);
     const divider = torchDividerBlock(torch);
-    const partyWidth = Math.max(...partyBlock.map((row) => row.reduce((sum, chunk) => sum + chunk.text.length, 0)));
     const torchLight = torch ? {
       x: partyWidth + Math.floor(DIVIDER_WIDTH / 2),
       y: ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS - spriteHeight(torch)) / 2) + 3,
     } : null;
 
-    return { rows: mergeBlocksHorizontally([partyBlock, divider, enemyBlock], 0), dimmed, torchLight };
+    for (const summon of this.game.ctx.summons) {
+      const owner = anchors.get(summon.ownerId);
+      if (owner) anchors.set(summon.id, owner);
+    }
+    return { rows: mergeBlocksHorizontally([partyBlock, divider, enemyBlock], 0), dimmed, torchLight, anchors };
   }
 
   /** The monsters a fight shows. A summoned add that has died stays as a tombstone only while the session it died in is on screen. */

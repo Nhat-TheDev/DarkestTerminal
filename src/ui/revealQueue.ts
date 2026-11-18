@@ -1,4 +1,11 @@
 import type { CombatantSnapshot, HitMark, Id, LogEntry, LogSession } from "../types";
+import { COMBAT_FX } from "../data/combatFx";
+
+export interface AttackFrame {
+  hit: NonNullable<LogEntry["hit"]>;
+  progress: number;
+  impactAge: number;
+}
 
 export const REVEAL_TICK_MS = 100;
 export const SESSION_MIN_TICKS = 15;
@@ -47,7 +54,8 @@ function toGroups(entries: LogEntry[]): Group[] {
       continue;
     }
     // Party-wide fear (end of round, victory) has nothing else to show, so it starts at the impact; otherwise it follows the session's own hold.
-    const hold = group.session.cause === "fear" ? IMPACT_TICKS : Math.max(SESSION_MIN_TICKS, IMPACT_TICKS + group.entries.length - 1) + group.hitBeats * HIT_BEAT_TICKS;
+    let hold = group.session.cause === "fear" ? IMPACT_TICKS : Math.max(SESSION_MIN_TICKS, IMPACT_TICKS + group.entries.length - 1) + group.hitBeats * HIT_BEAT_TICKS;
+    if (group.hits.size > 0) hold = Math.max(hold, IMPACT_TICKS + group.hitBeats * HIT_BEAT_TICKS + COMBAT_FX.flash.frames.length);
     group.fearStart = group.session.fearChangedIds.length > 0 ? hold : null;
     group.span = group.fearStart === null ? hold : group.fearStart + FEAR_BEAT_TICKS;
   }
@@ -121,6 +129,21 @@ export class RevealQueue {
 
   get focusHits(): ReadonlyMap<Id, HitMark[]> {
     return this.current?.session ? this.current.hits : NO_HITS;
+  }
+
+  get attackFrames(): AttackFrame[] {
+    if (!this.current?.session) return [];
+    const rank = new Map<Id, number>();
+    const frames: AttackFrame[] = [];
+    for (const { hit } of this.current.entries) {
+      if (!hit) continue;
+      const beat = rank.get(hit.targetId) ?? 0;
+      rank.set(hit.targetId, beat + 1);
+      const impactAge = this.ticks - 1 - IMPACT_TICKS - beat * HIT_BEAT_TICKS;
+      if (impactAge < -IMPACT_TICKS || impactAge >= COMBAT_FX.flash.frames.length) continue;
+      frames.push({ hit, progress: Math.min(1, (impactAge + IMPACT_TICKS) / (IMPACT_TICKS - 1)), impactAge });
+    }
+    return frames;
   }
 
   get focusHealCrits(): ReadonlySet<Id> {

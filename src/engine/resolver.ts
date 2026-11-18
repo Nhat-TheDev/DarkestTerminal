@@ -1,4 +1,5 @@
-import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState, DamageType, Id } from "../types";
+import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState, DamageType, Id, PhysicalAttackVisual } from "../types";
+import { getBasicAttackVisual } from "../data/combatFx";
 import { getStatusEffect, statusDisplayName, statusSatisfiesRequirement, statusFamilyOf, rankLevelOf, COMBAT_STAT_LABEL } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
@@ -164,6 +165,7 @@ function computeCombatStatDelta(actor: Actor, effect: SkillEffect): number {
 
 export interface ResolveContext {
   log: LogEntry[];
+  attackVisual?: PhysicalAttackVisual | null;
   statusEffectName?: string;
   skillName?: string;
   isMagic?: boolean;
@@ -269,10 +271,15 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const isStatusTick = isSelfTick && ctx.statusEffectName !== undefined;
       const finalDamage = shellAdjustedDamage(target, raceMultiplier === 0 ? 0 : Math.max(1, rawDamage), isStatusTick);
       const critMark = isCrit ? { crit: true as const } : {};
+      const basicAttack = !isCharacter(source) && !ctx.skillName && !ctx.statusEffectName;
+      const visual = ctx.attackVisual !== undefined ? ctx.attackVisual : basicAttack && !ctx.isMagic && (effect.damageType ?? "physical") === "physical"
+        ? getBasicAttackVisual(isSummon(source) ? "summons" : "monsters", source.archetypeId)
+        : null;
+      const hitSource = ctx.attackVisual !== undefined || basicAttack ? { sourceId: source.id, ...(visual ? { visual } : {}) } : {};
       if (ctx.unapplied && !isSelfTick) {
         const overkillKey = ctx.skillName ? (isCrit ? "resolver.overkillWithSkillCrit" : "resolver.overkillWithSkill") : isCrit ? "resolver.overkillCrit" : "resolver.overkill";
         const text = t(overkillKey, { target: nameOf(target), amount: finalDamage, source: nameOf(source), skill: ctx.skillName ?? "" });
-        ctx.log.push({ text, kind: "attack", hit: { targetId: target.id, amount: finalDamage, overkill: finalDamage, ...critMark } });
+        ctx.log.push({ text, kind: "attack", hit: { targetId: target.id, amount: finalDamage, overkill: finalDamage, ...critMark, ...hitSource } });
         return 0;
       }
       const hpBefore = target.hp;
@@ -286,7 +293,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const hpLost = hpBefore - target.hp;
       if (!isSelfTick) noteDamageTaken(target, source.id, hpLost);
       const overkill = finalDamage - hpLost;
-      const hit = !isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: finalDamage, ...(overkill > 0 ? { overkill } : {}), ...critMark } } : {};
+      const hit = !isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: finalDamage, ...(overkill > 0 ? { overkill } : {}), ...critMark, ...hitSource } } : {};
       ctx.log.push({ text: damageText, kind: "attack", ...hit });
       if (!isSelfTick && hpLost > 0 && target.hp > 0) openWounds(target, source, ctx, effect.ignoreDefensePercent ?? 0);
       if (target.hp <= 0) reviveIfGuarded(target, ctx);

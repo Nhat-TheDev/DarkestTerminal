@@ -221,6 +221,25 @@
   .swatch.eraser .key { color: var(--danger); }
   #preview { background: var(--panel-bg); border: 1px solid var(--border); display: inline-block; padding: 8px; border-radius: 4px; }
   #previewCanvas { display: block; image-rendering: pixelated; }
+  .fx-layout { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+  .fx-properties { flex:0 1 290px; min-width:260px; }
+  .fx-properties .row { gap:6px; }
+  .fx-properties .row .field { min-width:0; flex:1; }
+  .fx-properties input[type="number"] { min-width:0; width:100%; }
+  .fx-properties button.action { padding:6px 8px; }
+  #panel-combat-fx button:disabled { opacity:.45; cursor:default; }
+  .fx-pixels { flex:1 1 340px; min-width:280px; }
+  .fx-colors { flex:0 1 250px; min-width:220px; }
+  #fxFrames { display:flex; flex-wrap:wrap; gap:5px; margin:10px 0; }
+  #fxFrames [aria-pressed="true"], #fxPalette [aria-pressed="true"] { border-color:var(--title); color:var(--title); }
+  .fx-canvas-wrap { overflow:auto; max-width:100%; border:1px solid var(--border); background:var(--bg); padding:8px; }
+  #fxCanvas { display:block; image-rendering:pixelated; touch-action:none; cursor:crosshair; }
+  #fxFrameJson { width:100%; min-height:120px; margin-top:8px; padding:8px; color:var(--text); background:var(--bg); border:1px solid var(--border); font:12px monospace; resize:vertical; }
+  #fxPreview { display:block; image-rendering:pixelated; }
+  #fxPalette .row { margin:6px 0; }
+  #fxPalette input[type="color"] { width:42px; height:28px; padding:1px; }
+  #fxError { color:var(--danger); min-height:18px; }
+  #fxDirty { color:var(--title); }
 
 </style>
 </head>
@@ -244,6 +263,7 @@
   <button data-panel="other">Other Balance</button>
 
   <button data-panel="sprites">Sprite Editor</button>
+  <button data-panel="combat-fx">Combat Effects</button>
   <button data-panel="backdrops">Backdrops</button>
   <button data-panel="creator">Data Editor</button>
 </nav>
@@ -472,6 +492,50 @@
 
 
   <!-- ============================== BACKDROPS ============================== -->
+  <section class="panel" id="panel-combat-fx">
+    <h2 class="tab-section-title">Combat Effects — animation frames</h2>
+    <p class="hint">Edit attack pixels and impact flashes. Preview uses the game's renderer; changes stay in your draft until you save.</p>
+    <div class="fx-layout">
+      <div class="fx-properties">
+        <fieldset><legend>Animation</legend>
+          <div class="field"><label for="fxEffect">Effect</label><select id="fxEffect"><option value="thrust">Thrust</option><option value="slash">Slash</option><option value="blunt">Blunt</option><option value="flash">Damage flash</option></select></div>
+          <div id="fxFrames" role="group" aria-label="Animation frames"></div>
+          <div class="row"><button class="action" id="fxAdd">Add frame</button><button class="action" id="fxDuplicate">Duplicate</button><button class="action" id="fxDelete">Delete</button></div>
+          <div class="row" style="margin-top:8px"><button class="action" id="fxEarlier">Move earlier</button><button class="action" id="fxLater">Move later</button></div>
+        </fieldset>
+        <fieldset id="fxGeometry"><legend>Selected frame</legend>
+          <div class="row"><div class="field"><label for="fxWidth">Width</label><input id="fxWidth" type="number" min="1" max="113"></div><div class="field"><label for="fxHeight">Height</label><input id="fxHeight" type="number" min="1" max="17"></div></div>
+          <button class="action" id="fxResize">Resize frame</button>
+          <div class="row" style="margin-top:8px"><div class="field"><label for="fxX">Offset X</label><input id="fxX" type="number" step="1"></div><div class="field"><label for="fxY">Offset Y</label><input id="fxY" type="number" step="1"></div></div>
+          <p class="hint">Offsets start at the target's centre. Positive X follows the attack; positive Y goes down.</p>
+        </fieldset>
+        <fieldset id="fxFlash" hidden><legend>Selected flash frame</legend>
+          <div class="field"><label for="fxPartyColor">Character tint</label><input id="fxPartyColor" type="color"></div><div class="checkbox-row"><input id="fxPartyClear" type="checkbox"><label for="fxPartyClear">Transparent on characters</label></div>
+          <div class="field" style="margin-top:10px"><label for="fxMonsterColor">Monster tint</label><input id="fxMonsterColor" type="color"></div><div class="checkbox-row"><input id="fxMonsterClear" type="checkbox"><label for="fxMonsterClear">Transparent on monsters</label></div>
+          <p class="hint">Only opaque cells of the target sprite are tinted. Each flash frame lasts one game reveal tick.</p>
+        </fieldset>
+      </div>
+      <div class="fx-pixels" id="fxPixelPanel"><fieldset id="fxPaintGrid"><legend>Paint selected frame</legend>
+        <p class="hint">Click or drag to paint. Right-click or choose Erase to clear. Arrow keys move the cursor; Space paints.</p>
+        <div class="fx-canvas-wrap"><canvas id="fxCanvas" tabindex="0" role="img" aria-label="Editable animation pixel grid"></canvas></div>
+      </fieldset>
+      <fieldset><legend>Copy / parse frame</legend>
+        <div class="row"><button class="action" id="fxCopy">Copy frame</button><button class="action" id="fxParse">Parse frame</button></div>
+        <label for="fxFrameJson">Frame JSON</label><textarea id="fxFrameJson" rows="6" spellcheck="false" placeholder="Paste one frame's JSON here, then choose Parse frame."></textarea>
+        <p class="hint">Parse replaces the selected frame after validation. Pixel keys use this effect's shared palette.</p>
+      </fieldset></div>
+      <div class="fx-colors" id="fxColorPanel"><fieldset><legend>Shared palette</legend><div id="fxPalette"></div><button class="action" id="fxAddColor">Add color</button><p class="hint">Palette colors apply to every frame in this effect.</p></fieldset></div>
+    </div>
+    <fieldset><legend>Game preview</legend>
+      <div class="row"><div class="field"><label for="fxClass">Character</label><select id="fxClass"></select></div><div class="field"><label for="fxMonster">Monster</label><select id="fxMonster"></select></div>
+        <button class="action" id="fxPlay">Play</button><button class="action" id="fxReverse" aria-pressed="false">Reverse attack</button><span id="fxPreviewLabel" class="hint"></span></div>
+      <div class="fx-canvas-wrap"><canvas id="fxPreview" width="904" height="320" aria-label="Animation on the game battlefield" role="img"></canvas></div>
+      <p class="hint">Attack playback keeps the game's wind-up timing. Additional attack frames add detail, not time.</p>
+    </fieldset>
+    <div class="row"><button class="action primary" id="fxSave" disabled>Save effect to data/combat-fx.json</button><button class="action" id="fxReload">Reload</button><span id="fxDirty" role="status" aria-live="polite"></span></div>
+    <p id="fxError" role="alert"></p>
+  </section>
+
   <section class="panel" id="panel-backdrops">
     <h2 class="tab-section-title">Backdrops — the wall, floor and props behind the Battlefield</h2>
     <div class="backdrop-layout">
@@ -3766,6 +3830,249 @@ boot();
     renderPreviewControls();
     await load();
   })().catch((err) => { bd("bdPreviewError").textContent = "Load failed: " + err.message; });
+})();
+
+
+(() => {
+  const fx = (id) => document.getElementById('fx' + id);
+  let file = null, effect = 'thrust', index = 0, key = 'A', baseline = '', dirty = false, saving = false;
+  let playing = false, playTimer = null, playTick = 0, timing = null, previewTimer = null, previewSeq = 0, previewBusy = 0;
+  let cursor = { x: 0, y: 0 };
+  const animation = () => effect === 'flash' ? file.flash : file.presets[effect];
+  const frame = () => animation().frames[index];
+  const error = (message = '') => { fx('Error').textContent = message; };
+  function stopPlayback() { playing = false; clearInterval(playTimer); playTimer = null; fx('Play').textContent = 'Play'; }
+  function updateDirty() {
+    dirty = JSON.stringify(animation()) !== baseline;
+    fx('Dirty').textContent = dirty ? 'Unsaved changes' : 'No unsaved changes';
+    fx('Save').disabled = saving || !dirty;
+  }
+  function changed() {
+    stopPlayback(); error(); updateDirty(); previewSeq++;
+    clearTimeout(previewTimer); previewTimer = setTimeout(() => drawPreview(), 120);
+  }
+  function drawEditor() {
+    if (!file || effect === 'flash') return;
+    const canvas = fx('Canvas'), rows = frame().rows, w = rows[0].length, h = rows.length;
+    cursor.x = Math.min(cursor.x, w - 1); cursor.y = Math.min(cursor.y, h - 1);
+    canvas.width = w * 18; canvas.height = h * 36;
+    const ctx = canvas.getContext('2d');
+    rows.forEach((row, y) => [...row].forEach((pixel, x) => {
+      ctx.fillStyle = (x + y) % 2 ? '#201a14' : '#171310'; ctx.fillRect(x * 18, y * 36, 18, 36);
+      if (pixel !== '.') { ctx.fillStyle = animation().palette[pixel]; ctx.fillRect(x * 18 + 1, y * 36 + 1, 17, 35); }
+    }));
+    ctx.strokeStyle = '#c9a227'; ctx.strokeRect(cursor.x * 18 + .5, cursor.y * 36 + .5, 17, 35);
+  }
+  function renderFrames() {
+    fx('Frames').replaceChildren();
+    animation().frames.forEach((_, i) => {
+      const b = document.createElement('button'); b.className = 'action'; b.textContent = String(i + 1);
+      b.setAttribute('aria-label', 'Frame ' + (i + 1)); b.setAttribute('aria-pressed', String(i === index));
+      b.onclick = () => { stopPlayback(); index = i; renderFrame(); drawPreview(); };
+      fx('Frames').append(b);
+    });
+    fx('Delete').disabled = animation().frames.length === 1;
+    fx('Earlier').disabled = index === 0; fx('Later').disabled = index === animation().frames.length - 1;
+  }
+  function renderFrame() {
+    renderFrames();
+    const flash = effect === 'flash';
+    for (const name of ['Geometry', 'PaintGrid', 'ColorPanel']) fx(name).hidden = flash;
+    fx('Flash').hidden = !flash;
+    if (flash) {
+      for (const side of ['Party', 'Monster']) {
+        const color = frame()[side.toLowerCase() + 'Color'];
+        fx(side + 'Clear').checked = color === null;
+        fx(side + 'Color').value = color ?? '#ffffff'; fx(side + 'Color').disabled = color === null;
+      }
+    } else {
+      fx('Width').value = frame().rows[0].length; fx('Height').value = frame().rows.length;
+      fx('X').value = frame().offsetX; fx('Y').value = frame().offsetY;
+      drawEditor();
+    }
+  }
+  function renderPalette() {
+    fx('Palette').replaceChildren();
+    if (effect === 'flash') return;
+    if (key !== '.' && !Object.hasOwn(animation().palette, key)) key = Object.keys(animation().palette)[0] ?? '.';
+    for (const [pixel, color] of [['.', null], ...Object.entries(animation().palette)]) {
+      const row = document.createElement('div'); row.className = 'row';
+      const choose = document.createElement('button'); choose.className = 'action'; choose.textContent = pixel === '.' ? 'Erase' : pixel;
+      choose.setAttribute('aria-label', pixel === '.' ? 'Erase pixels' : 'Paint color ' + pixel); choose.setAttribute('aria-pressed', String(key === pixel));
+      choose.onclick = () => { key = pixel; renderPalette(); };
+      row.append(choose);
+      if (pixel !== '.') {
+        const input = document.createElement('input'); input.type = 'color'; input.value = color; input.setAttribute('aria-label', 'Palette color ' + pixel);
+        input.oninput = () => { animation().palette[pixel] = input.value; drawEditor(); changed(); };
+        const remove = document.createElement('button'); remove.className = 'action'; remove.textContent = 'Remove';
+        remove.onclick = () => {
+          if (animation().frames.some((f) => f.rows.some((r) => r.includes(pixel)))) { error('Erase this color from all frames before removing it.'); return; }
+          delete animation().palette[pixel]; renderPalette(); changed();
+        };
+        row.append(input, remove);
+      }
+      fx('Palette').append(row);
+    }
+  }
+  function paint(x, y, erase = false) {
+    if (!file || effect === 'flash' || x < 0 || y < 0 || y >= frame().rows.length || x >= frame().rows[0].length) return;
+    cursor = { x, y };
+    const row = frame().rows[y], value = erase ? '.' : key;
+    if (row[x] !== value) { frame().rows[y] = row.slice(0, x) + value + row.slice(x + 1); changed(); }
+    drawEditor();
+  }
+  function paintPointer(e) {
+    const rect = fx('Canvas').getBoundingClientRect();
+    paint(Math.floor((e.clientX - rect.left) / rect.width * frame().rows[0].length), Math.floor((e.clientY - rect.top) / rect.height * frame().rows.length), Boolean(e.buttons & 2));
+  }
+  fx('Canvas').onpointerdown = (e) => { if (!file || effect === 'flash' || ![0, 2].includes(e.button)) return; e.preventDefault(); fx('Canvas').focus(); fx('Canvas').setPointerCapture(e.pointerId); paintPointer(e); };
+  fx('Canvas').onpointermove = (e) => { if (e.buttons & 3 && file && effect !== 'flash') paintPointer(e); };
+  fx('Canvas').oncontextmenu = (e) => e.preventDefault();
+  fx('Canvas').onkeydown = (e) => {
+    if (!file || effect === 'flash') return;
+    const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (directions[e.key]) { e.preventDefault(); cursor.x = Math.max(0, Math.min(frame().rows[0].length - 1, cursor.x + directions[e.key][0])); cursor.y = Math.max(0, Math.min(frame().rows.length - 1, cursor.y + directions[e.key][1])); drawEditor(); }
+    else if (e.key === ' ' || e.key === 'Enter' || e.key === 'Delete') { e.preventDefault(); paint(cursor.x, cursor.y, e.key === 'Delete'); }
+  };
+  for (const axis of ['X', 'Y']) fx(axis).oninput = () => {
+    if (!file) return;
+    const value = Number(fx(axis).value);
+    if (fx(axis).value === '' || !Number.isSafeInteger(value)) return;
+    frame()['offset' + axis] = value; changed();
+  };
+  fx('Resize').onclick = () => {
+    if (!file) return;
+    const w = Number(fx('Width').value), h = Number(fx('Height').value);
+    if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || w > 113 || h < 1 || h > 17) { error('Use a width of 1–113 and a height of 1–17 cells.'); return; }
+    const crop = frame().rows.some((row, y) => [...row].some((c, x) => c !== '.' && (x >= w || y >= h)));
+    if (crop && !confirm('Resizing will crop painted pixels. Continue?')) { renderFrame(); return; }
+    frame().rows = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => frame().rows[y]?.[x] ?? '.').join(''));
+    renderFrame(); changed();
+  };
+  fx('AddColor').onclick = () => {
+    if (!file || effect === 'flash') return;
+    const pixel = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'].find((k) => !Object.hasOwn(animation().palette, k));
+    if (!pixel) { error('The palette has no free color keys.'); return; }
+    animation().palette[pixel] = Object.values(animation().palette)[0] ?? '#ffffff'; key = pixel; renderPalette(); changed();
+  };
+  for (const side of ['Party', 'Monster']) {
+    const update = () => { if (!file || effect !== 'flash') return; frame()[side.toLowerCase() + 'Color'] = fx(side + 'Clear').checked ? null : fx(side + 'Color').value; fx(side + 'Color').disabled = fx(side + 'Clear').checked; changed(); };
+    fx(side + 'Color').oninput = update; fx(side + 'Clear').onchange = update;
+  }
+  for (const action of ['Add', 'Duplicate', 'Delete', 'Earlier', 'Later']) fx(action).onclick = () => {
+    if (!file) return;
+    const frames = animation().frames;
+    if (action === 'Add' || action === 'Duplicate') {
+      const next = structuredClone(frame());
+      if (action === 'Add') { if (effect === 'flash') { next.partyColor = null; next.monsterColor = null; } else next.rows = next.rows.map((r) => '.'.repeat(r.length)); }
+      frames.splice(index + 1, 0, next); index++;
+    } else if (action === 'Delete') { if (frames.length === 1) return; frames.splice(index, 1); index = Math.min(index, frames.length - 1); }
+    else { const next = index + (action === 'Earlier' ? -1 : 1); if (next < 0 || next >= frames.length) return; [frames[index], frames[next]] = [frames[next], frames[index]]; index = next; }
+    renderFrame(); changed();
+  };
+  async function drawPreview(previewEffect = effect, frameIndex = index, label = '') {
+    if (!file || !fx('Class').value || !fx('Monster').value) return;
+    const seq = ++previewSeq; previewBusy = seq;
+    try {
+      const result = await apiPost('/api/combat-fx-preview', { file, effect: previewEffect, frameIndex, reverse: fx('Reverse').getAttribute('aria-pressed') === 'true', classId: fx('Class').value, monsterId: fx('Monster').value });
+      if (seq !== previewSeq) return;
+      timing = result.timing; fx('Play').disabled = false;
+      const canvas = fx('Preview'), ctx = canvas.getContext('2d'); canvas.width = 904; canvas.height = 320;
+      ctx.fillStyle = '#171310'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.font = '13px monospace'; ctx.textBaseline = 'middle';
+      result.cells.forEach((row, y) => row.forEach((cell, x) => {
+        if (cell.bg) { ctx.fillStyle = cell.bg; ctx.fillRect(x * 8, y * 16, 8, 16); }
+        if (cell.ch !== ' ' && cell.fg) { ctx.fillStyle = cell.fg; ctx.fillText(cell.ch, x * 8, y * 16 + 8); }
+      }));
+      fx('PreviewLabel').textContent = label || 'Frame ' + (index + 1) + ' · draft preview';
+    } catch (err) { if (seq === previewSeq) error('Preview: ' + err.message); }
+    finally { if (previewBusy === seq) previewBusy = 0; }
+  }
+  function playbackStep() {
+    if (previewBusy) return;
+    const count = animation().frames.length, flashCount = file.flash.frames.length;
+    let previewEffect = effect, f = -1, label = 'Rest';
+    if (effect === 'flash') {
+      if (playTick < count) { f = index = playTick; label = 'Impact · frame ' + (f + 1); renderFrame(); }
+      playTick = (playTick + 1) % Math.max(timing.minTicks, count);
+    } else {
+      if (playTick < timing.impactTicks) { f = index = Math.round(playTick / Math.max(1, timing.impactTicks - 1) * (count - 1)); label = 'Attack · frame ' + (f + 1); renderFrame(); }
+      else if (playTick < timing.impactTicks + flashCount) { previewEffect = 'flash'; f = playTick - timing.impactTicks; label = 'Impact'; }
+      playTick = (playTick + 1) % Math.max(timing.minTicks, timing.impactTicks + flashCount);
+    }
+    drawPreview(previewEffect, f, label);
+  }
+  fx('Play').onclick = () => {
+    if (playing) { stopPlayback(); return; }
+    if (!file || !timing) return;
+    playing = true; playTick = 0; fx('Play').textContent = 'Pause'; playbackStep(); playTimer = setInterval(playbackStep, timing.tickMs);
+  };
+  fx('Reverse').onclick = () => { fx('Reverse').setAttribute('aria-pressed', String(fx('Reverse').getAttribute('aria-pressed') !== 'true')); if (!playing) drawPreview(); };
+  for (const name of ['Class', 'Monster']) fx(name).onchange = () => drawPreview();
+  fx('Effect').onchange = () => {
+    if (!file) return;
+    if (dirty && !confirm('Discard unsaved changes to this effect?')) { fx('Effect').value = effect; return; }
+    stopPlayback();
+    if (dirty) { if (effect === 'flash') file.flash = JSON.parse(baseline); else file.presets[effect] = JSON.parse(baseline); }
+    effect = fx('Effect').value; index = 0; baseline = JSON.stringify(animation()); error(); renderFrame(); renderPalette(); updateDirty(); drawPreview();
+  };
+  async function reload() {
+    if (dirty && !confirm('Discard unsaved changes and reload?')) return;
+    stopPlayback();
+    const selectedEffect = effect, before = JSON.stringify(file), loaded = await api('/api/combat-fx?t=' + Date.now());
+    if (effect !== selectedEffect || JSON.stringify(file) !== before) throw new Error('Your draft changed while reloading. Reload again to discard those edits.');
+    file = loaded; index = 0; baseline = JSON.stringify(animation()); fx('Effect').value = effect; fx('Effect').disabled = false; error(); renderFrame(); renderPalette(); updateDirty(); drawPreview();
+  }
+  fx('Reload').onclick = () => reload().catch((err) => error('Reload: ' + err.message));
+  fx('Copy').onclick = async () => {
+    if (!file) return;
+    stopPlayback();
+    const text = JSON.stringify(frame(), null, 2);
+    fx('FrameJson').value = text;
+    try { await navigator.clipboard.writeText(text); error(); }
+    catch (_) { fx('FrameJson').focus(); fx('FrameJson').select(); error('Frame JSON is ready below. Copy it manually.'); }
+  };
+  fx('Parse').onclick = async () => {
+    if (!file) return;
+    stopPlayback(); error();
+    const selectedEffect = effect, selectedIndex = index, before = JSON.stringify(animation());
+    fx('Parse').disabled = true;
+    try {
+      const parsed = JSON.parse(fx('FrameJson').value), draft = structuredClone(file);
+      (effect === 'flash' ? draft.flash : draft.presets[effect]).frames[index] = parsed;
+      await apiPost('/api/combat-fx-preview', { file: draft, effect, frameIndex: index, reverse: false, classId: fx('Class').value, monsterId: fx('Monster').value });
+      if (effect !== selectedEffect || index !== selectedIndex || JSON.stringify(animation()) !== before) throw new Error('The frame changed while parsing. Try again.');
+      animation().frames[index] = parsed; renderFrame(); changed();
+    } catch (err) { error('Parse: ' + err.message); }
+    finally { fx('Parse').disabled = false; }
+  };
+  fx('Save').onclick = async () => {
+    if (!file || saving) return;
+    stopPlayback(); saving = true; fx('Effect').disabled = true; fx('Reload').disabled = true; updateDirty(); error();
+    const savedEffect = effect, snapshot = JSON.stringify(animation());
+    let failure = null;
+    try { await apiPost('/api/combat-fx', { effect: savedEffect, animation: JSON.parse(snapshot) }); } catch (err) { failure = err; }
+    try {
+      let verified = false;
+      for (let i = 0; i < 8; i++) {
+        try { const saved = await api('/api/combat-fx?t=' + Date.now()); if (JSON.stringify(savedEffect === 'flash' ? saved.flash : saved.presets[savedEffect]) === snapshot) { verified = true; break; } } catch (_) {}
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      if (!verified) throw failure || new Error('Could not verify the saved effect. Your draft is still here.');
+      baseline = snapshot; updateDirty(); fx('Dirty').textContent = dirty ? 'Saved; newer edits remain unsaved' : 'Saved to data/combat-fx.json';
+    } catch (err) { error('Save: ' + err.message); }
+    finally { saving = false; fx('Effect').disabled = false; fx('Reload').disabled = false; fx('Save').disabled = !dirty; drawPreview(); }
+  };
+  window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+  new MutationObserver(() => { if (!document.getElementById('panel-combat-fx').classList.contains('active')) stopPlayback(); }).observe(document.getElementById('panel-combat-fx'), { attributes: true, attributeFilter: ['class'] });
+  fx('Play').disabled = true;
+  fx('Effect').disabled = true;
+  (async () => {
+    const meta = await api('/api/meta');
+    for (const [name, list] of [['Class', meta.classes], ['Monster', meta.monsters.filter((m) => m.roles.includes('normal'))]]) {
+      fx(name).replaceChildren(...list.map((entry) => { const option = document.createElement('option'); option.value = entry.id; option.textContent = entry.name; return option; }));
+    }
+    await reload();
+  })().catch((err) => error('Load: ' + err.message));
 })();
 
 </script>

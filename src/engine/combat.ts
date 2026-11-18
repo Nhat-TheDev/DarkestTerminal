@@ -38,6 +38,7 @@ import { combatHooks } from "./combatHooks";
 import { advanceBar } from "./monsterBars";
 import { runMonsterTurn, finishMonsterTurn, fadeDamageMemory, fillTelegraphMeter } from "./monsterAI";
 import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
+import { getBasicAttackVisual, getSkillAttackVisual } from "../data/combatFx";
 import {
   type Actor,
   isCharacter,
@@ -1259,6 +1260,9 @@ function resolveOneDamageEffect(
       faith: ctx.faith,
       isMagic: skill.isMagic,
       skillName: skill.name,
+      attackVisual: !skill.fromItem && castByOwnClassSkill && skill.slot === 0 && isCharacter(source)
+        ? getBasicAttackVisual("classes", source.classId)
+        : getSkillAttackVisual(skill.id, skill.fromItem),
       isCrit,
       executeBonus: skill.executeBonus,
       bonusDamagePercent: stealthBreak.damageBonusPercent || undefined,

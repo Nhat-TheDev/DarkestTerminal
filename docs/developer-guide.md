@@ -432,6 +432,54 @@ the change read from the `fear` that snapshots carry for characters. Party-wide 
 victory) has no line in the log, so its session (`runFearSession`) rides on one `LogEntry` with
 `hidden: true`, which `logLines` never renders; its beat starts at the impact.
 
+Direct hits also drive cell-based attack effects (`src/ui/combatFx.ts`). Units stay in their
+slots: a thrust advances a pointed tip, a slash reveals a downward circular arc, and a blunt
+strike drops a hammer head. At impact only the target sprite's opaque cells flash; a killing
+hit flashes the unit before its tombstone replaces it. A summon uses its owner's sprite and
+anchor. Misses, over-time ticks, reflection and overkill that removes no HP do not flash.
+
+`data/combat-fx.json` holds the animation frames, palettes and explicit mappings. `skills` maps a skill
+id to `thrust`, `slash`, `blunt`, or `null`; `basicAttacks` maps class, monster and summon
+archetype ids to the same choices. `src/data/combatFx.ts` checks references and frame data.
+Unmapped skills, items and ranged attacks have no weapon trail; direct damage can still flash.
+Projectiles and spell, support and summon-cast effects are not implemented here.
+
+Each `presets` entry contains a `palette` and a non-empty `frames` array. A frame contains
+`rows` (equal-width pixel strings), `offsetX` and `offsetY` (integer cell offsets from the target
+sprite's centre). A single-character palette key paints a cell; `.` leaves the cell underneath
+unchanged. Positive X points in the attacker's direction of travel, and positive Y points down.
+The renderer mirrors X for an incoming attack. Edit the rows to change the shape, the offsets
+to change its path, and the palette to change its colours. No shape is generated in TypeScript.
+The existing approach ticks sample the frame sequence from first to last, so adding frames
+does not lengthen a turn or introduce another timer.
+
+`flash.mask` is `target`: the target sprite's opaque cells form the mask. Each `flash.frames`
+entry supplies `partyColor` and `monsterColor`, either a hex colour or `null` to leave that side
+unchanged on that frame. Each flash frame lasts one reveal tick; the array's length determines
+the flash's duration. Shapes, positions, colours and flash frames are authored only in this JSON;
+`src/ui/combatFx.ts` only places and mirrors pixel frames or applies the target mask.
+
+The **Combat Effects** tab in `bun run game-editor` edits these animations visually. Choose
+an effect and frame, paint or erase cells, adjust its palette, dimensions and offsets, or add,
+duplicate, remove and reorder frames. Flash frames have separate character and monster tint
+controls, including transparency. **Copy frame** copies the selected frame as JSON;
+**Parse frame** validates pasted JSON before replacing that frame, using the effect's shared
+palette. Invalid input leaves the draft unchanged.
+
+The preview renders the unsaved draft with the game's renderer and wind-up timing, with
+character/monster selectors and a reverse-attack toggle. Saving writes only the selected
+effect into the latest `combat-fx.json`, retaining other effects and skill mappings. The editor
+verifies the saved effect after the dev server's watch-mode restart; edits made while saving
+remain marked as unsaved. Switching effects or reloading prompts before discarding a draft;
+a Reload response is ignored if the draft changes while the request is pending.
+
+Combat records an optional source id and visual on each direct hit; replay uses that hit's
+actual target and beat, rather than guessing from the text or the session's actor. The
+overlay uses the existing reveal clock and clears when the beat ends or the reveal is skipped.
+It never draws from gameplay RNG or changes combat results. Existing logs without visual
+metadata remain readable. The HP snapshot still updates once at the session's impact, while
+multi-hit numbers and weapon effects follow their individual beats.
+
 The row holding this panel and the Log is `UNIT_BLOCK_HEIGHT` + 2 rows tall (`src/ui/layout.ts`):
 2 icon rows + 15 pixels + 3 label rows, plus the border, 22 rows in all. With the header and the
 footer that leaves the Party | Dungeon | Monsters row its 16 rows of content at the 150×45 minimum <!-- docs:intent -->

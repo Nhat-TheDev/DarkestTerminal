@@ -1189,6 +1189,8 @@ export interface LogSession {
   cause?: "dot" | "dying" | "artifact" | "fear";
 }
 
+export type PhysicalAttackVisual = "thrust" | "slash" | "blunt";
+
 export interface HitMark {
   amount: number;
   /** Absent = the target took all of `amount`; a hit after the target has fallen is all overkill. */
@@ -1205,7 +1207,7 @@ export interface LogEntry {
   /** Carries a session that has no line to show; never rendered. */
   hidden?: true;
   /** Direct hits only, not damage-over-time ticks. */
-  hit?: HitMark & { targetId: Id };
+  hit?: HitMark & { targetId: Id; sourceId?: Id; visual?: PhysicalAttackVisual };
   healCritOf?: Id;
   /** Unit (a summon's owner) that lost a status whose `statusRole` is "buff". */
   buffLostOf?: Id;
