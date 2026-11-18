@@ -60,6 +60,7 @@ export type UiState =
   | { kind: "eventFortuneExchangePickArtifact" }
   | { kind: "eventCombatReward" }
   | { kind: "eventExit" }
+  | { kind: "choiceNarration" }
   | { kind: "campReflection" }
   | { kind: "floorMilestone" }
   | { kind: "memoryIntro" }

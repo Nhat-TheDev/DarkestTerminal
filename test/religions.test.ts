@@ -80,3 +80,28 @@ describe("religions", () => {
     expect(line!.fg).toBeDefined();
   });
 });
+
+
+describe("temple choice narration catalog", () => {
+  test("every religion has exactly the three action passages", () => {
+    expect(() => validateReligions(RELIGIONS, CLASSES)).not.toThrow();
+    for (const religion of RELIGIONS) {
+      expect(Object.keys(religion.narration).sort(), religion.id).toEqual(["boon", "giveBlood", "leave"]);
+      for (const key of ["giveBlood", "boon", "leave"]) {
+        const narration = { ...religion.narration };
+        delete narration[key];
+        expect(() => validateReligions([{ ...religion, narration }], []), `${religion.id}: ${key}`).toThrow(/narration/);
+      }
+    }
+  });
+
+  test("missing maps, blank or non-text passages, unsupported cases and placeholders fail", () => {
+    const religion = RELIGIONS[0]!;
+    for (const narration of [undefined, null, [], {}, { ...religion.narration, giveBlood: "  " }, { ...religion.narration, giveBlood: 2 }, { ...religion.narration, invented: "A passage." }]) {
+      expect(() => validateReligions([{ ...religion, narration: narration as never }], [])).toThrow(/narration/);
+    }
+    for (const placeholder of ["character", "artifact", "oldArtifact", "newArtifact", "coins"]) {
+      expect(() => validateReligions([{ ...religion, narration: { ...religion.narration, boon: `{{${placeholder}}}` } }], [])).toThrow(/narration/);
+    }
+  });
+});

@@ -1,3 +1,5 @@
+import { captureChoiceNarration, resolveChoiceNarration } from "../src/engine/choiceNarration";
+import { bloodAltarPay } from "../src/engine/events/bloodAltar";
 import { describe, test, expect } from "bun:test";
 import { Rng } from "../src/engine/rng";
 import { getRoom, moveToRoom, pickEventText } from "../src/engine/dungeon";
@@ -13,6 +15,7 @@ import { armEventExit, pickReflectionPrompt } from "../src/engine/events/shared"
 import { makeCtx } from "./helpers";
 import { BALANCE } from "../src/data/balanceConfig";
 import { getItem } from "../src/data/items";
+import { t } from "../src/data/strings";
 
 function forceEventRoom(game: Game, eventId: string) {
   const room = getRoom(game.state.floor, game.state.currentRoomId);
@@ -205,8 +208,11 @@ describe("events", () => {
     expect(game.merchantRefresh()).toBeNull();
     expect(game.state.coins).toBe(90);
     expect(game.state.activeEvent?.refreshCount).toBe(1);
+    game.acknowledgeChoiceNarration();
     expect(game.merchantRefresh()).toBeNull();
+    game.acknowledgeChoiceNarration();
     expect(game.merchantRefresh()).toBeNull();
+    game.acknowledgeChoiceNarration();
     expect(game.state.activeEvent?.refreshCount).toBe(3);
     expect(game.merchantRefresh()).not.toBeNull(); // exhausted
   });
@@ -273,6 +279,7 @@ describe("events", () => {
       expect(game.sacrifice("scholars-insight")).toBeNull();
       const rarity = getArtifact(game.state.pendingArtifactDecision!.artifactId).rarity;
       if (rarity === "common" || rarity === "rare") sawSubUnique = true;
+      game.acknowledgeChoiceNarration();
       game.state.pendingArtifactDecision = null;
       game.state.pendingEventExit = null;
     }
@@ -288,7 +295,8 @@ describe("events", () => {
     expect(getRoom(game.state.floor, game.state.currentRoomId).cleared).toBe(true);
     expect(game.state.narrativeCounters.artifactsSacrificed).toBe(1);
     expect(game.state.pendingEventExit).toEqual({ eventId: "sacrificial-circle", withReflection: true });
-
+    expect(game.state.pendingChoiceNarration?.caseKey).toBe("sacrifice");
+    game.acknowledgeChoiceNarration();
     game.state.pendingArtifactDecision = null;
     expect(game.sacrifice("scholars-insight")).not.toBeNull();
     expect(c.equippedArtifactIds).toEqual(["scholars-insight"]);
@@ -308,6 +316,7 @@ describe("events", () => {
       const gamble = game.state.activeEvent?.gambleState;
       if (gamble) {
         expect(gamble.pot).toBe(40);
+        game.acknowledgeChoiceNarration();
         expect(game.gamblingDenStop()).toBeNull();
         expect(game.state.coins).toBe(40);
         sawWin = true;
@@ -329,6 +338,7 @@ describe("events", () => {
       game.state.coins = 20;
       game.gamblingDenEnter();
       for (let round = 1; round <= 3 && game.state.activeEvent?.gambleState; round++) {
+        game.acknowledgeChoiceNarration();
         game.gamblingDenContinue();
       }
       if (game.state.pendingArtifactDecision && !game.state.activeEvent?.gambleState) {
@@ -461,6 +471,7 @@ describe("recurring narrative NPCs (docs/gameplay-decisions/08-events.md §8.3)"
       game.state.coins = 20;
       game.gamblingDenEnter();
       if (game.state.activeEvent?.gambleState) {
+        game.acknowledgeChoiceNarration();
         game.gamblingDenStop();
         expect(game.state.lastGamblingDenOutcome).toBe("won");
         sawBankedWin = true;
@@ -479,7 +490,10 @@ describe("recurring narrative NPCs (docs/gameplay-decisions/08-events.md §8.3)"
       game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
       game.state.coins = 20;
       game.gamblingDenEnter();
-      for (let round = 1; round <= 3 && game.state.activeEvent?.gambleState; round++) game.gamblingDenContinue();
+      for (let round = 1; round <= 3 && game.state.activeEvent?.gambleState; round++) {
+        game.acknowledgeChoiceNarration();
+        game.gamblingDenContinue();
+      }
       if (game.state.pendingArtifactDecision && !game.state.activeEvent?.gambleState) {
         expect(game.state.lastGamblingDenOutcome).toBe("won");
         jackpotHit = true;
@@ -519,6 +533,7 @@ describe("Chain 1: The Guardian's Grudge (docs/gameplay-decisions/08-events.md �
     expect(game.skipGuardianFight()).toBeNull();
     expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(1);
 
+    game.acknowledgeChoiceNarration();
     forceEventRoom(game, "desecrated-altar");
     expect(game.skipGuardianFight()).toBeNull();
     expect(game.state.narrativeCounters.guardianFightsSkipped).toBe(2);
@@ -637,6 +652,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
       forceEventRoom(game, "sacrificial-circle");
       c.equippedArtifactIds = ["scholars-insight"];
       expect(game.sacrifice("scholars-insight")).toBeNull();
+      game.acknowledgeChoiceNarration();
       game.state.pendingArtifactDecision = null;
       game.state.pendingEventExit = null;
     }
@@ -675,9 +691,13 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     c.hp = c.maxHp;
     forceEventRoom(game, "blood-altar");
     expect(game.bloodAltarPay(c.id)).toBeNull();
+    game.acknowledgeChoiceNarration();
+    game.state.pendingArtifactDecision = null;
     c.hp = c.maxHp;
     forceEventRoom(game, "collapsed-floor");
     expect(game.collapsedFloorAttempt(c.id)).toBeNull();
+    game.acknowledgeChoiceNarration();
+    game.state.pendingArtifactDecision = null;
     c.hp = c.maxHp;
     forceEventRoom(game, "blood-altar");
     expect(game.bloodAltarPay(c.id)).toBeNull();
@@ -691,7 +711,10 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     // Still below the chain-4 threshold, but the cross-event variant fires: collapsedFloorAttempt() set eventOutcomes["collapsed-floor"] to "rescued" or "failed", and either matches.
     expect(game.state.message).toBe(plainEventText(EVENTS.find((e) => e.id === "blood-altar")!.crossEventVariants![1]!.description));
 
+    game.acknowledgeChoiceNarration();
+    game.state.pendingArtifactDecision = null;
     c.hp = c.maxHp;
+    forceEventRoom(game, "collapsed-floor");
     expect(game.collapsedFloorAttempt(c.id)).toBeNull();
     expect(game.state.narrativeCounters.altarPaymentsCount).toBe(4);
 
@@ -712,6 +735,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
       const game = new Game(seed);
       const c = game.state.party[0]!;
       c.hp = c.maxHp;
+      forceEventRoom(game, "collapsed-floor");
       expect(game.collapsedFloorAttempt(c.id)).toBeNull();
       if (!game.state.pendingArtifactDecision) {
         expect(game.state.narrativeCounters.altarPaymentsCount).toBe(1);
@@ -728,6 +752,7 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
       forceEventRoom(game, "sacrificial-circle");
       c.equippedArtifactIds = ["scholars-insight"];
       expect(game.sacrifice("scholars-insight")).toBeNull();
+      game.acknowledgeChoiceNarration();
       game.state.pendingArtifactDecision = null;
       game.state.pendingEventExit = null;
     }
@@ -758,7 +783,10 @@ describe("Chain 2/3: The Circle Remembers & Blood Debt (docs/gameplay-decisions/
     const c = game.state.party[0]!;
     for (let i = 0; i < BALANCE.events.bloodDebtThreshold2; i++) {
       c.hp = c.maxHp;
+      forceEventRoom(game, "blood-altar");
       expect(game.bloodAltarPay(c.id)).toBeNull();
+      game.acknowledgeChoiceNarration();
+      game.state.pendingArtifactDecision = null;
     }
     expect(game.state.narrativeCounters.altarPaymentsCount).toBe(BALANCE.events.bloodDebtThreshold2);
 
@@ -910,6 +938,37 @@ describe("§8.6: Post-event reflection choice (docs/gameplay-decisions/08-events
     expect(game.state.pendingEventExit?.withReflection).toBeFalsy();
   });
 
+  test.each([
+    ["wandering-hermit", "traded", (g: Game) => g.hermitLeave()],
+    ["sacrificial-circle", "sacrificed", (g: Game) => g.sacrificeLeave()],
+  ] as const)("leaving %s after engaging on an earlier visit doesn't replay that visit's reflection", (eventId, outcome, leave) => {
+    const game = new Game(67);
+    forceEventRoom(game, eventId);
+    game.state.eventOutcomes[eventId] = outcome;
+    leave(game);
+    expect(game.state.pendingEventExit).toEqual({ eventId, withReflection: false });
+  });
+
+  test("a paid choice can't be taken twice once its room has closed", () => {
+    const game = new Game(66);
+    const c = game.state.party[0]!;
+    c.hp = c.maxHp;
+    game.state.coins = 10 * BALANCE.events.wanderingHermitExchangeCostCoins;
+    forceEventRoom(game, "blood-altar");
+    expect(game.bloodAltarPay(c.id)).toBeNull();
+    game.acknowledgeChoiceNarration();
+    game.state.pendingArtifactDecision = null;
+    const hp = c.hp;
+    expect(game.bloodAltarPay(c.id)?.reason).toBe(t("errors.nothingToDecide"));
+    expect(c.hp).toBe(hp);
+    expect(game.state.narrativeCounters.altarPaymentsCount).toBe(1);
+    expect(game.collapsedFloorAttempt(c.id)?.reason).toBe(t("errors.nothingToDecide"));
+    c.equippedArtifactIds = ["scholars-insight"];
+    const coins = game.state.coins;
+    expect(game.hermitExchangeFortune("scholars-insight")?.reason).toBe(t("errors.nothingToDecide"));
+    expect(game.state.coins).toBe(coins);
+  });
+
   test("skipping guardian-fight doesn't trigger a reflection written for having fought", () => {
     const game = new Game(68);
     const target = game.connectedRoomChoices()[0]!;
@@ -948,6 +1007,7 @@ describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
       forceEventRoom(game, "sacrificial-circle");
       c.equippedArtifactIds = ["scholars-insight"];
       expect(game.sacrifice("scholars-insight")).toBeNull();
+      game.acknowledgeChoiceNarration();
       game.state.pendingArtifactDecision = null;
       game.state.pendingEventExit = null;
     }
@@ -979,7 +1039,10 @@ describe("Part C.2: chain tier 3 (10-event-narrative.md)", () => {
     const c = game.state.party[0]!;
     for (let i = 0; i < BALANCE.events.bloodDebtThreshold3; i++) {
       c.hp = c.maxHp;
+      forceEventRoom(game, "blood-altar");
       expect(game.bloodAltarPay(c.id)).toBeNull();
+      game.acknowledgeChoiceNarration();
+      game.state.pendingArtifactDecision = null;
     }
     expect(game.state.narrativeCounters.altarPaymentsCount).toBe(BALANCE.events.bloodDebtThreshold3);
 
@@ -1118,6 +1181,8 @@ describe("Part B.1: cross-event continuity (10-event-narrative.md)", () => {
     c.equippedArtifactIds = ["scholars-insight"];
     expect(game.sacrifice("scholars-insight")).toBeNull();
     expect(game.state.eventOutcomes["sacrificial-circle"]).toBe("sacrificed");
+    game.acknowledgeChoiceNarration();
+    game.state.pendingArtifactDecision = null;
     game.sacrificeLeave();
     expect(game.state.eventOutcomes["sacrificial-circle"]).toBe("sacrificed");
   });
@@ -1419,8 +1484,11 @@ describe("waystone-shard's restricted drop source (10-event-narrative.md §F.4)"
       const c = game.state.party[0]!;
       c.hp = c.maxHp;
       game.state.narrativeCounters.altarPaymentsCount = BALANCE.events.bloodDebtThreshold2;
+      forceEventRoom(game, "blood-altar");
       game.bloodAltarPay(c.id);
       if (game.state.pendingArtifactDecision?.artifactId === "waystone-shard") sawIt = true;
+      game.acknowledgeChoiceNarration();
+      game.state.pendingArtifactDecision = null;
     }
     expect(sawIt).toBe(true);
   });
@@ -1511,7 +1579,7 @@ describe("Chain 4: 'Taken, Never Given' (08-events.md §8.5)", () => {
 });
 
 describe("assertEventDataConsistent", () => {
-  const base = { id: "test-event", name: "Test", description: "x", kind: "instantReward", tier: "common" } as const;
+  const base = { id: "test-event", name: "Test", description: "x", kind: "instantReward", tier: "common", narration: { moveOn: "The party leaves." } } as const;
 
   test("the shipped catalog passes", () => {
     expect(() => assertEventDataConsistent(EVENTS)).not.toThrow();
@@ -1554,4 +1622,362 @@ describe("assertEventDataConsistent", () => {
     expect(() => assertEventDataConsistent([{ ...base, reflectionRequiresOutcome: "paid" }])).toThrow(/has no reflection/);
     expect(() => assertEventDataConsistent([{ ...base, reflection, reflectionRequiresOutcome: "skipped" }])).toThrow(/is not one of/);
   });
+});
+
+
+describe("event choice narration catalog", () => {
+  const required = {
+    instantReward: ["moveOn"],
+    combatReward: ["fight", "leave"],
+    artifactShop: ["purchase", "refresh", "leave"],
+    hpGamble: ["pay", "leave"],
+    cursedOffer: ["accept", "decline"],
+    pairedOffer: ["chooseFirst", "chooseSecond"],
+    artifactSacrifice: ["sacrifice", "leave.untouched", "leave.afterOffering", "leave.legacy"],
+    fortuneExchange: ["exchange", "leave"],
+    rescueGamble: ["rescue.success", "rescue.failure", "leave"],
+    coinGamble: ["enter.win", "enter.loss", "continue.win", "continue.loss", "jackpot", "stop", "leave"],
+  } as const;
+  const base = { id: "test-event", name: "Test", description: "A room.", tier: "common" } as const;
+
+  test("every non-scripted kind requires its action cases, without unrelated source overrides", () => {
+    for (const kind of Object.keys(required) as (keyof typeof required)[]) {
+      const narration = Object.fromEntries(required[kind].map((key) => [key, "The party waits."]));
+      const event = { ...base, kind, narration };
+      expect(() => assertEventDataConsistent([event])).not.toThrow();
+      for (const key of required[kind]) {
+        const missing = { ...narration };
+        delete missing[key];
+        expect(() => assertEventDataConsistent([{ ...event, narration: missing }]), `${kind}: ${key}`).toThrow(/narration/);
+      }
+    }
+    expect(() => assertEventDataConsistent([{ ...base, kind: "scripted" }])).not.toThrow();
+  });
+
+  test("every shipped narration case is nonempty and every required source override is present", () => {
+    expect(() => assertEventDataConsistent(EVENTS)).not.toThrow();
+    for (const event of EVENTS.filter((event) => event.kind !== "scripted")) {
+      expect(event.narration, event.id).toBeDefined();
+      for (const key of Object.keys(event.narration!)) {
+        const narration = { ...event.narration };
+        delete narration[key];
+        if (key === "moveOn.habit") continue;
+        expect(() => assertEventDataConsistent([{ ...event, narration }]), `${event.id}: ${key}`).toThrow(/narration/);
+      }
+    }
+  });
+
+  test("missing maps, blank or non-text passages, unsupported cases and placeholders fail", () => {
+    const event = EVENTS.find((event) => event.kind === "artifactShop")!;
+    for (const narration of [undefined, null, [], {}, { ...event.narration, purchase: "  " }, { ...event.narration, purchase: 2 }, { ...event.narration, invented: "A passage." }, { ...event.narration, purchase: "{{coins}}" }]) {
+      expect(() => assertEventDataConsistent([{ ...event, narration: narration as never }])).toThrow(/narration/);
+    }
+    expect(() => assertEventDataConsistent([{ ...event, narration: { ...event.narration, purchase: "{{character}} {{artifact}} {{oldArtifact}} {{newArtifact}}" } }])).not.toThrow();
+  });
+
+  test("instant rewards use one scene family and support habit text only for an escalated source", () => {
+    const event = { ...base, kind: "instantReward" } as const;
+    expect(() => assertEventDataConsistent([{ ...event, narration: { "take.chest": "A chest." } }])).not.toThrow();
+    expect(() => assertEventDataConsistent([{ ...event, narration: { moveOn: "A room.", "take.chest": "A chest." } }])).toThrow(/narration/);
+    expect(() => assertEventDataConsistent([{ ...event, narration: { "take.chest": "A chest.", "take.lockbox": "A lockbox." } }])).toThrow(/narration/);
+    expect(() => assertEventDataConsistent([{ ...event, narration: { moveOn: "A room.", "moveOn.habit": "A habit." } }])).toThrow(/narration/);
+    expect(() => assertEventDataConsistent([{ ...event, chainEscalatedDescription: "A habit.", narration: { moveOn: "A room." } }])).not.toThrow();
+    expect(() => assertEventDataConsistent([{ ...event, chainEscalatedDescription: "A habit.", narration: { moveOn: "A room.", "moveOn.habit": "A habit." } }])).not.toThrow();
+    const renamed = { ...EVENTS.find((event) => event.narration?.["take.chest"])!, id: "another-chest" };
+    expect(() => assertEventDataConsistent([renamed])).not.toThrow();
+  });
+
+  test("chest narration rejects an additional unsupported description variant", () => {
+    const chest = EVENTS.find((event) => event.narration?.["take.chest"])!;
+    const descriptionVariants = [...chest.descriptionVariants!, "A sealed urn rests in a narrow alcove."];
+    expect(() => assertEventDataConsistent([{ ...chest, descriptionVariants }])).toThrow(/narration.*unsupported.*descriptionVariants/);
+  });
+
+  test("forced, tier and variant cases require their corresponding source fields", () => {
+    const forced = EVENTS.find((event) => event.kind === "combatReward")!;
+    for (const field of ["chainForcedDescription", "chainForced2Description", "chainForced3Description"] as const) {
+      expect(() => assertEventDataConsistent([{ ...forced, [field]: undefined }]), field).toThrow(/narration/);
+    }
+    const tiered = EVENTS.find((event) => event.kind === "hpGamble")!;
+    for (const field of ["escalation", "chainEscalatedDescription", "chainEscalated2Description", "chainEscalated3Description"] as const) {
+      expect(() => assertEventDataConsistent([{ ...tiered, [field]: undefined }]), field).toThrow(/narration/);
+    }
+    const chest = EVENTS.find((event) => event.narration?.["take.chest"])!;
+    expect(() => assertEventDataConsistent([{ ...chest, descriptionVariants: undefined }])).toThrow(/narration/);
+    expect(() => assertEventDataConsistent([{ ...chest, descriptionVariants: chest.descriptionVariants!.slice(0, 1) }])).toThrow(/narration/);
+    expect(() => assertEventDataConsistent([{ ...chest, chainEscalatedDescription: undefined }])).toThrow(/narration/);
+  });
+});
+
+describe("choice narration resolution", () => {
+  test("choice narration captures committed effects once", () => {
+    const game = new Game(1);
+    forceEventRoom(game, "blood-altar");
+    const actor = game.state.party[0]!;
+    const before = captureChoiceNarration(game.state)!;
+    const hp = actor.hp;
+    expect(bloodAltarPay(game.state, game.ctx, actor.id)).toBeNull();
+    const narration = resolveChoiceNarration(before, game.state, "pay", { characterId: actor.id });
+    expect(narration.result.hpChanges).toEqual([{ characterId: actor.id, name: actor.name, before: hp, after: actor.hp }]);
+    expect(narration.result.offeredArtifacts?.[0]?.name).toBe(getArtifact(game.state.pendingArtifactDecision!.artifactId).name);
+    expect(narration.text).toContain(actor.name);
+  });
+});
+
+describe("choice narration edge cases", () => {
+  test("choice narration does not consume rng and pins the pre-action tier", () => {
+    const game = new Game(2);
+    forceEventRoom(game, "blood-altar");
+    game.state.narrativeCounters.altarPaymentsCount = BALANCE.events.bloodDebtThreshold - 1;
+    const rngState = game.ctx.rng.getState();
+    const before = captureChoiceNarration(game.state)!;
+    expect(game.ctx.rng.getState()).toBe(rngState);
+    const actor = game.state.party[0]!;
+    expect(bloodAltarPay(game.state, game.ctx, actor.id)).toBeNull();
+    const afterRoll = game.ctx.rng.getState();
+    expect(resolveChoiceNarration(before, game.state, "pay", { characterId: actor.id }).caseKey).toBe("pay");
+    expect(game.ctx.rng.getState()).toBe(afterRoll);
+  });
+
+  test("stopping the den reports the pot it banked", () => {
+    const game = new Game(4);
+    forceEventRoom(game, "gambling-den");
+    game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [], gambleState: { round: 1, pot: 40, maxRounds: BALANCE.events.gamblingDenRounds.length } };
+    expect(game.gamblingDenStop()).toBeNull();
+    expect(game.state.pendingChoiceNarration?.result.gamble).toEqual({ round: 1, potBefore: 40, potAfter: 40, outcome: "banked" });
+  });
+
+  test("an open chest shown with any other scene narrates as the plain chest", () => {
+    const game = new Game(5);
+    const chest = EVENTS.find((event) => event.narration?.["take.chest"])!;
+    forceEventRoom(game, chest.id);
+    const before = { ...captureChoiceNarration(game.state)!, scene: "A text no variant holds." };
+    expect(resolveChoiceNarration(before, game.state, "take").caseKey).toBe("take.chest");
+  });
+
+  test("{{character}} names the chosen member, not the first whose HP moved", () => {
+    const game = new Game(6);
+    forceEventRoom(game, "blood-altar");
+    const [other, chosen] = [game.state.party[0]!, game.state.party[1]!];
+    const before = captureChoiceNarration(game.state)!;
+    other.hp -= 1;
+    expect(bloodAltarPay(game.state, game.ctx, chosen.id)).toBeNull();
+    const narration = resolveChoiceNarration(before, game.state, "pay", { characterId: chosen.id });
+    expect(narration.result.hpChanges?.[0]?.name).toBe(other.name);
+    expect(narration.text.startsWith(chosen.name)).toBe(true);
+  });
+
+  test("ritual narration uses this room history", () => {
+    const game = new Game(3);
+    const room = forceEventRoom(game, "sacrificial-circle");
+    for (const [count, key] of [[undefined, "leave.legacy"], [0, "leave.untouched"], [2, "leave.afterOffering"]] as const) {
+      room.eventSacrificesThisVisit = count;
+      expect(resolveChoiceNarration(captureChoiceNarration(game.state)!, game.state, "leave").caseKey).toBe(key);
+    }
+    room.type = "rest";
+    expect(captureChoiceNarration(game.state)).toBeNull();
+    room.type = "event";
+    room.rolledEventId = "missing";
+    expect(captureChoiceNarration(game.state)).toBeNull();
+  });
+
+  test("jackpot reports duplicate offers and entry stake", () => {
+    const rounds = BALANCE.events.gamblingDenRounds;
+    const saved = rounds.splice(1);
+    try {
+      const game = new Game(4);
+      forceEventRoom(game, "gambling-den");
+      game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+      game.state.coins = rounds[0]!.stake;
+      const before = captureChoiceNarration(game.state)!;
+      game.ctx.rng.chance = () => true;
+      expect(game.gamblingDenEnter()).toBeNull();
+      game.state.secondJackpotArtifactId = game.state.pendingArtifactDecision!.artifactId;
+      const narration = resolveChoiceNarration(before, game.state, "enter");
+      expect(narration.caseKey).toBe("jackpot");
+      expect(narration.result.gamble).toEqual({ round: 1, potBefore: before.coins, potAfter: 0, outcome: "jackpot" });
+      expect(narration.result.offeredArtifacts).toHaveLength(2);
+      expect(narration.result.offeredArtifacts![0]).toEqual(narration.result.offeredArtifacts![1]);
+    } finally {
+      rounds.push(...saved);
+    }
+  });
+
+  test("temple narration reports selected donors and capped faith", () => {
+    const game = new Game(5);
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "temple";
+    room.cleared = false;
+    room.templeReligionId = "light-and-glory";
+    game.state.faith = 99.9;
+    const donor = game.state.party[0]!;
+    const oldHp = donor.hp;
+    const before = captureChoiceNarration(game.state)!;
+    expect(game.templeGiveBlood([donor.id])).toBeNull();
+    const result = resolveChoiceNarration(before, game.state, "giveBlood", { donorIds: [donor.id] }).result;
+    expect(result.faithDelta).toBe(0.1);
+    expect(result.hpChanges).toEqual([{ characterId: donor.id, name: donor.name, before: oldHp, after: donor.hp }]);
+  });
+});
+
+describe("choice narration snapshots", () => {
+  test("uses lower authored scene tiers when higher descriptions are absent", () => {
+    const game = new Game(7);
+    const room = forceEventRoom(game, "blood-altar");
+    game.state.floor.depth = BALANCE.events.chainTier3MinFloorDepth;
+    game.state.narrativeCounters.altarPaymentsCount = BALANCE.events.bloodDebtThreshold3;
+    const before = captureChoiceNarration(game.state)!;
+    delete before.cases["pay.tier3"];
+    delete before.cases["pay.tier2"];
+    const actor = game.state.party[0]!;
+    expect(bloodAltarPay(game.state, game.ctx, actor.id)).toBeNull();
+    expect(resolveChoiceNarration(before, game.state, "pay", { characterId: actor.id }).caseKey).toBe("pay.tier1");
+    room.cleared = false;
+    room.rolledEventId = "guardian-fight";
+    room.chainVariant = "forced3";
+    const guardian = captureChoiceNarration(game.state)!;
+    delete guardian.cases["fight.forced3"];
+    expect(resolveChoiceNarration(guardian, game.state, "fight").caseKey).toBe("fight.forced2");
+  });
+
+  test("preserves zero-cost selected payer and duplicate removed artifacts", () => {
+    const game = new Game(8);
+    forceEventRoom(game, "blood-altar");
+    const actor = game.state.party[0]!;
+    actor.maxHp = 1;
+    actor.hp = 1;
+    actor.equippedArtifactIds = ["iron-gauntlet", "iron-gauntlet"];
+    const before = captureChoiceNarration(game.state)!;
+    expect(bloodAltarPay(game.state, game.ctx, actor.id)).toBeNull();
+    actor.equippedArtifactIds.pop();
+    const result = resolveChoiceNarration(before, game.state, "pay", { characterId: actor.id }).result;
+    expect(result.hpChanges).toEqual([{ characterId: actor.id, name: actor.name, before: 1, after: 1 }]);
+    expect(result.removedArtifacts).toEqual([{ artifactId: "iron-gauntlet", name: getArtifact("iron-gauntlet").name }]);
+  });
+
+  test("active gamble pot takes precedence over stale jackpot outcome", () => {
+    const game = new Game(9);
+    forceEventRoom(game, "gambling-den");
+    game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+    game.state.lastGamblingDenOutcome = "won";
+    game.state.coins = BALANCE.events.gamblingDenRounds[0]!.stake;
+    const before = captureChoiceNarration(game.state)!;
+    game.ctx.rng.chance = () => true;
+    expect(game.gamblingDenEnter()).toBeNull();
+    const result = resolveChoiceNarration(before, game.state, "enter");
+    expect(result.caseKey).toBe("enter.win");
+    expect(result.result.gamble?.potAfter).toBe(game.state.activeEvent!.gambleState!.pot);
+    expect(result.result.coinsDelta).toBe(-before.coins);
+  });
+});
+
+test("choice narration captures committed effects once", () => {
+  const game = new Game(1);
+  forceEventRoom(game, "open-chest");
+  expect(game.openChest()).toBeNull();
+  expect(game.state.pendingChoiceNarration?.caseKey).toStartWith("take");
+  const first = game.state.pendingChoiceNarration;
+  expect(game.openChest()).not.toBeNull();
+  expect(game.state.pendingChoiceNarration).toBe(first);
+  game.acknowledgeChoiceNarration();
+  expect(game.state.pendingChoiceNarration).toBeNull();
+  expect(game.state.pendingArtifactDecision).not.toBeNull();
+});
+
+test("Game narrates supported event choices and rejects invalid actions", () => {
+  const cases: [string, string, (game: Game) => unknown][] = [
+    ["old-count", "moveOn", g => g.openChest()],
+    ["merchant", "purchase", g => { g.state.coins = 999; g.state.activeEvent = { eventId: "merchant", offerArtifactIds: ["iron-gauntlet"], refreshCount: 0 }; return g.merchantPurchase(0); }],
+    ["merchant", "refresh", g => { g.state.coins = 999; g.state.activeEvent = { eventId: "merchant", offerArtifactIds: ["iron-gauntlet"], refreshCount: 0 }; return g.merchantRefresh(); }],
+    ["merchant", "leave", g => g.merchantLeave()],
+    ["blood-altar", "pay", g => g.bloodAltarPay(g.state.party[0]!.id)],
+    ["blood-altar", "leave", g => g.bloodAltarLeave()],
+    ["cursed-shrine", "accept", g => { g.state.activeEvent = { eventId: "cursed-shrine", offerArtifactIds: ["blackened-locket"] }; return g.cursedShrineDecide(true); }],
+    ["cursed-shrine", "decline", g => { g.state.activeEvent = { eventId: "cursed-shrine", offerArtifactIds: ["blackened-locket"] }; return g.cursedShrineDecide(false); }],
+    ["twin-altars", "chooseFirst", g => { g.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: ["iron-gauntlet", "sharp-claw"] }; return g.twinAltarsChoose(0); }],
+    ["twin-altars", "chooseSecond", g => { g.state.activeEvent = { eventId: "twin-altars", offerArtifactIds: ["iron-gauntlet", "sharp-claw"] }; return g.twinAltarsChoose(1); }],
+    ["sacrificial-circle", "sacrifice", g => { g.state.party[0]!.equippedArtifactIds = ["scholars-insight"]; return g.sacrifice("scholars-insight"); }],
+    ["sacrificial-circle", "leave.legacy", g => g.sacrificeLeave()],
+    ["gambling-den", "leave", g => { g.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] }; return g.gamblingDenLeave(); }],
+    ["wandering-hermit", "exchange", g => { g.state.coins = 999; g.state.party[0]!.equippedArtifactIds = ["iron-gauntlet"]; return g.hermitExchangeFortune("iron-gauntlet"); }],
+    ["wandering-hermit", "leave", g => g.hermitLeave()],
+    ["collapsed-floor", "leave", g => g.collapsedFloorLeave()],
+    ["guardian-fight", "fight", g => g.enterGuardianFight()],
+    ["guardian-fight", "leave", g => g.skipGuardianFight()],
+  ];
+  for (const [id, key, act] of cases) {
+    const game = new Game(1);
+    forceEventRoom(game, id);
+    expect(act(game), id).toBeFalsy();
+    expect(game.state.pendingChoiceNarration?.caseKey, id).toBe(key);
+  }
+  const game = new Game(1);
+  forceEventRoom(game, "merchant");
+  game.state.activeEvent = { eventId: "merchant", offerArtifactIds: ["iron-gauntlet"], refreshCount: 0 };
+  game.state.coins = 0;
+  expect(game.merchantPurchase(0)).not.toBeNull();
+  expect(game.state.pendingChoiceNarration).toBeNull();
+});
+
+test("ritual visit history is updated only after a successful offering", () => {
+  const game = new Game(1);
+  const room = forceEventRoom(game, "sacrificial-circle");
+  expect(game.sacrifice("scholars-insight")).not.toBeNull();
+  expect(room.eventSacrificesThisVisit).toBeUndefined();
+  game.state.party[0]!.equippedArtifactIds = ["scholars-insight"];
+  expect(game.sacrifice("scholars-insight")).toBeNull();
+  expect(room.eventSacrificesThisVisit).toBe(1);
+  game.acknowledgeChoiceNarration();
+  game.state.pendingArtifactDecision = null;
+  expect(room.cleared).toBe(true);
+  game.sacrificeLeave();
+  expect(game.state.pendingChoiceNarration).toBeNull();
+  expect(room.eventSacrificesThisVisit).toBe(1);
+});
+
+test("rescue narration follows each actual outcome", () => {
+  const outcomes = new Set<string>();
+  for (let seed = 1; seed < 100 && outcomes.size < 2; seed++) {
+    const game = new Game(seed);
+    forceEventRoom(game, "collapsed-floor");
+    const actor = game.state.party[0]!;
+    const hp = actor.hp;
+    expect(game.collapsedFloorAttempt(actor.id)).toBeNull();
+    const narration = game.state.pendingChoiceNarration!;
+    expect(narration.caseKey).toBe(game.state.eventOutcomes["collapsed-floor"] === "rescued" ? "rescue.success" : "rescue.failure");
+    expect(narration.result.hpChanges?.[0]).toMatchObject({ characterId: actor.id, before: hp, after: actor.hp });
+    outcomes.add(narration.caseKey);
+  }
+  expect(outcomes.size).toBe(2);
+});
+
+test("narration acknowledgement clears only an empty exit and retains rewards", () => {
+  const game = new Game(1);
+  forceEventRoom(game, "open-chest");
+  expect(game.openChest()).toBeNull();
+  const reward = game.state.pendingArtifactDecision;
+  game.state.pendingEventExit = { eventId: "open-chest", withReflection: false };
+  game.acknowledgeChoiceNarration();
+  expect(game.state.pendingEventExit).toBeNull();
+  expect(game.state.pendingArtifactDecision).toEqual(reward);
+  expect(game.openChest()?.reason).toBe("Resolve the offered artifact before taking another action.");
+});
+
+test("gambling narration follows the active pot through jackpot", () => {
+  const game = new Game(1);
+  forceEventRoom(game, "gambling-den");
+  game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+  game.state.coins = BALANCE.events.gamblingDenRounds[0]!.stake;
+  game.ctx.rng.chance = () => true;
+  expect(game.gamblingDenEnter()).toBeNull();
+  expect(game.state.pendingChoiceNarration?.caseKey).toBe("enter.win");
+  const pot = game.state.activeEvent!.gambleState!.pot;
+  expect(game.gamblingDenContinue()).not.toBeNull();
+  expect(game.state.activeEvent!.gambleState!.pot).toBe(pot);
+  while (game.state.activeEvent?.gambleState) {
+    game.acknowledgeChoiceNarration();
+    expect(game.gamblingDenContinue()).toBeNull();
+  }
+  expect(game.state.pendingChoiceNarration?.caseKey).toBe("jackpot");
+  expect(game.state.pendingChoiceNarration?.result.offeredArtifacts).toHaveLength(2);
 });

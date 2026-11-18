@@ -55,6 +55,7 @@ import { PAGE_SIZE, ITEM_PAGE_SIZE, pageCount, clampPage } from "./pagination";
 import { GROUP_SEP, canOpenJournal, canOpenMap, canOpenMemory, canOpenMonsters, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
+import * as choiceNarrationScreen from "./screens/choiceNarration";
 import * as roomScreen from "./screens/room";
 import * as combatScreen from "./screens/combat";
 import * as inventoryScreen from "./screens/inventory";
@@ -109,9 +110,23 @@ export type RunExit = "newRun" | "menu";
 
 const CONFIRM_KEY_LABELS: Record<string, string> = { return: "Enter", escape: "Esc" };
 
-function withConfirmPrompt(main: string | StyledText): StyledText {
+function withConfirmPrompt(main: string | StyledText, keys: string[]): { content: StyledText; selectedLine: number } {
   const chunks = typeof main === "string" ? [plainChunk(main)] : main.chunks;
-  return new StyledText([colorChunk(t("ui.confirmPending"), PALETTE.title), plainChunk("\n\n"), ...chunks]);
+  const lines: TextChunk[][] = [[]];
+  for (const chunk of chunks) {
+    chunk.text.split("\n").forEach((text, index) => {
+      if (index > 0) lines.push([]);
+      if (text) lines.at(-1)!.push({ ...chunk, text });
+    });
+  }
+  let selectedLine = -1;
+  const highlighted = lines.map((line, index) => {
+    const key = /^\s*\[([^\]]+)\]/.exec(line.map(chunk => chunk.text).join(""))?.[1];
+    if (!key || !keys.includes(key.toLowerCase())) return line;
+    if (selectedLine < 0) selectedLine = index + 2;
+    return line.map(chunk => boldColorChunk(chunk.text, PALETTE.title));
+  });
+  return { content: new StyledText([colorChunk(t("ui.confirmPending"), PALETTE.title), plainChunk("\n\n"), ...joinLines(highlighted).chunks]), selectedLine };
 }
 
 export class App implements ScreenContext {
@@ -145,6 +160,8 @@ export class App implements ScreenContext {
   /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
   private deferredToasts: LogEntry[] = [];
   private mainUi: UiState | null = null;
+  private narrationPassage: Game["state"]["pendingChoiceNarration"] = null;
+  private narrationScroll = 0;
   private roomLog: LogEntry[] = [];
   private roomLogFloor: Floor | null = null;
   private roomLogRoomId: Id | null = null;
@@ -429,6 +446,10 @@ export class App implements ScreenContext {
       this.ui = { kind: "gameover" };
       return;
     }
+    if (this.game.state.pendingChoiceNarration) {
+      this.ui = { kind: "choiceNarration" };
+      return;
+    }
     const combat = this.game.state.combat;
     if (!combat) {
       if (this.game.state.pendingArtifactDecision) {
@@ -545,7 +566,7 @@ export class App implements ScreenContext {
       this.render();
       return;
     }
-    if (this.reveal.active) {
+    if (this.reveal.active && this.ui.kind !== "choiceNarration") {
       this.flushPendingReveal();
       return;
     }
@@ -610,6 +631,9 @@ export class App implements ScreenContext {
     const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
 
     switch (this.ui.kind) {
+      case "choiceNarration":
+        choiceNarrationScreen.handleKey(this, key);
+        break;
       case "room":
       case "rest":
         roomScreen.handleKey(this, this.ui, key, digit);
@@ -890,9 +914,14 @@ export class App implements ScreenContext {
     // Runs before the header/party/monster panels so they all read the same last-revealed snapshot.
     const combat = s.combat;
     const fresh: LogEntry[] = [];
+    if (this.mainUi?.kind === "choiceNarration" && this.ui !== this.mainUi) this.narrationScroll = this.main.scrollY;
+    if (s.pendingChoiceNarration !== this.narrationPassage) {
+      this.narrationPassage = s.pendingChoiceNarration;
+      this.narrationScroll = 0;
+    }
     // Not always the current combat: a party-wiping round ends the combat before this render runs.
     let revealSource = combat;
-    if (combat !== this.observedCombat) {
+    if (!s.pendingChoiceNarration && combat !== this.observedCombat) {
       const finished = this.observedCombat;
       if (finished && finished.log.length > this.lastLogLength) {
         fresh.push(...finished.log.slice(this.lastLogLength));
@@ -905,11 +934,11 @@ export class App implements ScreenContext {
       // A loaded save's resolved rounds were seen before saving, so they are not replayed.
       if (combat && combat.log.some((e) => e.snapshot !== undefined)) this.lastLogLength = combat.log.length;
     }
-    if (combat && combat.log.length > this.lastLogLength) {
+    if (!s.pendingChoiceNarration && combat && combat.log.length > this.lastLogLength) {
       fresh.push(...combat.log.slice(this.lastLogLength));
       this.lastLogLength = combat.log.length;
     }
-    fresh.push(...this.deferredToasts.splice(0));
+    if (!s.pendingChoiceNarration) fresh.push(...this.deferredToasts.splice(0));
     if (fresh.length > 0) {
       // Lines queued behind a running reveal neither rewind HP/MP/coins nor add a tick.
       const wasIdle = !this.reveal.active;
@@ -922,9 +951,9 @@ export class App implements ScreenContext {
       this.reveal.enqueue(fresh);
       if (wasIdle) this.startReveal();
     }
-    const revealing = this.reveal.active;
+    const revealing = this.reveal.active && !s.pendingChoiceNarration;
     if (!revealing) this.narratedCombat = null;
-    const shownCombat = this.narratedCombat ?? combat;
+    const shownCombat = s.pendingChoiceNarration ? null : this.narratedCombat ?? combat;
     const focus = this.reveal.focus;
     const inFullLog = this.ui.kind === "fullLog";
     for (const box of this.chrome) box.visible = !inFullLog;
@@ -1009,8 +1038,22 @@ export class App implements ScreenContext {
     } else {
       const pending = this.confirmPending();
       const main = this.renderMain();
-      this.main.content = pending === null ? main : withConfirmPrompt(main);
+      let confirmKeys = [CONFIRM_KEY_LABELS[pending ?? ""]?.toLowerCase() ?? pending ?? ""];
+      if (pending === "return" && this.ui.kind === "templeDonors") {
+        const selectedIds = this.ui.selectedIds;
+        confirmKeys = s.party.flatMap((member, index) => selectedIds.includes(member.id) ? [String(index + 1)] : []);
+      } else if (pending === "escape" && this.ui.kind === "eventCombatReward") confirmKeys = ["2"];
+      else if (pending === "escape" && this.ui.kind === "eventArtifactShop") confirmKeys = [String((s.activeEvent?.offerArtifactIds.length ?? 0) + 1)];
+      const confirmation = pending === null ? null : withConfirmPrompt(main, confirmKeys);
+      this.main.content = confirmation?.content ?? main;
       this.keepScrollInRange(this.main, this.ui !== this.mainUi);
+      if (confirmation) {
+        const rows = this.main.lineInfo.lineSources;
+        const first = rows.indexOf(confirmation.selectedLine);
+        const last = rows.lastIndexOf(confirmation.selectedLine);
+        if (first >= 0) this.main.scrollY = Math.min(first, Math.max(this.main.scrollY, last - this.main.height + 1));
+      }
+      if (this.ui.kind === "choiceNarration" && this.ui !== this.mainUi) this.main.scrollY = this.narrationScroll;
       this.showMainScroll();
       this.footer.content = joinLines([
         highlightKeyHints(
@@ -1332,8 +1375,8 @@ export class App implements ScreenContext {
 
     const room = getRoom(s.floor, s.currentRoomId);
     const isRestRoom = !combat && room.type === "rest";
-    const isTempleRoom = !combat && room.type === "temple" && !room.cleared;
-    const isEventRoom = !combat && room.type === "event" && !!room.rolledEventId && !room.cleared;
+    const isTempleRoom = !combat && room.type === "temple" && (!room.cleared || s.pendingChoiceNarration?.source === "temple");
+    const isEventRoom = !combat && room.type === "event" && !!room.rolledEventId && (!room.cleared || s.pendingChoiceNarration?.source === "event");
     const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
     let enemyBlock: TextChunk[][];
@@ -1519,6 +1562,8 @@ export class App implements ScreenContext {
       case "eventCombatReward":
       case "eventExit":
         return eventsScreen.renderMain(this.game, this.ui, this.listPage);
+      case "choiceNarration":
+        return choiceNarrationScreen.renderMain(this.game);
 
       case "campReflection":
         return campReflectionScreen.renderMain(this.game, this.ui);
@@ -1625,6 +1670,8 @@ export class App implements ScreenContext {
       case "eventCombatReward":
       case "eventExit":
         return eventsScreen.renderFooter(this.ui, this.game, this.listPage);
+      case "choiceNarration":
+        return choiceNarrationScreen.renderFooter();
       case "campReflection":
         return campReflectionScreen.renderFooter(this.game);
       case "floorMilestone":

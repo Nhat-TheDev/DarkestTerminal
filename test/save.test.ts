@@ -33,8 +33,224 @@ import { backdropIdForRoomName } from "../src/data/roomNames";
 import { FLOOR_MILESTONE_OMENS, getFloorMilestoneOmen } from "../src/data/floorMilestones";
 import type { GameState, Monster, Summon } from "../src/types";
 import { advanceBar } from "../src/engine/monsterBars";
+import { BALANCE } from "../src/data/balanceConfig";
+import { getArtifact } from "../src/data/artifacts";
+import { religionOf } from "../src/data/religions";
+import { recomputeAllPartyStats } from "../src/engine/party";
 
 const PARTY = ["knight", "mage", "rogue", "acolyte"];
+
+describe("Choice narration persistence", () => {
+  function eventRoom(game: Game, eventId: string) {
+    const room = getRoom(game.state.floor, game.state.currentRoomId);
+    room.type = "event";
+    room.cleared = false;
+    room.rolledEventId = eventId;
+    return room;
+  }
+
+  function roundTrip(game: Game): Game {
+    game.currentSaveSlot = "slot1";
+    expect(saveRun(game)).not.toBeNull();
+    return gameFromSave(loadSave("slot1"), "slot1");
+  }
+
+  function committedState(game: Game) {
+    const { pendingChoiceNarration, pendingEventExit, ...state } = game.state;
+    return JSON.parse(JSON.stringify({ state, monsters: game.ctx.monsters, summons: game.ctx.summons, rng: game.ctx.rng.getState() >>> 0 }));
+  }
+
+  function reloadAndAcknowledge(game: Game): Game {
+    const committed = committedState(game);
+    const narration = structuredClone(game.state.pendingChoiceNarration);
+    const exit = structuredClone(game.state.pendingEventExit);
+    const resumed = roundTrip(game);
+    expect(resumed.state.pendingChoiceNarration).toEqual(narration);
+    expect(resumed.state.pendingChoiceNarration?.result).toEqual(narration?.result);
+    expect(committedState(resumed)).toEqual(committed);
+    resumed.acknowledgeChoiceNarration();
+    expect(resumed.state.pendingChoiceNarration).toBeNull();
+    expect(resumed.state.pendingEventExit).toEqual(narration?.source === "event" && exit?.eventId === narration.sourceId && !exit.withReflection ? null : exit);
+    expect(committedState(resumed)).toEqual(committed);
+    resumed.acknowledgeChoiceNarration();
+    expect(committedState(resumed)).toEqual(committed);
+    return resumed;
+  }
+
+  test("pending choice narration survives disk round trip", () => {
+    withGame(5, game => {
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      room.type = "temple";
+      room.cleared = false;
+      room.templeReligionId = religionOf(game.state.party[0]!).id;
+      const donors = [game.state.party[0]!, game.state.party.find(c => religionOf(c).id !== room.templeReligionId)!];
+      const beforeHp = donors.map(c => c.hp);
+      game.state.faith = 99;
+      expect(game.templeGiveBlood(donors.map(c => c.id))).toBeNull();
+      expect(game.state.pendingChoiceNarration!.result).toEqual({
+        faithDelta: 1,
+        hpChanges: donors.map((c, i) => ({ characterId: c.id, name: c.name, before: beforeHp[i]!, after: c.hp })),
+      });
+      reloadAndAcknowledge(game);
+    });
+  });
+
+  test("pending nonfinal pot survives without another stake or roll", () => {
+    withGame(1, game => {
+      eventRoom(game, "gambling-den");
+      game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+      game.state.coins = BALANCE.events.gamblingDenRounds[0]!.stake;
+      game.ctx.rng.chance = () => true;
+      expect(game.gamblingDenEnter()).toBeNull();
+      expect(game.state.pendingChoiceNarration!.result).toEqual({
+        coinsDelta: -BALANCE.events.gamblingDenRounds[0]!.stake,
+        gamble: { round: 1, potBefore: BALANCE.events.gamblingDenRounds[0]!.stake, potAfter: game.state.activeEvent!.gambleState!.pot, outcome: "win" },
+      });
+      const resumed = reloadAndAcknowledge(game);
+      expect(resumed.state.activeEvent!.gambleState!.round).toBe(1);
+    });
+  });
+
+  test("jackpot preserves both sequential rewards across disk saves", () => {
+    withGame(1, game => {
+      eventRoom(game, "gambling-den");
+      game.state.activeEvent = { eventId: "gambling-den", offerArtifactIds: [] };
+      game.state.coins = BALANCE.events.gamblingDenRounds[0]!.stake;
+      game.ctx.rng.chance = () => true;
+      expect(game.gamblingDenEnter()).toBeNull();
+      while (game.state.activeEvent?.gambleState) {
+        game.acknowledgeChoiceNarration();
+        expect(game.gamblingDenContinue()).toBeNull();
+      }
+      const first = game.state.pendingArtifactDecision!.artifactId;
+      const second = game.state.secondJackpotArtifactId!;
+      expect(game.state.pendingChoiceNarration!.result.offeredArtifacts).toEqual([first, second].map(artifactId => ({ artifactId, name: getArtifact(artifactId).name })));
+      expect(game.state.pendingChoiceNarration!.result.gamble?.outcome).toBe("jackpot");
+      const resumed = reloadAndAcknowledge(game);
+      expect(resumed.resolveArtifactEquip(resumed.state.party[0]!.id)).toBeNull();
+      expect(resumed.state.pendingArtifactDecision!.artifactId).toBe(second);
+      expect(resumed.state.secondJackpotArtifactId).toBeNull();
+      const coins = resumed.state.coins;
+      const rng = resumed.ctx.rng.getState();
+      const next = roundTrip(resumed);
+      expect(next.state.pendingArtifactDecision).toEqual(resumed.state.pendingArtifactDecision);
+      expect(next.state.party).toEqual(resumed.state.party);
+      expect(next.resolveArtifactEquip(next.state.party[1]!.id)).toBeNull();
+      expect(next.state.pendingArtifactDecision).toBeNull();
+      expect(next.state.secondJackpotArtifactId).toBeNull();
+      expect(next.state.coins).toBe(coins);
+      expect(next.ctx.rng.getState() >>> 0).toBe(rng >>> 0);
+    });
+  });
+
+  test("combat entry survives narration acknowledgement without restarting combat", () => {
+    withGame(1, game => {
+      eventRoom(game, "guardian-fight");
+      expect(game.enterGuardianFight()).toBeNull();
+      expect(game.state.combat).not.toBeNull();
+      reloadAndAcknowledge(game);
+    });
+  });
+
+  test.each([false, true])("pending journal and Reflection continuation survive acknowledgement (%s)", withReflection => {
+    withGame(1, game => {
+      eventRoom(game, "old-count");
+      expect(game.openChest()).toBeNull();
+      game.state.pendingEventExit = { eventId: "old-count", withReflection };
+      game.state.pendingJournalFind = { fragmentIds: ["tally-wall"], characterId: game.state.party[0]!.id };
+      game.state.pendingJournal = { lineId: "the-last-mark", fragmentId: "tally-wall", voices: [] };
+      reloadAndAcknowledge(game);
+    });
+  });
+
+  test("ritual history and closed room survive narration, reward and disk saves", () => {
+    withGame(1, game => {
+      const room = eventRoom(game, "sacrificial-circle");
+      room.eventSacrificesThisVisit = 0;
+      const fresh = roundTrip(game);
+      expect(getRoom(fresh.state.floor, fresh.state.currentRoomId).eventSacrificesThisVisit).toBe(0);
+      fresh.sacrificeLeave();
+      expect(fresh.state.pendingChoiceNarration!.caseKey).toBe("leave.untouched");
+      reloadAndAcknowledge(fresh);
+
+      game.state.party[0]!.equippedArtifactIds = ["scholars-insight", "iron-gauntlet"];
+      recomputeAllPartyStats(game.state);
+      expect(game.sacrifice("scholars-insight")).toBeNull();
+      const resumed = reloadAndAcknowledge(game);
+      expect(getRoom(resumed.state.floor, resumed.state.currentRoomId).eventSacrificesThisVisit).toBe(1);
+      expect(resumed.resolveArtifactEquip(resumed.state.party[1]!.id)).toBeNull();
+      const afterReward = roundTrip(resumed);
+      expect(getRoom(afterReward.state.floor, afterReward.state.currentRoomId).cleared).toBe(true);
+      expect(afterReward.state.pendingEventExit).toEqual(resumed.state.pendingEventExit);
+      const committed = committedState(afterReward);
+      expect(afterReward.sacrifice("iron-gauntlet")).not.toBeNull();
+      expect(afterReward.state.pendingChoiceNarration).toBeNull();
+      expect(afterReward.state.pendingArtifactDecision).toBeNull();
+      expect(afterReward.state.party[0]!.equippedArtifactIds).toContain("iron-gauntlet");
+      expect(getRoom(afterReward.state.floor, afterReward.state.currentRoomId).eventSacrificesThisVisit).toBe(1);
+      expect(committedState(afterReward)).toEqual(committed);
+    });
+  });
+
+  test("legacy save has no fabricated narration", () => {
+    withGame(1, game => {
+      eventRoom(game, "old-count");
+      expect(game.openChest()).toBeNull();
+      roundTrip(game);
+      const legacy = loadSave("slot1");
+      delete legacy.state.pendingChoiceNarration;
+      legacy.meta.saveVersion = OLDEST_LOADABLE_SAVE_VERSION;
+      writeFileSync(join(SAVE_DIR, "slot1.json"), JSON.stringify(legacy));
+      const resumed = gameFromSave(loadSave("slot1"), "slot1");
+      expect(resumed.state.pendingChoiceNarration).toBeNull();
+      expect(resumed.state.pendingEventExit).toEqual(legacy.state.pendingEventExit);
+      expect(resumed.state.pendingArtifactDecision).toEqual(legacy.state.pendingArtifactDecision);
+      expect(resumed.ctx.rng.getState()).toBe(legacy.rngState);
+    });
+  });
+
+  test("legacy ritual history stays unknown", () => {
+    withGame(1, game => {
+      eventRoom(game, "sacrificial-circle");
+      game.state.narrativeCounters.artifactsSacrificed = 7;
+      game.state.eventOutcomes["sacrificial-circle"] = "sacrificed";
+      const resumed = roundTrip(game);
+      expect(getRoom(resumed.state.floor, resumed.state.currentRoomId).eventSacrificesThisVisit).toBeUndefined();
+      resumed.sacrificeLeave();
+      expect(resumed.state.pendingChoiceNarration!.caseKey).toBe("leave.legacy");
+      reloadAndAcknowledge(resumed);
+    });
+  });
+
+  test("an uncommitted donor selection leaves the temple open after saving", () => {
+    withGame(1, game => {
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      room.type = "temple";
+      room.cleared = false;
+      room.templeReligionId = religionOf(game.state.party[0]!).id;
+      game.state.faith = 50;
+      const selectedDonors = [game.state.party[0]!.id];
+      const committed = committedState(game);
+      const resumed = roundTrip(game);
+      expect(resumed.state.pendingChoiceNarration).toBeNull();
+      expect(getRoom(resumed.state.floor, resumed.state.currentRoomId).cleared).toBe(false);
+      expect(committedState(resumed)).toEqual(committed);
+      expect(resumed.templeGiveBlood(selectedDonors)).toBeNull();
+    });
+  });
+
+  test.each(["sourceId", "roomId", "floorDepth", "source"] as const)("stale narration %s is dropped without replaying the choice", field => {
+    withGame(1, game => {
+      eventRoom(game, "old-count");
+      expect(game.openChest()).toBeNull();
+      const committed = committedState(game);
+      Object.assign(game.state.pendingChoiceNarration!, { [field]: field === "floorDepth" ? 999 : "removed-reference" });
+      const resumed = roundTrip(game);
+      expect(resumed.state.pendingChoiceNarration).toBeNull();
+      expect(committedState(resumed)).toEqual(committed);
+    });
+  });
+});
 
 describe("Save version blocking", () => {
   test("current app version is always allowed", () => {

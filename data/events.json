@@ -11,6 +11,12 @@
       "The corridor narrows here, and the floor is swept clean in a square the width of a sleeping mat. Someone stacked their gear in the middle of it before they stopped needing it: boots with the laces tucked in, a belt coiled flat, [[a pack still buckled shut]]."
     ],
     "chainEscalatedDescription": "[[A chest]] sits in the rubble. The pry bar you carry for these has gone blunt at the tip.",
+    "narration": {
+      "take.chest": "The lid catches on its rusted bands. You work it open and lift the find clear of the stone dust.",
+      "take.lockbox": "The swollen lid gives under your hands. You lift the find out, leaving the snapped key in its lock.",
+      "take.gear": "You unbuckle the pack without disturbing the boots beside it. There is something inside that can still be used.",
+      "take.habit": "The blunt pry bar slips once before the lid gives. You know where to put your hands now."
+    },
     "kind": "instantReward",
     "tier": "common"
   },
@@ -82,6 +88,13 @@
         }
       ]
     },
+    "narration": {
+      "fight": "The party raises its weapons and steps beyond the torchlight. The scraping comes toward you.",
+      "fight.forced1": "There is no room to pass it. The party turns its weapons toward the doorway.",
+      "fight.forced2": "The party reaches the room with weapons already out. This time the scraping does not stop.",
+      "fight.forced3": "The party steps across the worn tracks and closes ranks. The same stretch of stone lies between you again.",
+      "leave": "You keep the torch between the party and the dark corner as you withdraw. The claws scrape once more behind you."
+    },
     "kind": "combatReward",
     "tier": "common"
   },
@@ -148,6 +161,11 @@
           ]
         }
       ]
+    },
+    "narration": {
+      "purchase": "You set the coins beside {{artifact}}. The hooded figure draws the payment off the cloth and slides the purchase toward you.",
+      "refresh": "You lay down the fee. The figure gathers the wares into the cloth, then unfolds a different selection in the same place.",
+      "leave": "The party steps away from the cloth without buying. The figure folds its hands over the goods."
     },
     "kind": "artifactShop",
     "tier": "common"
@@ -219,6 +237,13 @@
           ]
         }
       ]
+    },
+    "narration": {
+      "fight": "You bring a weapon down on the carved edge. The red light breaks across the stone, and the party braces for what comes out of it.",
+      "fight.forced1": "The red light covers the threshold. The party advances through it with weapons raised.",
+      "fight.forced2": "You pass beneath the red-lit frame and strike at the altar. The others close in behind you.",
+      "fight.forced3": "Your blade catches in an old score at the altar's base. You pull it free and strike across the spiral again.",
+      "leave": "The party keeps clear of the altar and backs through the doorway. Its light still reaches the floor behind you."
     },
     "kind": "combatReward",
     "tier": "common"
@@ -321,6 +346,13 @@
         }
       ]
     },
+    "narration": {
+      "pay": "{{character}} holds a cut hand over the cup. The blood reaches it, and the party lifts {{artifact}} from the pedestal.",
+      "pay.tier1": "{{character}} holds out a hand while another readies the bandage. The payment falls into the cup before anyone speaks.",
+      "pay.tier2": "{{character}} opens a hand over the cup, finding room between the old marks. The others wait with the bandage ready.",
+      "pay.tier3": "{{character}} lowers a hand over the cup. The party makes space around the pedestal without being asked.",
+      "leave": "The party keeps its hands away from the cup and passes the pedestal. The liquid stays short of the rim."
+    },
     "kind": "hpGamble",
     "tier": "rare"
   },
@@ -399,6 +431,10 @@
         }
       ]
     },
+    "narration": {
+      "accept": "You lift {{artifact}} from the shrine. Grey wax flakes from its resting place; the party's torch catches the open eye above it.",
+      "decline": "The offering stays where it lies. You step around the candle stubs on the way back to the door."
+    },
     "kind": "cursedOffer",
     "tier": "rare"
   },
@@ -457,6 +493,10 @@
           ]
         }
       ]
+    },
+    "narration": {
+      "chooseFirst": "You lift {{artifact}} from the first pedestal. The second splits along its carving and falls across the narrow space between them.",
+      "chooseSecond": "You lift {{artifact}} from the second pedestal. The first breaks inward, sending dust over the crack between your boots."
     },
     "kind": "pairedOffer",
     "tier": "rare",
@@ -535,6 +575,15 @@
           ]
         }
       ]
+    },
+    "narration": {
+      "sacrifice": "You lay {{oldArtifact}} at the open end of the spiral and withdraw your hand. When you reach down again, {{newArtifact}} lies in its place.",
+      "sacrifice.tier1": "You set {{oldArtifact}} where the packs have been put down. {{newArtifact}} is waiting when you reach into the circle again.",
+      "sacrifice.tier2": "You kneel in front of the open spiral and place {{oldArtifact}} on the stone. The space holds {{newArtifact}} when you lift your hand.",
+      "sacrifice.tier3": "Your knees settle into the worn places. You leave {{oldArtifact}} at the opening and draw back {{newArtifact}}.",
+      "leave.untouched": "The party gathers its packs without crossing the broom marks. Nothing has been laid inside the spiral.",
+      "leave.afterOffering": "The party shoulders its packs and steps away from the open end of the spiral. The space before it is empty again.",
+      "leave.legacy": "The party gathers its packs beside the spiral and turns toward the doorway."
     },
     "kind": "artifactSacrifice",
     "tier": "rare"
@@ -626,6 +675,15 @@
         }
       ]
     },
+    "narration": {
+      "enter.win": "You set the stake on the crate. The stranger lifts the cup and pushes more coins beside yours, leaving the pot on the crate.",
+      "enter.loss": "You set the stake on the crate. The cup comes up, and the stranger draws the coins to his side.",
+      "continue.win": "You leave the whole pot on the crate. The stranger lifts the cup and adds to the pile before setting it down again.",
+      "continue.loss": "You push the whole pot forward. The stranger lifts the cup, then sweeps the pile off the crate.",
+      "jackpot": "The last cup comes up. Instead of counting out coins, the stranger sets two objects on the crate and draws the empty cups back toward himself.",
+      "stop": "You draw the pot off the crate and close your purse. The stranger sets the cups in a row while you count.",
+      "leave": "You leave your purse closed. The stranger slides the cups back into place on the bare crate."
+    },
     "kind": "coinGamble",
     "tier": "rare"
   },
@@ -707,6 +765,10 @@
         }
       ]
     },
+    "narration": {
+      "exchange": "You place {{oldArtifact}} and the coins on the cleared stone. The old man takes both and sets {{newArtifact}} within reach.",
+      "leave": "The party leaves the cleared patch of stone empty. The old man draws his hands back toward the small fire."
+    },
     "kind": "fortuneExchange",
     "tier": "rare"
   },
@@ -736,6 +798,11 @@
         "description": "Cold air rises from a section of floor that has dropped away along a long crack, and with it a smell of wet earth and lamp oil. Loose grit still trickles over the edge and ticks against something far below. [[A weak groan comes up after it.]] Whoever kept their hand closed at the altar stands at the edge with both hands in their sleeves."
       }
     ],
+    "narration": {
+      "rescue.success": "{{character}} reaches below the broken edge and catches the trapped figure. The others haul them both onto solid stone, and something is pressed into the rescuer's hand.",
+      "rescue.failure": "{{character}} reaches below the broken edge, but the stone shifts under their weight. By the time the others pull them back, the groaning has stopped.",
+      "leave": "The party picks its way around the broken floor. The weak voice below has no answer from above."
+    },
     "kind": "rescueGamble",
     "tier": "rare"
   },
@@ -797,6 +864,10 @@
           ]
         }
       ]
+    },
+    "narration": {
+      "moveOn": "You lift the usable find from beneath the wall and turn back toward the passage. The last tally stays unfinished.",
+      "moveOn.habit": "Your hands go to the find beneath the marks first. You leave the room without adding a stroke of your own."
     },
     "kind": "instantReward",
     "tier": "common"
@@ -861,6 +932,10 @@
         }
       ]
     },
+    "narration": {
+      "moveOn": "You gather the find from the dust and retrace your steps. Your own prints now run both ways beside the older trail.",
+      "moveOn.habit": "The party walks straight to the end of the prints, then carries the find back along its own tracks."
+    },
     "kind": "instantReward",
     "tier": "common"
   },
@@ -922,6 +997,9 @@
           ]
         }
       ]
+    },
+    "narration": {
+      "moveOn": "You turn the torch toward the passage. Its light crosses the pool and settles on the stone beside it."
     },
     "kind": "instantReward",
     "tier": "common"
@@ -999,6 +1077,9 @@
         }
       ]
     },
+    "narration": {
+      "moveOn": "You loosen the cord and divide the bundle. Half goes with the party; the rest is wrapped and tied again at the base of the wall."
+    },
     "kind": "instantReward",
     "tier": "common"
   },
@@ -1065,6 +1146,9 @@
           ]
         }
       ]
+    },
+    "narration": {
+      "moveOn": "You lift the folded cloth from beside the candle. The pooled wax stays undisturbed."
     },
     "kind": "instantReward",
     "tier": "rare"
@@ -1159,6 +1243,9 @@
         }
       ]
     },
+    "narration": {
+      "moveOn": "You take the loose plate from the torn lock and step clear of the hatch. The chain is still cold when you let it fall."
+    },
     "kind": "instantReward",
     "tier": "rare"
   },
@@ -1226,6 +1313,9 @@
         }
       ]
     },
+    "narration": {
+      "moveOn": "You take the small chalk stub from below the writing. Its dust marks your fingers beside the unfinished scratches."
+    },
     "kind": "instantReward",
     "tier": "rare"
   },
@@ -1290,6 +1380,9 @@
           ]
         }
       ]
+    },
+    "narration": {
+      "moveOn": "The party turns toward the passage. The warm draft lifts the cloth caught in the wall."
     },
     "kind": "instantReward",
     "tier": "rare"
@@ -1370,6 +1463,9 @@
         }
       ]
     },
+    "narration": {
+      "moveOn": "You turn the light toward the passage. The figure's hands catch its edge."
+    },
     "kind": "instantReward",
     "tier": "rare"
   },
@@ -1381,6 +1477,9 @@
     "instantRewardActionLabel": "  [1] Move on",
     "onceLifetime": true,
     "noArtifactReward": true,
+    "narration": {
+      "moveOn": "The party moves past the small fire. The figure stays beside it, their worn gear catching the light until the passage turns."
+    },
     "kind": "instantReward",
     "tier": "rare"
   },

@@ -3,7 +3,8 @@ import type { ActiveStatusEffect, CombatantSnapshot, CombatState, GameState, Id,
 import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
 import { Rng, derivedRng } from "./rng";
 import { getItem } from "../data/items";
-import { RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
+import { getEvent, RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
+import { getReligion } from "../data/religions";
 import { getClass, getSkill } from "../data/classes";
 import { SUMMON_ARCHETYPES } from "../data/summons";
 import { getStatusEffect } from "../data/statusEffects";
@@ -261,6 +262,14 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   if (typeof state.narrativeCounters.freeRewardsTakenCount !== "number") state.narrativeCounters.freeRewardsTakenCount = 0;
   if (!state.eventReflectionStances) state.eventReflectionStances = {};
   if (state.pendingEventExit === undefined) state.pendingEventExit = null;
+  const narration = state.pendingChoiceNarration;
+  const narrationRoom = state.floor.rooms.find((room) => room.id === narration?.roomId && room.id === state.currentRoomId);
+  const validNarrationSource = narration?.source === "event"
+    ? narrationRoom?.type === "event" && narrationRoom.rolledEventId === narration.sourceId && isKnown(getEvent, narration.sourceId)
+    : narration?.source === "temple" && narrationRoom?.type === "temple" && narrationRoom.templeReligionId === narration.sourceId && isKnown(getReligion, narration.sourceId);
+  if (!narration || narration.floorDepth !== state.floor.depth || !validNarrationSource) {
+    state.pendingChoiceNarration = null;
+  }
   if (!state.eventOutcomes) state.eventOutcomes = {};
   if (!Array.isArray(state.firedOnceEventIds)) state.firedOnceEventIds = [];
   if (typeof state.loreExposureCount !== "number") state.loreExposureCount = 0;

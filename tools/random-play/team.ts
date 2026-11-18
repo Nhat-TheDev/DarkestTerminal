@@ -419,6 +419,8 @@ export class TeamPolicy {
         return chooseTemple(game);
       case "templeDonors":
         return chooseTempleDonors(game, ui.selectedIds);
+      case "choiceNarration":
+        return "RETURN";
       case "eventExit":
         return chooseExit(game, this.rng);
       case "campPrompt":

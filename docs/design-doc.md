@@ -53,8 +53,9 @@ with the description of existing gameplay.
 ### 1.8 Event room
 - Event room: stepping in rolls randomly for one of several event types, split by rarity tier
 - 3 of these events spend **Cursed Coins**, a party-wide currency earned from every monster kill, instead of HP; the scripted Gatekeeper encounter also asks a toll in coins
-- Every event room ends on an exit scene: a reflection whose answers show their effects before the player picks, or a plain leave when the event has none
-- Details of each event type and the exit scene: **[`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)** §8; the currency itself: **[`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)** §9
+- Every committed room-event or temple action shows its own narration and actual results, then one fresh Enter continues to existing rewards, journal work, Reflection, combat or the room. Narration survives save/load; rejected actions show only their existing error
+- Reflection remains a separate eligible event follow-up, with visible answer effects. Continue consumes an empty exit from the narrated action, avoiding another title-only Leave screen; the scripted Gatekeeper keeps its own flow
+- Details of event types, Reflection and shared choice narration (§8.26): **[`gameplay-decisions/08-events.md`](./gameplay-decisions/08-events.md)** §8; the currency itself: **[`gameplay-decisions/09-currency.md`](./gameplay-decisions/09-currency.md)** §9
 
 ### 1.9 Status Effect (buff/debuff)
 - Temporary states applied to characters/monsters (e.g. `poisoned`, `stunned`, `weakened`, `burning`, and buffs like `guard`/`rallied`), expiring after `durationTurns` — reapplying one only refreshes its duration, except a status marked `stackable` in `data/status-effects.json` (`bleeding`, `shredded`/`shredded-ii`/`shredded-iii`, `hexed`, `searing-light`, `chilled`), which also adds a stack up to its `maxStacks`

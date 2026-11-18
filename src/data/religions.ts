@@ -4,6 +4,7 @@ import spritesJson from "../../data/sprites.json";
 import { CLASSES, getClass } from "./classes";
 
 const FILE = "data/religions.json";
+const NARRATION_CASES = ["giveBlood", "boon", "leave"];
 const BOON_STATS: readonly BoonStat[] = ["offense", "defense", "speed"];
 
 export function validateReligions(religions: Religion[], classes: { id: Id; religionId: Id }[]): void {
@@ -20,6 +21,16 @@ export function validateReligions(religions: Religion[], classes: { id: Id; reli
       throw new Error(`${FILE}: "${r.id}" needs a boon "emphasis" of ${BOON_STATS.join(", ")} or null`);
     }
     if (typeof r.boon.recoversHpMp !== "boolean") throw new Error(`${FILE}: "${r.id}" needs a boolean boon "recoversHpMp"`);
+    const where = `${FILE}: "${r.id}" narration`;
+    if (!r.narration || typeof r.narration !== "object" || Array.isArray(r.narration)) throw new Error(`${where} must be a case-to-text map`);
+    for (const key of NARRATION_CASES) {
+      if (!Object.hasOwn(r.narration, key)) throw new Error(`${where} is missing case "${key}"`);
+    }
+    for (const [key, text] of Object.entries(r.narration)) {
+      if (!NARRATION_CASES.includes(key)) throw new Error(`${where} has unsupported case "${key}"`);
+      if (typeof text !== "string" || !text.trim()) throw new Error(`${where} case "${key}" must be nonempty text`);
+      if (/[{}]/.test(text)) throw new Error(`${where} case "${key}" has an unsupported placeholder`);
+    }
   }
   for (const cls of classes) {
     if (!ids.has(cls.religionId)) throw new Error(`data/classes.json: class "${cls.id}" names an unknown religion "${cls.religionId}"`);

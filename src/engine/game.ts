@@ -35,6 +35,7 @@ import {
   clearCombatResources,
 } from "./combat";
 import { templeGiveBlood, templeAskBoon, templeLeave } from "./temple";
+import { captureChoiceNarration, resolveChoiceNarration } from "./choiceNarration";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { CAMP_KIT_ITEM_ID, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
@@ -156,6 +157,7 @@ export class Game {
       metNarrativeNpcIds: [],
       narrativeCounters: { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0, guardianGrudgeFiredCount: 0, freeRewardsTakenCount: 0 },
       pendingEventExit: null,
+      pendingChoiceNarration: null,
       eventReflectionStances: {},
       eventOutcomes: {},
       firedOnceEventIds: retiredCharacterEventEligible ? [] : [...RETIRED_CHARACTER_EVENT_IDS],
@@ -218,12 +220,28 @@ export class Game {
     armEventExit(this.state, this.ctx, journalFind);
   }
 
-  /** Runs an event room's action: whether its base text shows is read before it, the journal find and reflection come after. */
-  private eventAction<T>(run: () => T): T {
-    const baseTextShown = this.eventBaseTextShown();
+  private choiceAction<T extends PartyActionError | null | void>(caseKey: string, run: () => T, blocked: T, selection: { characterId?: Id; donorIds?: readonly Id[] } = {}, event = false, source: "event" | "temple" = "event"): T {
+    if (this.state.pendingChoiceNarration || this.state.pendingArtifactDecision) return blocked;
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    const before = room.type === source ? captureChoiceNarration(this.state) : null;
+    const baseTextShown = event ? this.eventBaseTextShown() : false;
     const result = run();
-    this.afterEventAction(baseTextShown);
+    if (event) this.afterEventAction(baseTextShown);
+    if (before?.source === source && !result && Object.keys(before.cases).some((key) => key === caseKey || key.startsWith(`${caseKey}.`))) {
+      this.state.pendingChoiceNarration = resolveChoiceNarration(before, this.state, caseKey, selection);
+    }
     return result;
+  }
+
+  acknowledgeChoiceNarration(): void {
+    if (!this.state.pendingChoiceNarration) return;
+    const narration = this.state.pendingChoiceNarration;
+    this.state.pendingChoiceNarration = null;
+    if (narration.source === "event" && this.state.pendingEventExit?.eventId === narration.sourceId && this.state.pendingEventExit.withReflection === false) this.state.pendingEventExit = null;
+  }
+
+  private choiceError(): PartyActionError {
+    return { reason: t(this.state.pendingChoiceNarration ? "errors.pendingChoiceNarration" : "errors.pendingArtifactDecision") };
   }
 
   /** Holds the trigger's fragments as a find only when looking would open a scene; otherwise copies them straight in. */
@@ -531,15 +549,15 @@ export class Game {
   }
 
   templeGiveBlood(donorIds: readonly Id[]): PartyActionError | null {
-    return templeGiveBlood(this.state, donorIds);
+    return this.choiceAction("giveBlood", () => templeGiveBlood(this.state, donorIds), this.choiceError(), { donorIds }, false, "temple");
   }
 
   templeAskBoon(): PartyActionError | null {
-    return templeAskBoon(this.state);
+    return this.choiceAction("boon", () => templeAskBoon(this.state), this.choiceError(), {}, false, "temple");
   }
 
   templeLeave(): void {
-    templeLeave(this.state);
+    this.choiceAction("leave", () => templeLeave(this.state), undefined, {}, false, "temple");
   }
 
   autoTargets(target: SkillTarget, actor: CombatantRef): CombatantRef[] | null {
@@ -603,90 +621,99 @@ export class Game {
   }
 
   openChest(): PartyActionError | null {
-    return this.eventAction(() => {
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    const caseKey = room.rolledEventId && getEvent(room.rolledEventId).narration?.moveOn ? "moveOn" : "take";
+    return this.choiceAction(caseKey, () => {
       const eventId = getRoom(this.state.floor, this.state.currentRoomId).rolledEventId;
       const err = openChest(this.state, this.ctx);
       if (!err && eventId && getEvent(eventId).retiredCharacterEvent) markRetiredCharacterEventShown(this.currentSaveSlot);
       return err;
-    });
+    }, this.choiceError(), {}, true);
   }
 
   merchantPurchase(offerIndex: number): PartyActionError | null {
-    return this.eventAction(() => merchantPurchase(this.state, offerIndex));
+    return this.choiceAction("purchase", () => merchantPurchase(this.state, offerIndex), this.choiceError(), {}, true);
   }
 
   merchantRefresh(): PartyActionError | null {
-    return merchantRefresh(this.state, this.ctx);
+    return this.choiceAction("refresh", () => merchantRefresh(this.state, this.ctx), this.choiceError());
   }
 
   merchantLeave(): void {
-    this.eventAction(() => merchantLeave(this.state));
+    this.choiceAction("leave", () => merchantLeave(this.state), undefined, {}, true);
   }
 
   bloodAltarPay(characterId: Id): PartyActionError | null {
-    return this.eventAction(() => bloodAltarPay(this.state, this.ctx, characterId));
+    return this.choiceAction("pay", () => bloodAltarPay(this.state, this.ctx, characterId), this.choiceError(), { characterId }, true);
   }
 
   bloodAltarLeave(): void {
-    this.eventAction(() => bloodAltarLeave(this.state));
+    this.choiceAction("leave", () => bloodAltarLeave(this.state), undefined, {}, true);
   }
 
   cursedShrineDecide(accept: boolean): PartyActionError | null {
-    return this.eventAction(() => cursedShrineDecide(this.state, accept));
+    return this.choiceAction(accept ? "accept" : "decline", () => cursedShrineDecide(this.state, accept), this.choiceError(), {}, true);
   }
 
   twinAltarsChoose(offerIndex: 0 | 1): PartyActionError | null {
-    return this.eventAction(() => twinAltarsChoose(this.state, offerIndex));
+    return this.choiceAction(offerIndex === 0 ? "chooseFirst" : "chooseSecond", () => twinAltarsChoose(this.state, offerIndex), this.choiceError(), {}, true);
   }
 
   sacrifice(sacrificeArtifactId: Id): PartyActionError | null {
-    return this.eventAction(() => sacrifice(this.state, this.ctx, sacrificeArtifactId));
+    return this.choiceAction("sacrifice", () => {
+      const result = sacrifice(this.state, this.ctx, sacrificeArtifactId);
+      const room = getRoom(this.state.floor, this.state.currentRoomId);
+      if (!result) room.eventSacrificesThisVisit = (room.eventSacrificesThisVisit ?? 0) + 1;
+      return result;
+    }, this.choiceError(), {}, true);
   }
 
   sacrificeLeave(): void {
-    this.eventAction(() => sacrificeLeave(this.state));
+    this.choiceAction("leave", () => sacrificeLeave(this.state), undefined, {}, true);
   }
 
   gamblingDenEnter(): PartyActionError | null {
-    return this.eventAction(() => gamblingDenEnter(this.state, this.ctx));
+    return this.choiceAction("enter", () => gamblingDenEnter(this.state, this.ctx), this.choiceError(), {}, true);
   }
 
   gamblingDenContinue(): PartyActionError | null {
-    return this.eventAction(() => gamblingDenContinue(this.state, this.ctx));
+    return this.choiceAction("continue", () => gamblingDenContinue(this.state, this.ctx), this.choiceError(), {}, true);
   }
 
   gamblingDenStop(): PartyActionError | null {
-    return this.eventAction(() => gamblingDenStop(this.state));
+    return this.choiceAction("stop", () => gamblingDenStop(this.state), this.choiceError(), {}, true);
   }
 
   gamblingDenLeave(): void {
-    this.eventAction(() => gamblingDenLeave(this.state));
+    this.choiceAction("leave", () => gamblingDenLeave(this.state), undefined, {}, true);
   }
 
   hermitExchangeFortune(artifactId: Id): PartyActionError | null {
-    return this.eventAction(() => hermitExchangeFortune(this.state, this.ctx, artifactId));
+    return this.choiceAction("exchange", () => hermitExchangeFortune(this.state, this.ctx, artifactId), this.choiceError(), {}, true);
   }
 
   hermitLeave(): void {
-    this.eventAction(() => hermitLeave(this.state));
+    this.choiceAction("leave", () => hermitLeave(this.state), undefined, {}, true);
   }
 
   collapsedFloorAttempt(characterId: Id): PartyActionError | null {
-    return this.eventAction(() => collapsedFloorAttempt(this.state, this.ctx, characterId));
+    return this.choiceAction("rescue", () => collapsedFloorAttempt(this.state, this.ctx, characterId), this.choiceError(), { characterId }, true);
   }
 
   collapsedFloorLeave(): void {
-    this.eventAction(() => collapsedFloorLeave(this.state));
+    this.choiceAction("leave", () => collapsedFloorLeave(this.state), undefined, {}, true);
   }
 
   enterGuardianFight(): PartyActionError | null {
-    const error = guardianFightEnter(this.state, this.ctx);
-    this.noteSeenMonsters();
-    return error;
+    return this.choiceAction("fight", () => {
+      const error = guardianFightEnter(this.state, this.ctx);
+      this.noteSeenMonsters();
+      return error;
+    }, this.choiceError());
   }
 
   skipGuardianFight(): PartyActionError | null {
-    return this.eventAction(() => guardianFightSkip(this.state));
+    return this.choiceAction("leave", () => guardianFightSkip(this.state), this.choiceError(), {}, true);
   }
 
   /** `index` is into the answers `shownOptions` returns for the pending event's reflection; returns the outcome that was rolled. */

@@ -3,13 +3,11 @@ import { removeArtifactFromCharacter, grantArtifact, type PartyActionError } fro
 import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifactWithMinRarity } from "../../data/artifacts";
 import { t } from "../../data/strings";
-import { getEvent } from "../../data/events";
-import { getRoom } from "../dungeon";
-import { closeEvent, recordEventOutcome, findArtifactOwner } from "./shared";
+import { closeEvent, leaveEvent, openEventOfKindError, recordEventOutcome, findArtifactOwner } from "./shared";
 
 export function sacrifice(state: GameState, ctx: EngineContext, sacrificeArtifactId: Id): PartyActionError | null {
-  const room = getRoom(state.floor, state.currentRoomId);
-  if (room.cleared || !room.rolledEventId || getEvent(room.rolledEventId).kind !== "artifactSacrifice") return { reason: t("errors.nothingToDecide") };
+  const closed = openEventOfKindError(state, "artifactSacrifice");
+  if (closed) return closed;
   const owner = findArtifactOwner(state, sacrificeArtifactId);
   if (!owner) return { reason: t("errors.artifactNotOwned") };
   const rarity = getArtifact(sacrificeArtifactId).rarity;
@@ -26,5 +24,5 @@ export function sacrifice(state: GameState, ctx: EngineContext, sacrificeArtifac
 
 export function sacrificeLeave(state: GameState): void {
   state.message = t("game.leftRitual");
-  closeEvent(state);
+  leaveEvent(state);
 }

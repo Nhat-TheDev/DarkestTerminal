@@ -42,7 +42,7 @@ The battlefield divider between the party and the enemy block is an upright wood
 
 ## 13.3 Religions
 
-Four religions, each a record in `data/religions.json`: `id`, `name`, `templeDescription`, `templeSpriteId`, a `style` (abbreviation and color) and a `boon` shape (`emphasis`: `offense`, `defense`, `speed` or null; `recoversHpMp`). Every class carries a fixed `religionId` in `data/classes.json`; the loader refuses a class that names an unknown one, or a religion whose `templeSpriteId` does not name a sprite in `data/sprites.json`'s `temple` section.
+Four religions, each a record in `data/religions.json`: `id`, `name`, `templeDescription`, `templeSpriteId`, an action-to-passage `narration` map (§13.4), a `style` (abbreviation and color) and a `boon` shape (`emphasis`: `offense`, `defense`, `speed` or null; `recoversHpMp`). Every class carries a fixed `religionId` in `data/classes.json`; the loader refuses a class that names an unknown one, or a religion whose `templeSpriteId` does not name a sprite in `data/sprites.json`'s `temple` section.
 
 <!-- docs:begin religions -->
 *Generated from `data/religions.json` and `data/classes.json` by `bun run docs:sync`. Do not edit.*
@@ -97,7 +97,7 @@ Who can give, and for what:
 
 Anyone under their line cannot give and shows as such in the list. No donor ever drops below `temple.giveBlood.hpFloor` (1%) of max HP, and never below 1 HP, so Give blood never kills. When no living member can give, or the torch is already full, the action shows locked with the reason. The donor list, each row's HP after giving and the Faith it adds are drawn from `bloodGift` (`src/engine/temple.ts`), the same function `templeGiveBlood` applies.
 
-Giving, asking a boon and leaving each take a second press of the same key (`docs/developer-guide.md`, "Key hints"); opening the donor list and choosing donors do not. The outcome lines are `game.temple*` in `data/strings.json`, one plain sentence each.
+Giving, asking a boon and leaving each take a second press of the same key (`docs/developer-guide.md`, "Key hints"); opening the donor list and choosing donors do not. Successful actions keep the `game.temple*` log lines in `data/strings.json` and open the shared narration below before returning to the cleared room.
 
 ### The boon
 
@@ -113,6 +113,36 @@ The word is "boon" in code and docs: "blessing" is the gatekeeper's paid blessin
 ### Text
 
 A temple screen shows the religion's name in its color, its `templeDescription` and the actions. Give blood and Ask a boon each carry a dim `Cost:` and `Result:` line under them, drawn from `temple.giveBlood` and `temple.boon`; Leave has none. Ask a boon's `Result:` names the religion's boon and ends in `*`, and a `*` note under Leave spells out what that boon does, built from the religion's `boon` record and `temple.boon` (`boonEffectText`, `src/ui/screens/temple.ts`). Each description is one physical scene, around fifty words, in the same voice as an event room; none of them names a feeling or a god.
+
+### Choice narration
+
+Give blood, Ask a boon and Leave each show one religion-specific passage after the action succeeds, then `[Enter] Continue` returns to the room. Temple narration uses the shared screen, controls, result format and saved state in [`08-events.md` §8.26](./08-events.md#826-choice-narration). It adds no temple Reflection, attitude answers or divine response.
+
+Each religion's `narration` in `data/religions.json` contains exactly `giveBlood`, `boon` and `leave`. `src/data/religions.ts` rejects missing, blank, non-text or additional cases and placeholders. The passages fit a single donor or several, including mixed religions; committed member names and resource values belong to the result block rather than to an invented ritual branch.
+
+| Religion | Passage setting | Boundaries |
+|---|---|---|
+| Light and Glory | Gold-leaf sun, cold brass lamps, cloth passed to donors | Asking does not heal immediately or make the lamps light |
+| Plague and Healing | Warm stone basin, herbs and bandages | Asking activates the existing movement-triggered recovery; no immediate healing or blanket cure |
+| Night and Silence | Felt, ash bowls, low torch | No granted invisibility, stealth or combat turn |
+| Fury and Blood | Iron rings, trough and wet drain | No forced frenzy, new weapon, Fear change or extra sacrifice |
+
+The exact passages stay in the religion catalog. They preserve §13.3's physical scenes and do not establish that a god heard or answered.
+
+Give blood remains: open donor list → toggle members → Enter to arm → Enter to commit → narration → one fresh Enter → room. Toggling and arming spend nothing. Another key cancels armed confirmation and consumes that key while retaining the selection; a subsequent Escape returns to the temple. The committing Enter cannot also dismiss the narration.
+
+| Donation/boon condition | Narration and result |
+|---|---|
+| One or several accepted donors | One passage; each selected donor's actual HP before/after, plus the actual rounded/capped total Faith increase |
+| Selected member's payment rounds to zero | Still name that contributor and show unchanged HP; do not silently omit the selection |
+| Eligible member left unselected | No payment, result row or claim that the member was weak or refused |
+| Selected gains exceed remaining Faith capacity | Preserve all selected HP costs; report only the actual capped Faith increase |
+| Empty selection, full Faith, dead/ineligible donor, or any rejected committed donor | Existing error, no narration, no payment and no room clear; donor validation stays all-or-nothing |
+| Boon accepted | Report Faith paid and the active boon until the floor ends; no HP/MP recovery on selection or Continue |
+| Boon unaffordable or another action rejected | Existing error only; no narration or resource change |
+| Leave | Religion-specific exit passage, no result block or cost |
+
+Accepted donations preserve the HP floor in §13.4 and cannot kill. There is no weak-member appendix or fatal-offering narration. Rendering and Continue never pay again, heal, drain Faith or advance the run. Previewed costs and eligibility remain owned by `bloodGift` and the existing temple rules.
 
 ## 13.5 Pray and Talk (the rest room)
 
@@ -150,3 +180,7 @@ The simulation behind the decay shape ran 15 floors over 150 `random-play` runs'
 ## 13.9 Saves
 
 The 1.3.0 step in `VERSION_MIGRATIONS` (`src/engine/migration.ts`) gives an older save full Faith and no boon, and turns a saved `pendingReflection` into a `pendingEventExit` with its reflection. A floor generated before 1.3.0 has no temple; the next floor rolls one. A saved reflection stance stays valid, since the old three stances are in the new set.
+
+A committed temple action saves its resolved passage, selected contributors and actual results in `pendingChoiceNarration` (`08-events.md` §8.26). Loading resumes the same reading; Continue clears it and returns to the already-cleared temple without a second payment or boon application. Older saves with no pending narration do not infer one.
+
+Before commitment, `UiState.templeDonors.selectedIds` and armed confirmation remain UI-only: a reload may return to the open temple without a selection, and spends nothing. Narration persistence does not add picker/confirmation persistence.

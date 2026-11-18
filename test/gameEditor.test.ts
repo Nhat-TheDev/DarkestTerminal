@@ -5,6 +5,8 @@ import { BACKDROPS } from "../src/data/backdrops";
 import { BATTLEFIELD_CONTENT_WIDTH, DIVIDER_WIDTH, ICON_BAND_ROWS, SLOT_GAP, SLOT_WIDTH } from "../src/ui/layout";
 import { compositeSpriteRow, MAX_BOSS_HEIGHT, spriteForClass, spriteForMonster, type Sprite } from "../src/ui/sprites";
 import { previewScene } from "../tools/game-editor/backdropPreview";
+import { nestedBalanceError } from "../tools/game-editor/balanceCheck";
+import { BALANCE } from "../src/data/balanceConfig";
 
 const editor = readFileSync(new URL("../tools/game-editor/index.html", import.meta.url), "utf8");
 const saveStart = editor.indexOf("  async function saveHandler() {");
@@ -99,4 +101,16 @@ test("a full backdrop preview keeps every enemy pixel at its in-game position", 
     }
   }
   expect(pixels).toBeGreaterThan(0);
+});
+
+test("the editor refuses nested balance edits the game would reject at startup", () => {
+  const balance = JSON.parse(readFileSync(new URL("../data/balance-config.json", import.meta.url), "utf8")) as Record<string, Record<string, Record<string, Record<string, number>>>>;
+  const live = JSON.stringify(BALANCE);
+  expect(nestedBalanceError(balance)).toBeNull();
+  for (const [stat, size, value] of [["faith", "small", 0], ["faith", "large", 2], ["fear", "large", 1]] as const) {
+    const patched = structuredClone(balance);
+    patched.reflection!.effectSizes![stat]![size] = value;
+    expect(nestedBalanceError(patched), `${stat}.${size} = ${value}`).not.toBeNull();
+  }
+  expect(JSON.stringify(BALANCE)).toBe(live);
 });

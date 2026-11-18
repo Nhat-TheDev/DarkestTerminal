@@ -1,5 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { Game } from "../src/engine/game";
+import { App } from "../src/ui/app";
+import { createTestRenderer } from "@opentui/core/testing";
 import {
   findTextLeaks,
   findLongDecimals,
@@ -13,7 +15,7 @@ import {
 } from "../tools/random-play/checks";
 import { spansToHtml, summarizeRuns } from "../tools/random-play/report";
 import { playRun, loopBreakKey, hasLeftFloor, GUARD_FLOORS, type RunStats } from "../tools/random-play/bot";
-import { TEAMS, FEAR_ACT_AT, BUFF_GAP_ROUNDS, allyOffenseGain, chooseExit, chooseRest, chooseRoom, chooseTemple, chooseTempleDonors, defenseCut, mainStriker, newFightMemory, planTurn, skillPower, type TurnPlan } from "../tools/random-play/team";
+import { TeamPolicy, TEAMS, FEAR_ACT_AT, BUFF_GAP_ROUNDS, allyOffenseGain, chooseExit, chooseRest, chooseRoom, chooseTemple, chooseTempleDonors, defenseCut, mainStriker, newFightMemory, planTurn, skillPower, type TurnPlan } from "../tools/random-play/team";
 import { shownOptions } from "../src/engine/reflection";
 import { getRoom } from "../src/engine/dungeon";
 import { BOSS_FLOOR_INTERVAL } from "../src/data/levelGrowth";
@@ -480,6 +482,36 @@ describe("random-play teams", () => {
     expect(chooseTempleDonors(game, [])).toBe("ESCAPE");
   });
 
+  test("policy acknowledges narration without changing donor policy", async () => {
+    const game = new Game(7, TEAMS[0]!.members.map(m => m.classId), undefined, [null, null, null, null], false);
+    applyDump(game, { level: 10, floorDepth: 20, roomArg: "temple" });
+    game.state.faith = 50;
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 150, height: 45 });
+    const app = new App(renderer, game);
+    const policy = new TeamPolicy(TEAMS[0]!, new Rng(1));
+    const choose = () => policy.chooseKey(app, parseFooter("[Enter] Continue"));
+    try {
+      expect(choose()).toBe("1");
+      mockInput.pressKey("1");
+      await renderOnce();
+      expect(app.debugUiState).toEqual({ kind: "templeDonors", selectedIds: [] });
+      expect(choose()).toBe(chooseTempleDonors(game, []));
+      const selected = game.state.party.filter(c => c.isAlive).map(c => c.id);
+      expect(game.templeGiveBlood(selected)).toBeNull();
+      app.syncUiToGameState();
+      expect(app.debugUiState.kind).toBe("choiceNarration");
+      const hp = game.state.party.map(c => c.hp);
+      expect(choose()).toBe("RETURN");
+      mockInput.pressKey(choose()!);
+      await renderOnce();
+      expect(game.state.pendingChoiceNarration).toBeNull();
+      expect(game.state.party.map(c => c.hp)).toEqual(hp);
+      expect(app.debugUiState.kind).toBe("room");
+    } finally {
+      renderer.destroy();
+    }
+  });
+
   test("an exit scene: a random shown answer, or leaving without a word", () => {
     const game = new Game(7, TEAMS[0]!.members.map((m) => m.classId), undefined, [null, null, null, null], false);
     const eventId = ROOM_EVENT_IDS.find((id) => getEvent(id).reflection)!;
@@ -558,6 +590,77 @@ describe("random-play evidence", () => {
       guardGame.state.combat!.outcome = "defeat";
       expect(screenKeyOf(ui("combatOver"), guardGame).screenCase).toBe("defeat");
     }
+  });
+
+  test("narration evidence separates outcomes and religions", () => {
+    const eventGame = (eventId: string) => {
+      const game = new Game(1, undefined, undefined, [null, null, null, null], false);
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      Object.assign(room, { type: "event", cleared: false, rolledEventId: eventId });
+      game.state.combat = null;
+      game.state.activeEvent = { eventId, offerArtifactIds: ["blackened-locket"] };
+      return game;
+    };
+    const keys: string[] = [];
+    const capture = (game: Game, caseKey: string) => {
+      const narration = game.state.pendingChoiceNarration!;
+      expect(narration.caseKey).toBe(caseKey);
+      const key = screenKeyOf(ui("choiceNarration"), game);
+      expect(key.event).toBe(narration.source === "event" ? narration.sourceId : null);
+      expect(key.screenCase).toBe(`${narration.source}.${narration.sourceId}.${caseKey}`);
+      keys.push(JSON.stringify(key));
+    };
+    for (const accept of [true, false]) {
+      const game = eventGame("cursed-shrine");
+      expect(game.cursedShrineDecide(accept)).toBeNull();
+      capture(game, accept ? "accept" : "decline");
+    }
+    for (const success of [true, false]) {
+      const game = eventGame("collapsed-floor");
+      game.ctx.rng.chance = () => success;
+      expect(game.collapsedFloorAttempt(game.state.party[0]!.id)).toBeNull();
+      capture(game, success ? "rescue.success" : "rescue.failure");
+    }
+    const gamble = eventGame("gambling-den");
+    gamble.state.coins = BALANCE.events.gamblingDenRounds[0]!.stake;
+    gamble.ctx.rng.chance = () => true;
+    expect(gamble.gamblingDenEnter()).toBeNull();
+    capture(gamble, "enter.win");
+    gamble.acknowledgeChoiceNarration();
+    expect(gamble.gamblingDenContinue()).toBeNull();
+    capture(gamble, "continue.win");
+    gamble.acknowledgeChoiceNarration();
+    gamble.ctx.rng.chance = () => false;
+    expect(gamble.gamblingDenContinue()).toBeNull();
+    capture(gamble, "continue.loss");
+    const jackpot = eventGame("gambling-den");
+    jackpot.state.coins = BALANCE.events.gamblingDenRounds[0]!.stake;
+    jackpot.ctx.rng.chance = () => true;
+    expect(jackpot.gamblingDenEnter()).toBeNull();
+    while (jackpot.state.activeEvent?.gambleState) {
+      jackpot.acknowledgeChoiceNarration();
+      expect(jackpot.gamblingDenContinue()).toBeNull();
+    }
+    capture(jackpot, "jackpot");
+    for (const religion of RELIGIONS) {
+      const game = new Game(1, undefined, undefined, [null, null, null, null], false);
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      Object.assign(room, { type: "temple", cleared: false, templeReligionId: religion.id });
+      game.templeLeave();
+      capture(game, "leave");
+    }
+    for (const [index, scene] of ["chest", "lockbox", "gear"].entries()) {
+      const game = eventGame("open-chest");
+      getRoom(game.state.floor, game.state.currentRoomId).descriptionVariantIndex = index;
+      expect(game.openChest()).toBeNull();
+      capture(game, `take.${scene}`);
+    }
+    const guardian = eventGame("guardian-fight");
+    expect(guardian.enterGuardianFight()).toBeNull();
+    expect(guardian.state.combat).not.toBeNull();
+    capture(guardian, "fight");
+    expect(screenKeyOf(ui("pickAction"), guardian).screenCase).toBe("normal");
+    expect(new Set(keys).size).toBe(keys.length);
   });
 
   test("a frame becomes an SVG of its cells, with block glyphs as rectangles and markup escaped", () => {
