@@ -19,7 +19,7 @@ export function rollRestRunner(state: GameState, room: Room, ctx: EngineContext)
     noticeVariant: ctx.rng.int(0, BALANCE.runner.noticeVariantCount - 1),
     offers: rollShopOffers(ctx.rng, state.floor.depth, ctx.rng.chance(BALANCE.runner.campKitOfferChance) ? { itemId: CAMP_KIT_ITEM_ID, lot: false } : null),
     refreshCount: 0,
-    barterOffers: state.barterUsedDepth === state.floor.depth ? [] : rollBarterOffers(ctx.rng, state.floor.depth),
+    barterOffers: state.barterUsedDepth === state.floor.depth ? [] : rollBarterOffers(ctx.rng, state.floor.depth, state.inventory),
   };
 }
 

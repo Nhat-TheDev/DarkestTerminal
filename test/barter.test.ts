@@ -271,6 +271,97 @@ describe("barter offers and trade", () => {
     expect(sawLegendary).toBe(true);
   });
 
+  describe("inventory-weighted bargain generation", () => {
+    class RecordingRng extends Rng {
+      draws: Map<unknown, number>[] = [];
+
+      override weightedPick<T>(items: T[], weight: (item: T) => number): T {
+        this.draws.push(new Map(items.map((item) => [item, weight(item)])));
+        return super.weightedPick(items, weight);
+      }
+    }
+
+    test("missing and empty inventory give every eligible trophy equal positive weight", () => {
+      const missing = new RecordingRng(19);
+      const empty = new RecordingRng(19);
+      expect(rollBarterOffers(missing, 120)).toEqual(rollBarterOffers(empty, 120, {}));
+      expect(missing.draws).toHaveLength(BALANCE.barter.offerCount);
+      expect(empty.draws).toEqual(missing.draws);
+      for (const draw of missing.draws) expect([...draw.values()]).toEqual(Array(draw.size).fill(1));
+    });
+
+    test("owned quantities increase weight with diminishing gains toward a finite cap", () => {
+      const weightAt = (quantity: number) => {
+        const rng = new RecordingRng(23);
+        rollBarterOffers(rng, 1, { "rat-tail": quantity });
+        expect(rng.draws).toHaveLength(BALANCE.barter.offerCount);
+        const first = rng.draws[0]!;
+        expect(first.get(getItem("chitin-shard"))).toBe(1);
+        return first.get(getItem("rat-tail"))!;
+      };
+      const weights = [0, 1, 5, 10, 15, 1_000_000].map(weightAt);
+      expect(weights[0]).toBe(1);
+      expect(weights[1]).toBeCloseTo(1.6666666667);
+      expect(weights[2]).toBe(3);
+      expect(weights[3]).toBeCloseTo(3.6666666667);
+      expect(weights[4]).toBe(4);
+      expect(weights[5]).toBeGreaterThan(4.99);
+      expect(weights[5]).toBeLessThan(5);
+      expect(weights[4]! - weights[3]!).toBeLessThan(weights[3]! - weights[2]!);
+    });
+
+    test("unowned trophies remain possible and owned locked trophies never enter the pool", () => {
+      const eligible = BARTER_ENTRIES.map((entry) => getItem(entry.itemId)).filter((item) => item.archetypeIds!.some((id) => (getArchetype(id).minFloor ?? 0) <= 1));
+      const locked = BARTER_ENTRIES.map((entry) => getItem(entry.itemId)).find((item) => !eligible.includes(item))!;
+      expect(locked).toBeDefined();
+      const inventory = { "rat-tail": 1_000_000, [locked.id]: 1_000_000 };
+      let sawUnowned = false;
+      for (let seed = 1; seed <= 30; seed++) {
+        const rng = new RecordingRng(seed);
+        const offers = rollBarterOffers(rng, 1, inventory);
+        expect(rng.draws).toHaveLength(BALANCE.barter.offerCount);
+        expect([...rng.draws[0]!.keys()]).toEqual(eligible);
+        expect(new Set(offers.map((offer) => offer.itemId)).size).toBe(offers.length);
+        offers.forEach((offer) => {
+          expect(eligible.some((item) => item.id === offer.itemId)).toBe(true);
+          if (offer.itemId !== "rat-tail") sawUnowned = true;
+        });
+        offers.forEach((offer, index) => {
+          for (const laterDraw of rng.draws.slice(index + 1)) expect(laterDraw.has(getItem(offer.itemId))).toBe(false);
+        });
+      }
+      expect(sawUnowned).toBe(true);
+    });
+
+    test("a fixed seed and inventory reproduce offers without changing inventory", () => {
+      const inventory = Object.freeze({ "rat-tail": 8, "chitin-shard": 0, "small-health-potion": 12 });
+      for (let seed = 1; seed <= 12; seed++) {
+        const first = new Rng(seed);
+        const second = new Rng(seed);
+        expect(rollBarterOffers(first, 40, inventory)).toEqual(rollBarterOffers(second, 40, inventory));
+        expect(first.getState()).toBe(second.getState());
+      }
+      expect(inventory).toEqual({ "rat-tail": 8, "chitin-shard": 0, "small-health-potion": 12 });
+    });
+
+    test("creating a Rest runner weights its bargains using the current game inventory", () => {
+      const game = new Game(29);
+      const room = getRoom(game.state.floor, game.state.currentRoomId);
+      room.type = "rest";
+      game.state.inventory = { "rat-tail": 5 };
+      game.state.restRunner = null;
+      const rng = new RecordingRng(29);
+      game.ctx.rng = rng;
+      const runnerNow = () => game.state.restRunner;
+      for (let attempt = 0; attempt < 30 && !runnerNow(); attempt++) rollRestRunner(game.state, room, game.ctx);
+      expect(runnerNow()?.barterOffers).toHaveLength(BALANCE.barter.offerCount);
+      const bargainDraws = rng.draws.slice(-BALANCE.barter.offerCount);
+      expect(bargainDraws[0]!.get(getItem("rat-tail"))).toBe(3);
+      expect(bargainDraws[0]!.get(getItem("chitin-shard"))).toBe(1);
+      expect(game.state.inventory).toEqual({ "rat-tail": 5 });
+    });
+  });
+
   test("trading takes the trophies, queues the buff and marks the floor's barter as used", () => {
     const { game } = runnerGame(1);
     const cost = barterCost("rat-tail");

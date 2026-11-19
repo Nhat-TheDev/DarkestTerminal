@@ -377,6 +377,8 @@
   },
   "barter": {
     "offerCount": 2,
+    "inventoryMaxWeight": 5,
+    "inventoryHalfSaturation": 5,
     "activeDurationTurns": 999,
     "statStatusIds": {
       "attack": "blooded",

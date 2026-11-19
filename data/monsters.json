@@ -316,9 +316,9 @@
       "color": "#5a7a3a"
     },
     "description": "It smells of turned earth and cold meat, and its feet drag a furrow through the dust. Already the wound you opened is smaller. Nothing in its face changed before, during, or since; it comes on at the pace it started at.",
-    "baseHp": 90,
+    "baseHp": 105,
     "baseAttack": 17,
-    "baseDefense": 9,
+    "baseDefense": 13,
     "baseSpeed": 4,
     "monsterType": "sentinel",
     "aiPattern": "defensive",
@@ -327,7 +327,7 @@
       "regeneration"
     ],
     "expReward": 12,
-    "powerTier": "medium",
+    "powerTier": "strong",
     "actionWeights": {
       "normal": {
         "basicAttack": 100,
@@ -454,9 +454,9 @@
       "color": "#7a9a4a"
     },
     "description": "Smoke from a bundle of burning herbs hangs around it, bitter and green. A stick, with things tied to it, and it believes in the stick completely. Twice now the stick has answered. The things tied to it have been retied tighter since.",
-    "baseHp": 70,
-    "baseAttack": 27,
-    "baseDefense": 4,
+    "baseHp": 90,
+    "baseAttack": 28,
+    "baseDefense": 6,
     "baseSpeed": 12,
     "monsterType": "glass",
     "aiPattern": "defensive",
@@ -465,7 +465,7 @@
       "acid-spit"
     ],
     "expReward": 8,
-    "powerTier": "medium",
+    "powerTier": "strong",
     "actionWeights": {
       "normal": {
         "basicAttack": 50,

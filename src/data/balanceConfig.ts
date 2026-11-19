@@ -280,6 +280,8 @@ interface BalanceConfig {
   };
   barter: {
     offerCount: number;
+    inventoryMaxWeight: number;
+    inventoryHalfSaturation: number;
     /** The buff expires on victory, so this only needs to outlast a fight. */
     activeDurationTurns: number;
     statStatusIds: Record<"attack" | "magicPower" | "defense" | "speed", string>;
