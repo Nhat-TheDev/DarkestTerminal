@@ -152,6 +152,9 @@ describe("random-play report", () => {
 });
 
 describe("random-play bot", () => {
+  // A run drives the real headless UI, which takes several seconds on a slow CI runner.
+  const RUN_TIMEOUT_MS = 30000;
+
   test("plays a short run end to end and collects a gallery", async () => {
     const result = await playRun({ gameSeed: 1, botSeed: 7920, maxSteps: 40, team: TEAMS[0]! });
     expect(result.steps).toBe(40);
@@ -159,7 +162,7 @@ describe("random-play bot", () => {
     expect(result.gallery.every((g) => g.size.endsWith("x70") || g.size === "150x45")).toBe(true);
     expect(result.gallery.some((g) => g.size === "150x45")).toBe(true);
     expect(result.failures).toEqual([]);
-  });
+  }, RUN_TIMEOUT_MS);
 
   test("the temple and event-exit scenarios reach their screens with no failure, and end when the room is left", async () => {
     const event = ROOM_EVENT_IDS.find((id) => getEvent(id).reflection)!;
@@ -174,7 +177,7 @@ describe("random-play bot", () => {
       const kinds = result.gallery.map((g) => g.uiKind);
       expect(kinds).toContain(scenario.name === "temple" ? "temple" : "eventExit");
     }
-  });
+  }, RUN_TIMEOUT_MS);
 
   test("a run counts as finished once the party leaves the floor it started on", () => {
     const game = new Game(7);
