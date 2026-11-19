@@ -4,12 +4,14 @@ import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifact } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
-import { payHpPercent, closeEvent, recordEventOutcome, findPartyMemberOrError } from "./shared";
+import { payHpPercent, closeEvent, openEventOfKindError, recordEventOutcome, findPartyMemberOrError } from "./shared";
 
 export const COLLAPSED_FLOOR_HP_PERCENT = BALANCE.events.collapsedFloorHpPercent;
 const COLLAPSED_FLOOR_SUCCESS_CHANCE = BALANCE.events.collapsedFloorSuccessChance;
 
 export function collapsedFloorAttempt(state: GameState, ctx: EngineContext, characterId: Id): PartyActionError | null {
+  const closed = openEventOfKindError(state, "rescueGamble");
+  if (closed) return closed;
   const character = findPartyMemberOrError(state, characterId);
   if ("reason" in character) return character;
   const cost = payHpPercent(character, COLLAPSED_FLOOR_HP_PERCENT);

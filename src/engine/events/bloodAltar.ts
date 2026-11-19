@@ -5,11 +5,13 @@ import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifact } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
-import { payHpPercent, closeEvent, recordEventOutcome, findPartyMemberOrError } from "./shared";
+import { payHpPercent, closeEvent, openEventOfKindError, recordEventOutcome, findPartyMemberOrError } from "./shared";
 
 export const BLOOD_ALTAR_HP_PERCENT = BALANCE.events.bloodAltarHpPercent;
 
 export function bloodAltarPay(state: GameState, ctx: EngineContext, characterId: Id): PartyActionError | null {
+  const closed = openEventOfKindError(state, "hpGamble");
+  if (closed) return closed;
   const character = findPartyMemberOrError(state, characterId);
   if ("reason" in character) return character;
   const cost = payHpPercent(character, BLOOD_ALTAR_HP_PERCENT);

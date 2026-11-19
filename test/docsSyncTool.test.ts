@@ -22,6 +22,7 @@ import { passives } from "../tools/docs-sync/generators/passives";
 import { statusEffects } from "../tools/docs-sync/generators/statusEffects";
 import { deathBursts, minionSkills, minions } from "../tools/docs-sync/generators/minions";
 import { rarityOdds } from "../tools/docs-sync/generators/rarityOdds";
+import { religions } from "../tools/docs-sync/generators/religions";
 import { shopOdds } from "../tools/docs-sync/generators/shopOdds";
 import { formatFinding, parseMode, runDocsSync } from "../tools/docs-sync/index";
 import { checkIntentMarkers, findCandidates } from "../tools/docs-sync/coverage";
@@ -775,6 +776,29 @@ describe("classStats", () => {
       rows: [
         ["Alpha", "100", "40", "12", "6", "0", "9", "13"],
         ["Beta", "80", "60", "4", "5", "14", "7", "10"],
+      ],
+    });
+  });
+});
+
+describe("religions", () => {
+  test("lists each religion's followers and what its boon raises", () => {
+    const data = {
+      classes: [
+        { name: "Alpha", religionId: "one" },
+        { name: "Beta", religionId: "two" },
+        { name: "Gamma", religionId: "one" },
+      ],
+      religions: [
+        { id: "one", name: "First", boon: { emphasis: "defense", recoversHpMp: false } },
+        { id: "two", name: "Second", boon: { emphasis: null, recoversHpMp: true } },
+      ],
+    } as unknown as DocsData;
+    expect(religions.generate(data, {})).toEqual({
+      columns: ["Religion", "Classes", "Boon"],
+      rows: [
+        ["First", "Alpha, Gamma", "Defense raised more"],
+        ["Second", "Beta", "All three raised evenly; HP and MP restored in every room"],
       ],
     });
   });

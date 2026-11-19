@@ -7,6 +7,7 @@ import { CLASSES } from "../../src/data/classes";
 import { EVENTS } from "../../src/data/events";
 import { GROWTH_WEIGHTS } from "../../src/data/growthWeights";
 import { MONSTER_ARCHETYPES, MONSTER_SKILLS } from "../../src/data/monsters";
+import { RELIGIONS } from "../../src/data/religions";
 import { STATUS_EFFECTS } from "../../src/data/statusEffects";
 import { SUMMON_ARCHETYPES, SUMMON_CASTS, SUMMON_SKILLS } from "../../src/data/summons";
 import type { DocsData } from "./types";
@@ -43,6 +44,7 @@ export function loadDocsData(): DocsData {
   return {
     balance: BALANCE,
     classes: CLASSES,
+    religions: RELIGIONS,
     abilities: ABILITIES,
     events: EVENTS,
     artifacts: ARTIFACTS,

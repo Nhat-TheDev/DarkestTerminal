@@ -130,6 +130,8 @@ to you.
   your save has fought: its weaknesses, its skills, what it is doing now.
 - **Fear & Satiety** — two survival stats running alongside HP/MP, and they
   will turn on you if you're not careful.
+- **Faith and four religions** — a torch that burns down as you descend, and
+  temples that ask for blood to keep it lit.
 - **True permadeath.** The dead stay dead, and when the party falls the run
   is over.
 - **Leveling 1-100** — grow your party as you descend.

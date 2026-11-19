@@ -6,6 +6,7 @@ import { getArtifact } from "../data/artifacts";
 import { getAbility } from "../data/abilities";
 import { getClass, getSkill, getEffectiveSkill } from "../data/classes";
 import { getEvent } from "../data/events";
+import { getReligion } from "../data/religions";
 import { getRoom } from "../engine/dungeon";
 import { getFearTier, isHelpfulStatusEffect } from "../engine/resolver";
 import { getStatusEffect, statusDisplayName } from "../data/statusEffects";
@@ -34,22 +35,27 @@ import {
   renderSpriteInSlot,
   MAX_BOSS_HEIGHT,
   TOMBSTONE_SPRITE,
+  torchFrameForFaith,
+  TORCH_SPRITES,
+  spriteHeight,
   CAMPFIRE_SPRITE,
   TREASURE_CHEST_SPRITE,
+  spriteForTemple,
 } from "./sprites";
-import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, battlefieldInnerWidth, centerText, monsterStyle, mergeBlocksHorizontally } from "./layout";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, EMPTY_ENEMY_WIDTH, UNIT_BLOCK_HEIGHT, ICON_BAND_ROWS, BATTLEFIELD_CONTENT_WIDTH, PARTY_PANEL_WIDTH, SIDE_PANEL_WIDTH, battlefieldInnerWidth, centerText, monsterStyle, mergeBlocksHorizontally, torchDividerBlock } from "./layout";
 import { sceneById, type UnitShadow } from "../data/backdrops";
 import { backdropIdForRoomName } from "../data/roomNames";
-import { paintBackdrop, composeBattlefield, sameContent } from "./backdrop";
+import { paintBackdrop, paintTorchGlow, composeBattlefield, sameContent } from "./backdrop";
 import { renderFloorMap } from "./floorMap";
 import { RevealQueue, REVEAL_TICK_MS } from "./revealQueue";
 import { unitFocus, focusedUnit, buildSideSpriteArea, blankIconBand, tierFrameHeight, hpDeltas, fearDeltas, markerReading, FOCUS_GLYPH, type BattlefieldUnit, type MarkerReading, type SummonFocus } from "./battlefieldFocus";
 import { logLines } from "./screens/log";
 import { type UiState, inventoryEntries, combatInventoryEntries, ownedArtifactEntries, eventUiState, ARTIFACT_ICON, ABILITY_ICON, SUMMON_ICON } from "./state";
 import { PAGE_SIZE, ITEM_PAGE_SIZE, pageCount, clampPage } from "./pagination";
-import { canOpenJournal, canOpenMap, canOpenMemory, canOpenMonsters, composeFooter } from "./keyHints";
+import { GROUP_SEP, canOpenJournal, canOpenMap, canOpenMemory, canOpenMonsters, composeFooter } from "./keyHints";
 import { proceedAfterVictory, type ScreenContext } from "./screens/context";
 import * as eventsScreen from "./screens/events";
+import * as choiceNarrationScreen from "./screens/choiceNarration";
 import * as roomScreen from "./screens/room";
 import * as combatScreen from "./screens/combat";
 import * as inventoryScreen from "./screens/inventory";
@@ -64,6 +70,7 @@ import * as journalScreen from "./screens/journal";
 import * as endingScreen from "./screens/ending";
 import * as founderDialogueScreen from "./screens/founderDialogue";
 import * as gatekeeperScreen from "./screens/gatekeeper";
+import * as templeScreen from "./screens/temple";
 import { GATEKEEPER_EVENT_ID } from "../engine/events/gatekeeper";
 import * as saveScreen from "./screens/save";
 import * as gameoverScreen from "./screens/gameover";
@@ -101,6 +108,27 @@ const FLOOR_MAP_BACKDROP_KEY = "floor-map";
 
 export type RunExit = "newRun" | "menu";
 
+const CONFIRM_KEY_LABELS: Record<string, string> = { return: "Enter", escape: "Esc" };
+
+function withConfirmPrompt(main: string | StyledText, keys: string[]): { content: StyledText; selectedLine: number } {
+  const chunks = typeof main === "string" ? [plainChunk(main)] : main.chunks;
+  const lines: TextChunk[][] = [[]];
+  for (const chunk of chunks) {
+    chunk.text.split("\n").forEach((text, index) => {
+      if (index > 0) lines.push([]);
+      if (text) lines.at(-1)!.push({ ...chunk, text });
+    });
+  }
+  let selectedLine = -1;
+  const highlighted = lines.map((line, index) => {
+    const key = /^\s*\[([^\]]+)\]/.exec(line.map(chunk => chunk.text).join(""))?.[1];
+    if (!key || !keys.includes(key.toLowerCase())) return line;
+    if (selectedLine < 0) selectedLine = index + 2;
+    return line.map(chunk => boldColorChunk(chunk.text, PALETTE.title));
+  });
+  return { content: new StyledText([colorChunk(t("ui.confirmPending"), PALETTE.title), plainChunk("\n\n"), ...joinLines(highlighted).chunks]), selectedLine };
+}
+
 export class App implements ScreenContext {
   game: Game;
   private ui: UiState = { kind: "room" };
@@ -109,6 +137,7 @@ export class App implements ScreenContext {
   private battlefield: TextRenderable;
   private party: TextRenderable;
   private main: TextRenderable;
+  private mainBox: BoxRenderable;
   private monsters: TextRenderable;
   private log: TextRenderable;
   private logScroll: ScrollBoxRenderable;
@@ -131,6 +160,8 @@ export class App implements ScreenContext {
   /** Toasts written while a finished combat is still being narrated; they join the reveal after its lines. */
   private deferredToasts: LogEntry[] = [];
   private mainUi: UiState | null = null;
+  private narrationPassage: Game["state"]["pendingChoiceNarration"] = null;
+  private narrationScroll = 0;
   private roomLog: LogEntry[] = [];
   private roomLogFloor: Floor | null = null;
   private roomLogRoomId: Id | null = null;
@@ -149,6 +180,9 @@ export class App implements ScreenContext {
   private pendingFloorAdvance = false;
   private pendingCampOffer = false;
   private listPage = 0;
+  /** The key a screen asked to have pressed again, and the screen it was pressed on. */
+  private armedConfirm: { key: string; ui: UiState } | null = null;
+  private confirmedKey: string | null = null;
   private onExit: ((next: RunExit) => void) | undefined;
   private exited = false;
   /** The run as last written to its slot; a key that leaves it unchanged writes nothing. */
@@ -221,7 +255,10 @@ export class App implements ScreenContext {
     body.add(partyBox);
 
     const mainBox = new BoxRenderable(renderer, { id: "main-box", ...panel, flexGrow: 1, title: t("ui.panelMain") });
+    this.mainBox = mainBox;
+    mainBox.onMouseScroll = () => this.showMainScroll();
     this.main = new TextRenderable(renderer, { id: "main", content: "", fg: PALETTE.text });
+    this.main.on("line-info-change", () => this.showMainScroll());
     mainBox.add(this.main);
     body.add(mainBox);
 
@@ -321,6 +358,21 @@ export class App implements ScreenContext {
     return this.lastRender;
   }
 
+  /** True on the second press of `keyName` in a row on the same screen; the first press only asks for confirmation. */
+  confirm(keyName: string): boolean {
+    if (this.confirmedKey === keyName) {
+      this.confirmedKey = null;
+      return true;
+    }
+    this.armedConfirm = { key: keyName, ui: this.ui };
+    this.main.scrollY = 0;
+    return false;
+  }
+
+  private confirmPending(): string | null {
+    return this.armedConfirm && this.armedConfirm.ui === this.ui ? this.armedConfirm.key : null;
+  }
+
   setUi(next: UiState): void {
     if (next.kind !== this.ui.kind) this.listPage = 0;
     this.ui = next;
@@ -394,19 +446,25 @@ export class App implements ScreenContext {
       this.ui = { kind: "gameover" };
       return;
     }
+    if (this.game.state.pendingChoiceNarration) {
+      this.ui = { kind: "choiceNarration" };
+      return;
+    }
     const combat = this.game.state.combat;
     if (!combat) {
       if (this.game.state.pendingArtifactDecision) {
         this.ui = { kind: "artifactDecision" };
         return;
       }
-      if (this.game.state.pendingReflection) {
-        this.ui = { kind: "eventReflection" };
+      const exit = this.game.state.pendingEventExit;
+      const journalFirst = !exit?.withReflection && (this.game.state.pendingJournalFind || this.game.state.pendingJournal || this.game.journalNoticeView());
+      if (exit && !journalFirst) {
+        this.ui = { kind: "eventExit" };
         return;
       }
       const room = getRoom(this.game.state.floor, this.game.state.currentRoomId);
       const restOpen = room.type === "rest" && !room.cleared;
-      if (this.game.state.pendingCampReflectionTier !== null && !restOpen) {
+      if (this.game.state.pendingCampReflectionTier !== null && (!restOpen || room.rested)) {
         this.ui = { kind: "campReflection" };
         return;
       }
@@ -429,6 +487,10 @@ export class App implements ScreenContext {
         } else if (!runner || (this.ui.kind !== "runnerShop" && this.ui.kind !== "runnerSell" && this.ui.kind !== "runnerBarter")) {
           this.ui = { kind: "rest" };
         }
+        return;
+      }
+      if (room.type === "temple" && !room.cleared) {
+        this.ui = { kind: "temple" };
         return;
       }
       if (room.type === "event" && !room.cleared && room.rolledEventId) {
@@ -468,6 +530,16 @@ export class App implements ScreenContext {
       this.quit();
       return;
     }
+    const pending = this.confirmPending();
+    this.armedConfirm = null;
+    this.confirmedKey = null;
+    if (pending !== null) {
+      if (key.name !== pending) {
+        this.render();
+        return;
+      }
+      this.confirmedKey = pending;
+    }
     if (this.ui.kind === "fullLog") {
       if (key.name === "escape") {
         this.ui = this.ui.previous;
@@ -494,7 +566,7 @@ export class App implements ScreenContext {
       this.render();
       return;
     }
-    if (this.reveal.active) {
+    if (this.reveal.active && this.ui.kind !== "choiceNarration") {
       this.flushPendingReveal();
       return;
     }
@@ -521,6 +593,11 @@ export class App implements ScreenContext {
         return;
       }
     }
+    if (key.shift && (key.name === "up" || key.name === "down") && this.main.maxScrollY > 0) {
+      this.main.scrollY += key.name === "down" ? 1 : -1;
+      this.render();
+      return;
+    }
     // The log panel claims left/right, up/down, h/k, pageup/pagedown and home/end, so any of those a screen needs must be handled above this. `j` and `l` are taken above.
     if (this.logScroll.handleKeyPress(key)) {
       this.render();
@@ -532,7 +609,7 @@ export class App implements ScreenContext {
     }
     if (
       key.name === "b" &&
-      ["room", "rest", "pickAction", "pickSkill", "skillDetail", "pickCommandMinion", "pickCommandSkill", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
+      ["room", "rest", "temple", "pickAction", "pickSkill", "skillDetail", "pickCommandMinion", "pickCommandSkill", "pickItemInCombat", "pickTarget", "roundResolved", "combatOver", "pickItemOutOfCombat", "itemDetail", "artifactMenu", "artifactDetail", "roomReward", "campPrompt"].includes(this.ui.kind)
     ) {
       this.setUi({ kind: "characterInfo", characterIndex: 0, previousUi: this.ui });
       this.render();
@@ -554,9 +631,18 @@ export class App implements ScreenContext {
     const digit = /^[1-9]$/.test(key.name) ? Number(key.name) : null;
 
     switch (this.ui.kind) {
+      case "choiceNarration":
+        choiceNarrationScreen.handleKey(this, key);
+        break;
       case "room":
       case "rest":
         roomScreen.handleKey(this, this.ui, key, digit);
+        break;
+      case "temple":
+        templeScreen.handleKey(this, key, digit);
+        break;
+      case "templeDonors":
+        templeScreen.handleDonorKey(this, this.ui, key, digit);
         break;
       case "runnerNotice":
       case "runnerShop":
@@ -608,7 +694,7 @@ export class App implements ScreenContext {
       case "eventFortuneExchange":
       case "eventFortuneExchangePickArtifact":
       case "eventCombatReward":
-      case "eventReflection":
+      case "eventExit":
         eventsScreen.handleKey(this, this.ui, key, digit);
         break;
       case "campReflection":
@@ -658,11 +744,15 @@ export class App implements ScreenContext {
         gameoverScreen.handleKey(this, key);
         break;
     }
+    this.confirmedKey = null;
     this.render();
   }
 
   private goBack(): boolean {
     switch (this.ui.kind) {
+      case "templeDonors":
+        this.ui = { kind: "temple" };
+        return true;
       case "pickSkill":
       case "pickItemInCombat":
         this.ui = { kind: "pickAction", actorRef: this.ui.actorRef };
@@ -824,9 +914,14 @@ export class App implements ScreenContext {
     // Runs before the header/party/monster panels so they all read the same last-revealed snapshot.
     const combat = s.combat;
     const fresh: LogEntry[] = [];
+    if (this.mainUi?.kind === "choiceNarration" && this.ui !== this.mainUi) this.narrationScroll = this.main.scrollY;
+    if (s.pendingChoiceNarration !== this.narrationPassage) {
+      this.narrationPassage = s.pendingChoiceNarration;
+      this.narrationScroll = 0;
+    }
     // Not always the current combat: a party-wiping round ends the combat before this render runs.
     let revealSource = combat;
-    if (combat !== this.observedCombat) {
+    if (!s.pendingChoiceNarration && combat !== this.observedCombat) {
       const finished = this.observedCombat;
       if (finished && finished.log.length > this.lastLogLength) {
         fresh.push(...finished.log.slice(this.lastLogLength));
@@ -839,11 +934,11 @@ export class App implements ScreenContext {
       // A loaded save's resolved rounds were seen before saving, so they are not replayed.
       if (combat && combat.log.some((e) => e.snapshot !== undefined)) this.lastLogLength = combat.log.length;
     }
-    if (combat && combat.log.length > this.lastLogLength) {
+    if (!s.pendingChoiceNarration && combat && combat.log.length > this.lastLogLength) {
       fresh.push(...combat.log.slice(this.lastLogLength));
       this.lastLogLength = combat.log.length;
     }
-    fresh.push(...this.deferredToasts.splice(0));
+    if (!s.pendingChoiceNarration) fresh.push(...this.deferredToasts.splice(0));
     if (fresh.length > 0) {
       // Lines queued behind a running reveal neither rewind HP/MP/coins nor add a tick.
       const wasIdle = !this.reveal.active;
@@ -856,9 +951,9 @@ export class App implements ScreenContext {
       this.reveal.enqueue(fresh);
       if (wasIdle) this.startReveal();
     }
-    const revealing = this.reveal.active;
+    const revealing = this.reveal.active && !s.pendingChoiceNarration;
     if (!revealing) this.narratedCombat = null;
-    const shownCombat = this.narratedCombat ?? combat;
+    const shownCombat = s.pendingChoiceNarration ? null : this.narratedCombat ?? combat;
     const focus = this.reveal.focus;
     const inFullLog = this.ui.kind === "fullLog";
     for (const box of this.chrome) box.visible = !inFullLog;
@@ -903,6 +998,8 @@ export class App implements ScreenContext {
         colorChunk(t("ui.coinsStat", { coins }), PALETTE.title),
         plainChunk("  "),
         colorChunk(t("ui.satietyStat", { satiety }), PALETTE.title),
+        plainChunk("  "),
+        colorChunk(`${t("ui.faithLabel")} ${Math.floor(s.faith)}`, PALETTE.title),
         ...(s.runStardust > 0 ? [plainChunk("  "), colorChunk(t("ui.stardustStat", { stardust: s.runStardust }), PALETTE.title)] : []),
       ],
       expLine,
@@ -939,12 +1036,34 @@ export class App implements ScreenContext {
       // The reveal swallows `[b]`, so the party hint is suppressed.
       this.footer.content = joinLines([highlightKeyHints(composeFooter(t("ui.footerSkipReveal"), this.ui.kind, false, false))]);
     } else {
-      this.main.content = this.renderMain();
+      const pending = this.confirmPending();
+      const main = this.renderMain();
+      let confirmKeys = [CONFIRM_KEY_LABELS[pending ?? ""]?.toLowerCase() ?? pending ?? ""];
+      if (pending === "return" && this.ui.kind === "templeDonors") {
+        const selectedIds = this.ui.selectedIds;
+        confirmKeys = s.party.flatMap((member, index) => selectedIds.includes(member.id) ? [String(index + 1)] : []);
+      } else if (pending === "escape" && this.ui.kind === "eventCombatReward") confirmKeys = ["2"];
+      else if (pending === "escape" && this.ui.kind === "eventArtifactShop") confirmKeys = [String((s.activeEvent?.offerArtifactIds.length ?? 0) + 1)];
+      const confirmation = pending === null ? null : withConfirmPrompt(main, confirmKeys);
+      this.main.content = confirmation?.content ?? main;
+      this.keepScrollInRange(this.main, this.ui !== this.mainUi);
+      if (confirmation) {
+        const rows = this.main.lineInfo.lineSources;
+        const first = rows.indexOf(confirmation.selectedLine);
+        const last = rows.lastIndexOf(confirmation.selectedLine);
+        if (first >= 0) this.main.scrollY = Math.min(first, Math.max(this.main.scrollY, last - this.main.height + 1));
+      }
+      if (this.ui.kind === "choiceNarration" && this.ui !== this.mainUi) this.main.scrollY = this.narrationScroll;
+      this.showMainScroll();
       this.footer.content = joinLines([
-        highlightKeyHints(composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable(), this.game.hasJournalEntries(), this.monstersAvailable())),
+        highlightKeyHints(
+          pending !== null
+            ? t("ui.footerConfirm", { key: CONFIRM_KEY_LABELS[pending] ?? pending }) + GROUP_SEP + t("ui.hintQuit")
+            : composeFooter(this.renderFooter(), this.ui.kind, this.isPaginated(), true, this.memoryAvailable(), this.game.hasJournalEntries(), this.monstersAvailable())
+        ),
       ]);
     }
-    this.keepScrollInRange(this.main, this.ui !== this.mainUi);
+    if (revealing) this.keepScrollInRange(this.main, this.ui !== this.mainUi);
     this.mainUi = this.ui;
     this.renderLogContent();
     this.lastRender = { revealing, focusId: focus?.id ?? null, logTailSessionId: this.roomLog.at(-1)?.session?.id ?? null };
@@ -969,6 +1088,12 @@ export class App implements ScreenContext {
       crit ||= reading.crit;
     }
     return { delta, crit, beat: this.reveal.summonBeat };
+  }
+
+  /** Marks the Dungeon panel's bottom border while some of its text is out of view. */
+  private showMainScroll(): void {
+    const { scrollY, maxScrollY } = this.main;
+    this.mainBox.bottomTitle = scrollY < maxScrollY ? t("ui.panelMainMoreBelow") : scrollY > 0 ? t("ui.panelMainMoreAbove") : undefined;
   }
 
   /** Reassigning scrollY clamps it to `maxScrollY` (wrapped rows); the wheel offset otherwise outlives a longer text. */
@@ -1088,6 +1213,10 @@ export class App implements ScreenContext {
     const abilityLines: TextChunk[][] = c.equippedAbilityId ? [[plainChunk("  "), colorChunk(`${ABILITY_ICON} ${getAbility(c.equippedAbilityId).name}`, PALETTE.title)]] : [];
     const artifactLines: TextChunk[][] = c.equippedArtifactIds.map((artifactId) => [plainChunk("  "), colorChunk(`${ARTIFACT_ICON} ${getArtifact(artifactId).name}`, PALETTE.title)]);
     const buffLines: TextChunk[][] = [];
+    if (this.game.state.boon) {
+      const religion = getReligion(this.game.state.boon.religionId);
+      buffLines.push([plainChunk("  "), colorChunk(t("ui.activeTempleBoon", { religion: religion.name }), religion.style.color)]);
+    }
     const debuffLines: TextChunk[][] = [];
     for (const eff of c.activeStatusEffects) {
       const def = getStatusEffect(eff.statusEffectId);
@@ -1149,6 +1278,14 @@ export class App implements ScreenContext {
     return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
   }
 
+  private buildTempleBlock(religionId: Id): TextChunk[][] {
+    const lines = renderSpriteInSlot(spriteForTemple(religionId), MAX_BOSS_HEIGHT, EMPTY_ENEMY_WIDTH);
+    lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
+    lines.push([colorChunk(centerText(t("ui.templeLabel"), EMPTY_ENEMY_WIDTH), PALETTE.dim)]);
+    lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
+    return [...blankIconBand(EMPTY_ENEMY_WIDTH), ...lines];
+  }
+
   private buildTreasureBlock(): TextChunk[][] {
     const lines = renderSpriteInSlot(TREASURE_CHEST_SPRITE, MAX_BOSS_HEIGHT, EMPTY_ENEMY_WIDTH);
     lines.push([plainChunk(" ".repeat(EMPTY_ENEMY_WIDTH))]);
@@ -1188,12 +1325,19 @@ export class App implements ScreenContext {
         shadow: null,
       };
     }
-    const { rows, dimmed } = this.renderBattlefield(combat, hpOverride, focus);
+    const { rows, dimmed, torchLight } = this.renderBattlefield(combat, hpOverride, focus);
     const contentLeft = Math.max(0, Math.floor((width - BATTLEFIELD_CONTENT_WIDTH) / 2));
     const room = getRoom(s.floor, s.currentRoomId);
     const sceneId = s.pendingGatekeeper ? (getEvent(GATEKEEPER_EVENT_ID).backdrop ?? null) : backdropIdForRoomName(room.name);
     const { key, backdrop, shadow } = this.backdropFor(sceneId, width, contentLeft, dimmed);
-    return { battlefieldRows: rows, contentLeft, backdropKey: key, backdrop, shadow };
+    const litBackdrop = torchLight ? paintTorchGlow(backdrop, width, {
+      ...torchLight,
+      x: contentLeft + torchLight.x,
+      faith: s.faith,
+      color: TORCH_SPRITES["full"]!.palette["Y"] ?? PALETTE.title,
+      dimFactor: dimmed ? (sceneById(sceneId)?.render.dimFactor ?? 1) : 1,
+    }) : backdrop;
+    return { battlefieldRows: rows, contentLeft, backdropKey: `${key}|torch:${torchLight ? s.faith : "hidden"}`, backdrop: litBackdrop, shadow };
   }
 
   private backdropFor(sceneId: string | null, width: number, contentLeft: number, dimmed: boolean): { key: string; backdrop: string[][] | null; shadow: UnitShadow | null } {
@@ -1205,7 +1349,7 @@ export class App implements ScreenContext {
     return this.backdropCache;
   }
 
-  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null): { rows: TextChunk[][]; dimmed: boolean } {
+  private renderBattlefield(combat: CombatState | null, hpOverride: Map<Id, CombatantSnapshot> | null, focus: LogSession | null) {
     const s = this.game.state;
     let dimmed = false;
     const impact = focus !== null && !this.reveal.holding;
@@ -1231,7 +1375,8 @@ export class App implements ScreenContext {
 
     const room = getRoom(s.floor, s.currentRoomId);
     const isRestRoom = !combat && room.type === "rest";
-    const isEventRoom = !combat && room.type === "event" && !!room.rolledEventId && !room.cleared;
+    const isTempleRoom = !combat && room.type === "temple" && (!room.cleared || s.pendingChoiceNarration?.source === "temple");
+    const isEventRoom = !combat && room.type === "event" && !!room.rolledEventId && (!room.cleared || s.pendingChoiceNarration?.source === "event");
     const isTreasureRoom = isEventRoom && getEvent(room.rolledEventId!).kind === "instantReward";
 
     let enemyBlock: TextChunk[][];
@@ -1257,6 +1402,8 @@ export class App implements ScreenContext {
       }
     } else if (isRestRoom) {
       enemyBlock = this.buildCampfireBlock();
+    } else if (isTempleRoom) {
+      enemyBlock = this.buildTempleBlock(room.templeReligionId!);
     } else if (isTreasureRoom) {
       enemyBlock = this.buildTreasureBlock();
     } else if (isEventRoom) {
@@ -1266,16 +1413,15 @@ export class App implements ScreenContext {
       enemyBlock = this.buildEmptyEnemyBlock(message);
     }
 
-    const divider: TextChunk[][] = [];
-    for (let i = 0; i < UNIT_BLOCK_HEIGHT; i++) {
-      divider.push(
-        i === ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS) / 2) && !isRestRoom && !isEventRoom && !isTreasureRoom
-          ? [colorChunk(centerText(t("ui.versusDivider"), DIVIDER_WIDTH), PALETTE.dim)]
-          : [plainChunk(" ".repeat(DIVIDER_WIDTH))]
-      );
-    }
+    const torch = s.pendingGatekeeper ? null : torchFrameForFaith(s.faith);
+    const divider = torchDividerBlock(torch);
+    const partyWidth = Math.max(...partyBlock.map((row) => row.reduce((sum, chunk) => sum + chunk.text.length, 0)));
+    const torchLight = torch ? {
+      x: partyWidth + Math.floor(DIVIDER_WIDTH / 2),
+      y: ICON_BAND_ROWS + Math.floor((UNIT_BLOCK_HEIGHT - ICON_BAND_ROWS - spriteHeight(torch)) / 2) + 3,
+    } : null;
 
-    return { rows: mergeBlocksHorizontally([partyBlock, divider, enemyBlock], SLOT_GAP), dimmed };
+    return { rows: mergeBlocksHorizontally([partyBlock, divider, enemyBlock], 0), dimmed, torchLight };
   }
 
   /** The monsters a fight shows. A summoned add that has died stays as a tombstone only while the session it died in is on screen. */
@@ -1414,8 +1560,10 @@ export class App implements ScreenContext {
       case "eventFortuneExchange":
       case "eventFortuneExchangePickArtifact":
       case "eventCombatReward":
-      case "eventReflection":
+      case "eventExit":
         return eventsScreen.renderMain(this.game, this.ui, this.listPage);
+      case "choiceNarration":
+        return choiceNarrationScreen.renderMain(this.game);
 
       case "campReflection":
         return campReflectionScreen.renderMain(this.game, this.ui);
@@ -1455,6 +1603,11 @@ export class App implements ScreenContext {
 
       case "gatekeeper":
         return gatekeeperScreen.renderMain(this.game, this.ui);
+
+      case "temple":
+        return templeScreen.renderMain(this.game);
+      case "templeDonors":
+        return templeScreen.renderDonors(this.game, this.ui);
 
       default: {
         const _exhaustive: never = this.ui;
@@ -1515,10 +1668,12 @@ export class App implements ScreenContext {
       case "eventFortuneExchange":
       case "eventFortuneExchangePickArtifact":
       case "eventCombatReward":
-      case "eventReflection":
+      case "eventExit":
         return eventsScreen.renderFooter(this.ui, this.game, this.listPage);
+      case "choiceNarration":
+        return choiceNarrationScreen.renderFooter();
       case "campReflection":
-        return campReflectionScreen.renderFooter(this.ui);
+        return campReflectionScreen.renderFooter(this.game);
       case "floorMilestone":
         return floorMilestoneScreen.renderFooter(this.ui);
       case "memoryIntro":
@@ -1541,6 +1696,10 @@ export class App implements ScreenContext {
         return founderDialogueScreen.renderFooter(this.ui);
       case "gatekeeper":
         return gatekeeperScreen.renderFooter(this.ui, this.game);
+      case "temple":
+        return templeScreen.renderFooter(this.game);
+      case "templeDonors":
+        return templeScreen.renderDonorsFooter(this.game);
       case "abilityBuyback":
         return abilityBuybackScreen.renderFooter(this.game);
       case "gameover":

@@ -185,7 +185,7 @@ describe("items", () => {
   test("a magic power status raises magicPower, survives a stat recompute and is undone on expiry", () => {
     const { ctx } = makeCtx();
     const mage = ctx.party.find((c) => c.classId === "mage")!;
-    recomputeCharacterStats(mage, 100);
+    recomputeCharacterStats(mage, 100, null);
     const base = mage.magicPower;
     const focus: StatusEffectDefinition = {
       id: "test-focus",
@@ -198,7 +198,7 @@ describe("items", () => {
       const log: never[] = [];
       resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: focus.id, durationTurns: 2 }, mage, mage, { log });
       expect(mage.magicPower).toBe(base + 7);
-      recomputeCharacterStats(mage, 100);
+      recomputeCharacterStats(mage, 100, null);
       expect(mage.magicPower).toBe(base + 7);
       expireStatusEffect(mage, mage.activeStatusEffects[0]!, { log });
       expect(mage.magicPower).toBe(base);

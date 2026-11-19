@@ -8,6 +8,7 @@ export const GROUP_SEP = "   │   ";
 const PARTY_INFO_KINDS: readonly UiState["kind"][] = [
   "room",
   "rest",
+  "temple",
   "pickAction",
   "pickSkill",
   "skillDetail",
@@ -39,8 +40,8 @@ const COMBAT_KINDS: readonly UiState["kind"][] = [
  * Left off any screen whose fullest footer would no longer fit the smallest terminal: `roomReward` for both, and `room` and the
  * paged `pickItemInCombat` for `[v]` (the bestiary is one step away through the map, the fight's monsters through `[Esc]`).
  */
-const MAP_KINDS: readonly UiState["kind"][] = ["room", "rest", "campPrompt", ...COMBAT_KINDS, "monsterInfo", "bestiary"];
-const MONSTER_KINDS: readonly UiState["kind"][] = ["rest", "campPrompt", ...COMBAT_KINDS.filter((k) => k !== "pickItemInCombat"), "floorMap"];
+const MAP_KINDS: readonly UiState["kind"][] = ["room", "rest", "temple", "campPrompt", ...COMBAT_KINDS, "monsterInfo", "bestiary"];
+const MONSTER_KINDS: readonly UiState["kind"][] = ["rest", "temple", "campPrompt", ...COMBAT_KINDS.filter((k) => k !== "pickItemInCombat"), "floorMap"];
 
 export function canOpenMap(kind: UiState["kind"]): boolean {
   return MAP_KINDS.includes(kind);

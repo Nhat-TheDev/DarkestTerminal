@@ -5,6 +5,7 @@ import { Game } from "../../src/engine/game";
 import { enterRoom } from "../../src/engine/dungeon";
 import { channelStatus } from "../../src/engine/combat";
 import { FINAL_BOSS_ARCHETYPE, GUARD_ROOM_ARCHETYPES, spawnMonster } from "../../src/data/monsters";
+import { BALANCE } from "../../src/data/balanceConfig";
 import { BOSS_FLOOR_INTERVAL } from "../../src/data/levelGrowth";
 import { FOUNDER_FLOOR_DEPTH } from "../../src/data/endings";
 import type { Character, Id, MonsterTier } from "../../src/types";
@@ -61,14 +62,16 @@ export interface FightResult {
   /** Share of the party's MP spent. */
   mpUsed: number;
   itemsUsed: number;
+  /** The party's average fear at the end. */
+  fear: number;
 }
 
 const sum = (party: Character[], value: (c: Character) => number) => party.reduce((total, c) => total + value(c), 0);
 const itemCount = (inventory: Record<Id, number>) => Object.values(inventory).reduce((a, b) => a + b, 0);
 
-export function guardFight(guard: GuardCase, team: Team, seed: number, level: number): FightResult {
+export function guardFight(guard: GuardCase, team: Team, seed: number, level: number, faith = BALANCE.faith.typicalLevel): FightResult {
   const game = new Game(seed, team.members.map((m) => m.classId), undefined, team.members.map(() => null), false);
-  applyDump(game, { level, floorDepth: guard.depth, roomArg: "entry" });
+  applyDump(game, { level, floorDepth: guard.depth, roomArg: "entry", faith });
   game.state.combat = null;
   const room = game.state.floor.rooms.find((r) => r.type === "boss")!;
   const monster = spawnMonster(guard.id, guard.depth, { tier: guard.tier });
@@ -117,6 +120,7 @@ export function guardFight(guard: GuardCase, team: Team, seed: number, level: nu
     deaths: party.filter((c) => !c.isAlive).length,
     mpUsed: maxMp === 0 ? 0 : 1 - sum(party, (c) => c.mp) / maxMp,
     itemsUsed: itemsBefore - itemCount(game.state.inventory),
+    fear: sum(party, (c) => c.survival.fear) / party.length,
   };
 }
 
@@ -173,6 +177,8 @@ export interface BenchOptions {
   /** Stop once the win rate's 95% interval is this narrow on each side. */
   precision: number;
   maxFights: number;
+  /** The Faith every fight starts at; the configured typical level when omitted. */
+  faith?: number;
 }
 
 export function benchRow(guard: GuardCase, options: BenchOptions): BenchRow {
@@ -183,7 +189,7 @@ export function benchRow(guard: GuardCase, options: BenchOptions): BenchRow {
   for (let batch = 0; ; batch++) {
     for (const team of options.teams) {
       for (let i = 0; i < BATCH_PER_TEAM; i++) {
-        const result = guardFight(guard, team, batch * BATCH_PER_TEAM + i + 1, level);
+        const result = guardFight(guard, team, batch * BATCH_PER_TEAM + i + 1, level, options.faith);
         results.get(team.name)!.push(result);
         fights++;
         if (result.won) wins++;

@@ -8,6 +8,7 @@ import { renderFloorMap } from "../src/ui/floorMap";
 import { createFloor } from "../src/data/floor";
 import { FloorGraph } from "../src/engine/floorGraph";
 import { Rng } from "../src/engine/rng";
+import { withTempleChance } from "./setup";
 import { BATTLEFIELD_CONTENT_WIDTH, UNIT_BLOCK_HEIGHT } from "../src/ui/layout";
 
 const PARTY = CLASSES.slice(0, BALANCE.party.size).map((c) => c.id);
@@ -79,7 +80,19 @@ describe("the floor map", () => {
       "            ┃                           ┃",
       "            ┗━[3 ·]━━[ ? ]━━[ · ]━━━━━━━┛",
       "",
-      "■ you    · fight    ○ event    △ rest    ? unknown    ☠ guard",
+      "■ you    · fight    ○ event    △ rest    † temple    ? unknown    ☠ guard",
+    ]);
+  });
+
+  test("a temple entry draws its own glyph in front of the entrance", () => {
+    const stage = (id: Id, type: RoomType, next: Id[]): Room => ({ id, name: id, type, connectedRoomIds: next, monsterIds: [], cleared: false });
+    const floor: Floor = { depth: 1, entryRoomId: "temple", rooms: [stage("temple", "temple", ["r1"]), stage("r1", "combat", ["r2"]), stage("r2", "boss", [])] };
+    expect(text(renderFloorMap(floor, ["temple"], "temple").rows)).toEqual([
+      "Floor 1",
+      "",
+      "[ ■ ]━━[1 ·]━━[ ☠ ]",
+      "",
+      "■ you    · fight    ○ event    △ rest    † temple    ? unknown    ☠ guard",
     ]);
   });
 
@@ -96,7 +109,7 @@ describe("the floor map", () => {
 
   test("the widest generated floor fits in the Battlefield at the smallest terminal", () => {
     for (let seed = 1; seed < 200; seed++) {
-      const { floor } = createFloor(new Rng(seed), 1 + (seed % 120));
+      const { floor } = withTempleChance(1, () => createFloor(new Rng(seed), 1 + (seed % 120)));
       const { width, rows } = renderFloorMap(floor, [floor.entryRoomId], floor.entryRoomId);
       expect(width).toBeLessThanOrEqual(BATTLEFIELD_CONTENT_WIDTH);
       expect(rows.length).toBeLessThanOrEqual(UNIT_BLOCK_HEIGHT);

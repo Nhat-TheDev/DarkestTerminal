@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { resolveSkillEffect, getFearTier, rollLosesControl, tickDotEffects, tickStatModEffects, mitigatedOffense, statusCategory, isHelpfulStatusEffect } from "../src/engine/resolver";
 import type { LogEntry, CombatantRef, StatusEffectDefinition, SkillDefinition, SkillEffect } from "../src/types";
-import { makeCtx, pinCombatBalance, spawnInto } from "./helpers";
+import { makeCtx, NEUTRAL_FAITH, pinCombatBalance, spawnInto } from "./helpers";
 import { Game } from "../src/engine/game";
 import { applySkillEffects, resolveRound, startCombat, passiveDebuffResistPercent } from "../src/engine/combat";
 import { getRoom } from "../src/engine/dungeon";
@@ -161,7 +161,7 @@ describe("resolver", () => {
     const target = ctx.party[0]!;
     target.equippedArtifactIds.push("pendant-of-calm");
     const log: LogEntry[] = [];
-    resolveSkillEffect({ kind: "modifyStat", stat: "fear", amount: 5 }, target, target, { log });
+    resolveSkillEffect({ kind: "modifyStat", stat: "fear", amount: 5 }, target, target, { log, faith: NEUTRAL_FAITH });
     expect(target.survival.fear).toBe(4.5);
     expect(log.at(-1)!.text).toContain("4.5");
     resolveSkillEffect({ kind: "modifyStat", stat: "fear", amount: -2 }, target, target, { log });

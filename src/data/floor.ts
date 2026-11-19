@@ -6,6 +6,7 @@ import { BOSS_FLOOR_INTERVAL } from "./levelGrowth";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
 import { roomNamePool } from "./roomNames";
+import { RELIGIONS } from "./religions";
 
 function pickRoomName(type: RoomType, used: Set<string>, rng: Rng): string {
   const pool = roomNamePool(type);
@@ -106,6 +107,26 @@ export function buildFloorFromLayout(layout: LayoutRoom[], rng: Rng, depth = 1):
   return { floor: { depth, rooms, entryRoomId: rooms[0]!.id }, monsters };
 }
 
+const TEMPLE_ROOM_ID = "temple";
+
+export function prependTemple(floor: Floor, rng: Rng): void {
+  if (floor.depth === BALANCE.endings.founderFloorDepth || BALANCE.temple.chance <= 0 || !rng.chance(BALANCE.temple.chance)) return;
+  const religion = rng.pick(RELIGIONS);
+  const name = rng.pick(roomNamePool("temple"));
+  floor.rooms.unshift({
+    id: TEMPLE_ROOM_ID,
+    name,
+    type: "temple",
+    connectedRoomIds: [floor.entryRoomId],
+    monsterIds: [],
+    cleared: false,
+    templeReligionId: religion.id,
+  });
+  floor.entryRoomId = TEMPLE_ROOM_ID;
+}
+
 export function createFloor(rng: Rng, depth = 1): { floor: Floor; monsters: Monster[] } {
-  return buildFloorFromLayout(generateFloorLayout(rng, depth), rng, depth);
+  const built = buildFloorFromLayout(generateFloorLayout(rng, depth), rng, depth);
+  prependTemple(built.floor, rng);
+  return built;
 }

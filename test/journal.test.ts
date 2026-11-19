@@ -9,7 +9,7 @@ import { startCombat } from "../src/engine/combat";
 import { spawnMonster } from "../src/data/monsters";
 import { BALANCE } from "../src/data/balanceConfig";
 import { JOURNAL_PAGES, validateJournal, type JournalData } from "../src/data/journal";
-import { maybeTriggerReflection } from "../src/engine/events/shared";
+import { armEventExit } from "../src/engine/events/shared";
 import { migrateGameState } from "../src/engine/migration";
 import { availableDirections, deductionOptions, faceOf, drainAtFloorClear, endingEchoes, eventEcho, grantFragments, isChoosable, recordEcho, resolveDeduction } from "../src/engine/journal";
 import { getJournalFragment, getJournalLine } from "../src/data/journal";
@@ -17,6 +17,7 @@ import { CLASSES, getClass } from "../src/data/classes";
 import { journalPages, renderDeduction, renderDeductionFooter } from "../src/ui/screens/journal";
 import journalJson from "../data/journal.json";
 import type { Character } from "../src/types";
+import { withTempleChance } from "./setup";
 
 const SLOT = "slot1";
 
@@ -111,7 +112,7 @@ describe("journal scene at room clear", () => {
   test("Old Count copies its fragment into the slot, opens a scene in place of the reflection, and queues the second line", () => {
     const game = slotGame();
     resolveInstant(game, "old-count");
-    expect(game.state.pendingReflection).toBeNull();
+    expect(game.state.pendingEventExit).toEqual({ eventId: "old-count", withReflection: false });
     expect(game.state.pendingJournal).toMatchObject({ lineId: "what-the-marks-count", fragmentId: "tally-wall" });
     expect(game.state.journalQueue.map((q) => q.lineId)).toEqual(["the-last-mark"]);
     expect(loadProfile(SLOT).journal.fragments.map((f) => f.id)).toEqual(["tally-wall"]);
@@ -123,10 +124,10 @@ describe("journal scene at room clear", () => {
       const room = forceEventRoom(game, "old-count");
       room.cleared = true;
     }
-    maybeTriggerReflection(states[0]!.state, states[0]!.ctx, false);
-    maybeTriggerReflection(states[1]!.state, states[1]!.ctx, true);
-    expect(states[0]!.state.pendingReflection).not.toBeNull();
-    expect(states[1]!.state.pendingReflection).toBeNull();
+    armEventExit(states[0]!.state, states[0]!.ctx, false);
+    armEventExit(states[1]!.state, states[1]!.ctx, true);
+    expect(states[0]!.state.pendingEventExit?.withReflection).toBe(true);
+    expect(states[1]!.state.pendingEventExit?.withReflection).toBe(false);
     expect(states[1]!.ctx.rng.getState()).toBe(states[0]!.ctx.rng.getState());
   });
 
@@ -141,6 +142,10 @@ describe("journal scene at room clear", () => {
   test("a repeat-in-run source needs an earlier resolution of the same event this run", () => {
     const game = slotGame();
     resolveInstant(game, "old-count");
+    game.acknowledgeChoiceNarration();
+    const reward = game.state.pendingArtifactDecision;
+    if (reward?.forceEquip) expect(game.resolveArtifactEquip(game.state.party[0]!.id)).toBeNull();
+    else if (reward) expect(game.discardPendingArtifact()).toBeNull();
     choose(game, "They counted days, toward a day they meant to leave.");
     forceEventRoom(game, "old-count");
     game.state.journalHandledRoomId = null;
@@ -182,7 +187,7 @@ describe("journal find", () => {
     forceEventRoom(game, "old-count");
     game.state.journalHandledRoomId = null;
     expect(game.openChest()).toBeNull();
-    expect(game.state.pendingReflection).toBeNull();
+    expect(game.state.pendingEventExit?.withReflection).toBeFalsy();
     expect(game.state.pendingJournal).toBeNull();
     expect(game.journal.fragments).toEqual([]);
     const who = game.state.party.find((c) => c.id === game.state.pendingJournalFind?.characterId);
@@ -409,6 +414,10 @@ describe("journal UI", () => {
     const app = new App(renderer, game);
     await renderOnce();
     mockInput.pressKey("1");
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("choiceNarration");
+    mockInput.pressKey("RETURN");
     await renderOnce();
     if (app.debugUiState.kind === "artifactDecision") {
       mockInput.pressKey("2");
@@ -439,12 +448,16 @@ describe("journal UI", () => {
     const app = new App(renderer, game);
     await renderOnce();
     mockInput.pressKey("1");
+    mockInput.pressKey("1");
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("choiceNarration");
+    mockInput.pressKey("RETURN");
     await renderOnce();
     if (app.debugUiState.kind === "artifactDecision") {
       mockInput.pressKey("2");
       await renderOnce();
     }
-    expect(app.debugUiState.kind).toBe("eventReflection");
+    expect(app.debugUiState.kind).toBe("eventExit");
     mockInput.pressKey("1");
     await renderOnce();
     expect(app.debugUiState.kind).toBe("journalDeduction");
@@ -621,6 +634,24 @@ describe("journal UI, part two", () => {
     mockInput.pressKey("1");
     await renderOnce();
     expect(app.debugUiState.kind).not.toBe("journalPickup");
+    renderer.destroy();
+  });
+
+  test("a journal pickup shows before the temple", async () => {
+    const profile = loadProfile(SLOT);
+    profile.droppedJournal = { depth: 1, hands: [{ run: 1, classIds: ["knight", "viking"], lines: { "the-last-mark": { directionId: "something-made-them-stop", struck: [] } } }] };
+    saveProfile(SLOT, profile);
+    const { renderer, mockInput, renderOnce } = await createTestRenderer({ width: 150, height: 45 });
+    const game = withTempleChance(1, () => slotGame(2));
+    expect(getRoom(game.state.floor, game.state.currentRoomId).type).toBe("temple");
+    const app = new App(renderer, game);
+    await renderOnce();
+    expect(app.debugUiState.kind).toBe("journalPickup");
+    for (let guard = 0; app.debugUiState.kind === "journalPickup" && guard < 6; guard++) {
+      mockInput.pressKey(guard === 0 ? "RETURN" : "1");
+      await renderOnce();
+    }
+    expect(app.debugUiState.kind).toBe("temple");
     renderer.destroy();
   });
 

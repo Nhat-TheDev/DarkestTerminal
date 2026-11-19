@@ -22,6 +22,7 @@
     "baseMagicPower": 0,
     "attackRange": "melee",
     "personalityId": "humble",
+    "religionId": "light-and-glory",
     "recommendedAbilityIds": ["iron-skin", "hardy-constitution", "unshaken-resolve"],
     "skills": [
       {
@@ -485,6 +486,7 @@
     "baseMagicPower": 16,
     "attackRange": "ranged",
     "personalityId": "gentle",
+    "religionId": "night-and-silence",
     "recommendedAbilityIds": ["arcane-aptitude", "deep-reserves", "hardy-constitution"],
     "skills": [
       {
@@ -963,6 +965,7 @@
     "baseMagicPower": 0,
     "attackRange": "melee",
     "personalityId": "patient",
+    "religionId": "night-and-silence",
     "recommendedAbilityIds": ["battle-instinct", "leechs-thirst", "sidestep"],
     "skills": [
       {
@@ -1389,6 +1392,7 @@
     "baseMagicPower": 10,
     "attackRange": "ranged",
     "personalityId": "blunt",
+    "religionId": "light-and-glory",
     "recommendedAbilityIds": ["deep-reserves", "arcane-aptitude", "unshaken-resolve"],
     "skills": [
       {
@@ -1982,6 +1986,7 @@
     "baseMagicPower": 8,
     "attackRange": "melee",
     "personalityId": "craft-pride",
+    "religionId": "fury-and-blood",
     "recommendedAbilityIds": ["battle-instinct", "leechs-thirst", "hardy-constitution"],
     "skills": [
       {
@@ -2414,6 +2419,7 @@
     "baseMagicPower": 13,
     "attackRange": "ranged",
     "personalityId": "seeks-meaning",
+    "religionId": "plague-and-healing",
     "recommendedAbilityIds": ["arcane-aptitude", "deep-reserves", "stubborn-blood"],
     "skills": [
       {
@@ -2998,6 +3004,7 @@
     "baseMagicPower": 0,
     "attackRange": "ranged",
     "personalityId": "bold",
+    "religionId": "fury-and-blood",
     "recommendedAbilityIds": ["battle-instinct", "sidestep", "deep-reserves"],
     "skills": [
       {
@@ -3398,6 +3405,7 @@
     "baseMagicPower": 0,
     "attackRange": "melee",
     "personalityId": "inquisitive",
+    "religionId": "night-and-silence",
     "recommendedAbilityIds": ["sidestep", "battle-instinct", "leechs-thirst"],
     "skills": [
       {
@@ -3902,6 +3910,7 @@
     "baseMagicPower": 12,
     "attackRange": "ranged",
     "personalityId": "loyal",
+    "religionId": "plague-and-healing",
     "recommendedAbilityIds": ["arcane-aptitude", "deep-reserves", "hardy-constitution"],
     "skills": [
       {
@@ -4382,6 +4391,7 @@
     "baseMagicPower": 10,
     "attackRange": "ranged",
     "personalityId": "practical",
+    "religionId": "plague-and-healing",
     "recommendedAbilityIds": ["sidestep", "battle-instinct", "arcane-aptitude"],
     "dice": {
       "startCount": 3,
@@ -4892,6 +4902,7 @@
     "baseMagicPower": 8,
     "attackRange": "melee",
     "personalityId": "dry-wit",
+    "religionId": "light-and-glory",
     "recommendedAbilityIds": ["iron-skin", "hardy-constitution", "deep-reserves"],
     "skills": [
       {
@@ -5429,6 +5440,7 @@
     "baseMagicPower": 15,
     "attackRange": "ranged",
     "personalityId": "cautious",
+    "religionId": "fury-and-blood",
     "recommendedAbilityIds": ["arcane-aptitude", "deep-reserves", "stubborn-blood"],
     "skills": [
       {

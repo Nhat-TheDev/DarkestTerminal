@@ -1,0 +1,54 @@
+[
+  {
+    "id": "light-and-glory",
+    "name": "Light and Glory",
+    "templeSpriteId": "sun-sanctuary",
+    "templeDescription": "Brass lamps line both walls, each one polished to a shine and each one cold. The floor has been swept down to the stone, and a sun is beaten into the far wall in gold leaf, its rays reaching almost to the ceiling. The broom leaning by the door is still damp at the bristles.",
+    "narration": {
+      "giveBlood": "Blood falls beneath the gold-leaf sun. Cloth is passed to those who gave, beside the cold brass lamps.",
+      "boon": "The party gathers beneath the gold-leaf sun to ask a boon. The cold brass lamps catch the torchlight overhead.",
+      "leave": "You pass the damp broom and leave the swept floor as you found it. The brass lamps remain cold."
+    },
+    "style": { "abbr": "LG", "color": "#f0e2a8" },
+    "boon": { "emphasis": "defense", "recoversHpMp": false }
+  },
+  {
+    "id": "plague-and-healing",
+    "name": "Plague and Healing",
+    "templeSpriteId": "herbal-sanctuary",
+    "templeDescription": "Bundles of dried herbs hang from hooks in the ceiling, and the air is thick with camphor and old smoke. A stone basin stands in the middle of the room, rimmed with salt, rolled bandages stacked beside it. The water in the basin is warm, though nothing burns beneath it.",
+    "narration": {
+      "giveBlood": "Blood falls into the stone basin. Bandages from the stack beside it are passed to those who gave.",
+      "boon": "You hold your hands over the warm basin and ask for relief. Camphor catches in your throats as the party gathers close.",
+      "leave": "The party passes beneath the hanging herbs without touching the basin. The bandages stay stacked beside the warm water."
+    },
+    "style": { "abbr": "PH", "color": "#7fbf9a" },
+    "boon": { "emphasis": null, "recoversHpMp": true }
+  },
+  {
+    "id": "night-and-silence",
+    "name": "Night and Silence",
+    "templeSpriteId": "silent-sanctuary",
+    "templeDescription": "The walls are hung with felt gone grey with age, and your boots make no sound on the floor. There are no hooks for lamps and no soot on the ceiling. Small stone bowls sit in a row along a shelf, each holding a pinch of ash. Your torch burns lower here, though there is no draught.",
+    "narration": {
+      "giveBlood": "Blood darkens the ash in the bowls. Cloth is torn beside the shelf, its sound muffled by the felt.",
+      "boon": "The party stands before the shelf without speaking. When you turn toward the door, the torch burns low against the felt.",
+      "leave": "You take the torch back through the doorway. The ash in the bowls has not been disturbed."
+    },
+    "style": { "abbr": "NS", "color": "#8c9ccf" },
+    "boon": { "emphasis": "speed", "recoversHpMp": false }
+  },
+  {
+    "id": "fury-and-blood",
+    "name": "Fury and Blood",
+    "templeSpriteId": "iron-sanctuary",
+    "templeDescription": "Iron rings are set into every wall at shoulder height, the stone under each worn dark and smooth by hands. A trough runs the length of the floor to a drain, and the air smells of rust and tallow. The trough is dry along its whole length. The drain at its end is wet.",
+    "narration": {
+      "giveBlood": "Blood runs along the trough toward the wet drain. Those who gave steady themselves on the iron rings.",
+      "boon": "The party grips the worn iron rings and asks for strength. Rust comes away on your hands when you let go.",
+      "leave": "The party passes the empty trough without taking hold of the rings. The drain is still wet."
+    },
+    "style": { "abbr": "FB", "color": "#e0603a" },
+    "boon": { "emphasis": "offense", "recoversHpMp": false }
+  }
+]

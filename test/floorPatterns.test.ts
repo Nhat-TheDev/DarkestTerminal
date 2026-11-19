@@ -180,3 +180,24 @@ describe("validateFloorLayout rejects layouts that break the rules", () => {
     expect(() => validateFloorLayout(layout)).toThrow(/lanes run side by side/);
   });
 });
+
+describe("validateFloorLayout with a temple entry", () => {
+  const withTemple = (layout: LayoutRoom[]): LayoutRoom[] => [{ id: "temple", type: "temple", next: [layout[0]!.id], hidden: false }, ...layout];
+
+  test("accepts a temple entry in front of the visible combat entrance across many floors", () => {
+    for (const depth of DEPTHS) for (const layout of layoutsAt(depth).slice(0, 30)) expect(() => validateFloorLayout(withTemple(layout))).not.toThrow();
+  });
+
+  test("rejects a temple that is hidden, forks, or leads anywhere but a visible combat room", () => {
+    const layout = generateFloorLayout(new Rng(5), 5);
+    const hidden = withTemple(layout);
+    hidden[0]!.hidden = true;
+    expect(() => validateFloorLayout(hidden)).toThrow(/temple/);
+    const fork = withTemple(layout);
+    fork[0]!.next = [layout[0]!.id, layout[1]!.id];
+    expect(() => validateFloorLayout(fork)).toThrow(/temple/);
+    const toEvent = withTemple(layout);
+    toEvent[1]!.type = "event";
+    expect(() => validateFloorLayout(toEvent)).toThrow(/temple/);
+  });
+});

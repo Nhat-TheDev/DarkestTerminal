@@ -4,12 +4,14 @@ import type { EngineContext } from "../combat";
 import { getArtifact, rollArtifactWithMinRarity } from "../../data/artifacts";
 import { t } from "../../data/strings";
 import { BALANCE } from "../../data/balanceConfig";
-import { closeEvent, recordEventOutcome, findArtifactOwner } from "./shared";
+import { closeEvent, leaveEvent, openEventOfKindError, recordEventOutcome, findArtifactOwner } from "./shared";
 
 const HERMIT_EXCHANGE_COST_COINS = BALANCE.events.wanderingHermitExchangeCostCoins;
 
 /** The only way a Cursed artifact can leave a character. */
 export function hermitExchangeFortune(state: GameState, ctx: EngineContext, artifactId: Id): PartyActionError | null {
+  const closed = openEventOfKindError(state, "fortuneExchange");
+  if (closed) return closed;
   const owner = findArtifactOwner(state, artifactId);
   if (!owner) return { reason: t("errors.artifactNotOwned") };
   if (state.coins < HERMIT_EXCHANGE_COST_COINS) return { reason: t("errors.notEnoughCoins") };
@@ -27,5 +29,5 @@ export function hermitExchangeFortune(state: GameState, ctx: EngineContext, arti
 
 export function hermitLeave(state: GameState): void {
   state.message = t("game.leftGeneric");
-  closeEvent(state);
+  leaveEvent(state);
 }

@@ -11,7 +11,7 @@ import { getItem } from "../src/data/items";
 import { ARTIFACTS } from "../src/data/artifacts";
 import { spawnMonster } from "../src/data/monsters";
 import type { Character, CombatantRef, Monster } from "../src/types";
-import { makeCtx, spawnInto, sk, withFixture, withoutDamageRolls } from "./helpers";
+import { makeCtx, spawnInto, sk, withFixture, withoutDamageRolls, NEUTRAL_FAITH } from "./helpers";
 
 function unlock(character: Character, level: number, ...skillIds: string[]): void {
   character.level = level;
@@ -383,12 +383,12 @@ describe("Acolyte heals and fear", () => {
 
   test("being healed leaves Consoled, which cuts fear gains and refreshes instead of stacking", () => {
     const { ctx, acolyte, ally, combat } = setup();
-    const before = resistedFearGain(ally, 10);
+    const before = resistedFearGain(ally, 10, NEUTRAL_FAITH);
     const heal = getEffectiveSkill(getSkill("heal"), 1);
     applySkillEffects(heal, acolyte, [ally], combat, ctx, combat.log);
     applySkillEffects(heal, acolyte, [ally], combat, ctx, combat.log);
     expect(ally.activeStatusEffects.filter((s) => s.statusEffectId === "consoled")).toHaveLength(1);
-    expect(resistedFearGain(ally, 10)).toBeCloseTo(before * (1 - getStatusEffect("consoled").fearResistPercent! / 100), 5);
+    expect(resistedFearGain(ally, 10, NEUTRAL_FAITH)).toBeCloseTo(before * (1 - getStatusEffect("consoled").fearResistPercent! / 100), 5);
     clearCombatResources(ctx);
     expect(ally.activeStatusEffects.some((s) => s.statusEffectId === "consoled")).toBe(false);
   });
@@ -406,9 +406,9 @@ describe("Sanctuary (Acolyte)", () => {
   test("Steadfast cuts fear gains by its fearResistPercent", () => {
     const { ctx } = makeCtx();
     const target = ctx.party[0]!;
-    const before = resistedFearGain(target, 10);
+    const before = resistedFearGain(target, 10, NEUTRAL_FAITH);
     applyStatusEffectToActor(target, "steadfast", 2, { log: [] });
-    expect(resistedFearGain(target, 10)).toBeCloseTo(before * (1 - getStatusEffect("steadfast").fearResistPercent! / 100), 5);
+    expect(resistedFearGain(target, 10, NEUTRAL_FAITH)).toBeCloseTo(before * (1 - getStatusEffect("steadfast").fearResistPercent! / 100), 5);
   });
 
   test("it puts a heal over time and Steadfast on the whole party", () => {
@@ -692,7 +692,7 @@ describe("Jester", () => {
     const { ctx } = makeCtx();
     const jester = ctx.party.find((c) => c.classId === "jester")!;
     unlock(jester, level, "jeer", "battle-ballad", "rigged-game", "double-or-nothing", "finale");
-    recomputeCharacterStats(jester, 100);
+    recomputeCharacterStats(jester, 100, null);
     const rats = Array.from({ length: ratCount }, () => tank(spawnInto(ctx, "dungeon-rat")));
     const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
     const target = rats[0]!;
@@ -737,7 +737,7 @@ describe("Jester", () => {
     }
     expect(seen.size).toBe(2);
     // Character Info's base stays at the class's own 1:1 growth.
-    const breakdown = characterStatBreakdown(jester, 100);
+    const breakdown = characterStatBreakdown(jester, 100, null);
     expect(breakdown.attack.base).toBe(base.attack);
   });
 
@@ -893,7 +893,7 @@ describe("Paladin", () => {
     const { ctx } = makeCtx();
     const paladin = ctx.party.find((c) => c.classId === "paladin")!;
     unlock(paladin, level, "defiance", "cross-slash", "guardian-angel", "vigil", "martyrs-oath");
-    recomputeCharacterStats(paladin, 100);
+    recomputeCharacterStats(paladin, 100, null);
     paladin.hp = paladin.maxHp;
     const rats = Array.from({ length: ratCount }, () => tank(spawnInto(ctx, "dungeon-rat")));
     const combat = startCombat("r1", rats.map((r) => r.id), ctx, false);
@@ -1113,7 +1113,7 @@ describe("Warlock", () => {
     const { ctx } = makeCtx();
     const warlock = ctx.party.find((c) => c.classId === "warlock")!;
     unlock(warlock, level, "blood-pact", "bind-tongue", "soul-rend", "withering-curse", "doom");
-    recomputeCharacterStats(warlock, 100);
+    recomputeCharacterStats(warlock, 100, null);
     warlock.hp = warlock.maxHp;
     warlock.mp = warlock.maxMp;
     const rats = Array.from({ length: ratCount }, () => tank(spawnInto(ctx, "dungeon-rat")));

@@ -2,6 +2,8 @@ import { bg, type TextChunk } from "@opentui/core";
 import { plainChunk } from "./theme";
 import type { MonsterArchetype, MonsterTier } from "../types";
 import { MONSTER_ARCHETYPES } from "../data/monsters";
+import { BALANCE } from "../data/balanceConfig";
+import { getReligion } from "../data/religions";
 import spritesJson from "../../data/sprites.json";
 
 export interface Sprite {
@@ -17,6 +19,8 @@ interface SpritesFile {
   events: Record<string, Sprite>;
   rest: Record<string, Sprite>;
   treasure: Record<string, Sprite>;
+  temple: Record<string, Sprite>;
+  torch: Record<string, Sprite>;
 }
 
 const SPRITES = spritesJson as unknown as SpritesFile;
@@ -32,6 +36,23 @@ export const BOSS_SPRITES: Record<string, Sprite> = SPRITES.bosses;
 export const EVENT_SPRITES: Record<string, Sprite> = SPRITES.events;
 export const REST_SPRITES: Record<string, Sprite> = SPRITES.rest;
 export const TREASURE_SPRITES: Record<string, Sprite> = SPRITES.treasure;
+export const TEMPLE_SPRITES: Record<string, Sprite> = SPRITES.temple;
+export const TORCH_SPRITES: Record<string, Sprite> = SPRITES.torch;
+
+const TORCH_FRAME_ORDER = ["full", "strong", "low", "embers"];
+
+/** Why `thresholds` cannot drive the torch frames, or `null` when they can. */
+export function torchThresholdsError(thresholds: unknown, frames: Record<string, Sprite> = TORCH_SPRITES): string | null {
+  if (!Array.isArray(thresholds) || thresholds.length !== TORCH_FRAME_ORDER.length || !thresholds.every((v) => typeof v === "number")) {
+    return `balance-config faith.torchFrameThresholds must list ${TORCH_FRAME_ORDER.length} numbers, one per frame (${TORCH_FRAME_ORDER.join(", ")})`;
+  }
+  if (thresholds.some((v, i) => i > 0 && v >= thresholds[i - 1]!)) return "balance-config faith.torchFrameThresholds must be strictly descending";
+  const missing = TORCH_FRAME_ORDER.find((name) => !frames[name]);
+  return missing ? `data/sprites.json torch has no "${missing}" frame` : null;
+}
+
+const torchError = torchThresholdsError(BALANCE.faith.torchFrameThresholds);
+if (torchError) throw new Error(torchError);
 
 export const TOMBSTONE_SPRITE: Sprite = {
   rows: [
@@ -55,6 +76,12 @@ export const TOMBSTONE_SPRITE: Sprite = {
 
 export const CAMPFIRE_SPRITE: Sprite = REST_SPRITES["campfire"]!;
 export const TREASURE_CHEST_SPRITE: Sprite = TREASURE_SPRITES["chest"]!;
+export function spriteForTemple(religionId: string): Sprite {
+  const spriteId = getReligion(religionId).templeSpriteId;
+  const sprite = TEMPLE_SPRITES[spriteId];
+  if (!sprite) throw new Error(`No temple sprite: ${spriteId}`);
+  return sprite;
+}
 
 export function spriteForClass(classId: string): Sprite {
   const sprite = CLASS_SPRITES[classId];
@@ -91,6 +118,14 @@ export function assertMonsterSpritesConsistent(archetypes: MonsterArchetype[]): 
 }
 
 assertMonsterSpritesConsistent(MONSTER_ARCHETYPES);
+
+/** The first threshold Faith meets picks the frame; Faith below every threshold uses the last frame. */
+export function torchFrameForFaith(faith: number): Sprite {
+  const thresholds = BALANCE.faith.torchFrameThresholds;
+  const index = thresholds.findIndex((threshold) => faith >= threshold);
+  const name = TORCH_FRAME_ORDER[index === -1 ? TORCH_FRAME_ORDER.length - 1 : index]!;
+  return TORCH_SPRITES[name]!;
+}
 
 export function spriteForEvent(eventId: string): Sprite | null {
   return EVENT_SPRITES[eventId] ?? null;
@@ -177,5 +212,7 @@ export const ALL_SPRITES: { name: string; sprite: Sprite; maxHeight: number }[] 
   ...Object.entries(EVENT_SPRITES).map(([name, sprite]) => ({ name: `${name}-event`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
   ...Object.entries(REST_SPRITES).map(([name, sprite]) => ({ name: `${name}-rest`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
   ...Object.entries(TREASURE_SPRITES).map(([name, sprite]) => ({ name: `${name}-treasure`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
+  ...Object.entries(TEMPLE_SPRITES).map(([name, sprite]) => ({ name: `${name}-temple`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
+  ...Object.entries(TORCH_SPRITES).map(([name, sprite]) => ({ name: `${name}-torch`, sprite, maxHeight: MAX_BOSS_HEIGHT })),
   { name: "tombstone", sprite: TOMBSTONE_SPRITE, maxHeight: MAX_BOSS_HEIGHT },
 ];

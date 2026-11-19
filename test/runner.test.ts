@@ -55,17 +55,62 @@ describe("Rest room runner", () => {
     expect(migrateGameState(older).restRunner).toBeNull();
   });
 
-  test("restAction and leaveRunner both close the room and drop the runner", () => {
+  test("leaving the rest room clears it and drops the runner; leaveRunner only closes the shop", () => {
     const skipped = restGame(6);
     withRunner(skipped.game, []);
-    skipped.game.restAction("skip");
+    skipped.game.restAction("leave");
     expect(skipped.game.state.restRunner).toBeNull();
+    expect(skipped.room.cleared).toBe(true);
 
     const traded = restGame(7);
     withRunner(traded.game, []);
     traded.game.leaveRunner();
-    expect(traded.game.state.restRunner).toBeNull();
-    expect(traded.room.cleared).toBe(true);
+    expect(traded.game.state.restRunner).not.toBeNull();
+    expect(traded.room.cleared).toBe(false);
+  });
+
+  test("trade first keeps the rest", () => {
+    const { game, room } = restGame(9);
+    withRunner(game, []);
+    const c = game.state.party[0]!;
+    c.hp = 1;
+    game.leaveRunner();
+    game.restAction("eat");
+    expect(c.hp).toBeGreaterThan(1);
+    expect(room.rested).toBe(true);
+    expect(room.cleared).toBe(false);
+  });
+
+  test("rest first dims the rest actions, keeps the runner, and leaving clears the room", () => {
+    const { game, room } = restGame(10);
+    withRunner(game, []);
+    const c = game.state.party[0]!;
+    c.hp = 1;
+    game.state.party[1]!.hp = 1;
+    game.restAction("chat");
+    const hpAfterChat = c.hp;
+    const satiety = game.state.satiety;
+    game.restAction("eat");
+    game.restAction("pray");
+    expect(c.hp).toBe(hpAfterChat);
+    expect(game.state.satiety).toBe(satiety);
+    expect(game.state.restRunner).not.toBeNull();
+    expect(room.cleared).toBe(false);
+    game.restAction("leave");
+    expect(room.cleared).toBe(true);
+    expect(game.state.restRunner).toBeNull();
+  });
+
+  test("a 1.2.1 save mid-rest with the runner loads with every rest action open", () => {
+    const { game, room } = restGame(11);
+    withRunner(game, [{ itemId: "small-health-potion", lot: false }]);
+    const old = JSON.parse(JSON.stringify(game.state)) as GameState;
+    for (const r of old.floor.rooms) delete r.rested;
+    const loaded = migrateGameState(old);
+    const loadedRoom = getRoom(loaded.floor, room.id);
+    expect(loadedRoom.rested).toBeFalsy();
+    expect(loadedRoom.cleared).toBe(false);
+    expect(loaded.restRunner?.offers.length).toBe(1);
   });
 });
 
