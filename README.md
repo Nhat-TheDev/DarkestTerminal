@@ -1,0 +1,901 @@
+# Random-play screen evidence
+
+328 screens, each at every size it was captured at.
+
+## abilityBuyback
+
+### abilityBuyback
+
+![abilityBuyback @ 180x70](screens/abilityBuyback@180x70.png)
+![abilityBuyback @ 150x45](screens/abilityBuyback@150x45.png)
+
+## artifactDecision
+
+### artifactDecision
+
+![artifactDecision @ 180x70](screens/artifactDecision@180x70.png)
+![artifactDecision @ 150x45](screens/artifactDecision@150x45.png)
+
+### artifactDecision · broken-seal
+
+![artifactDecision · broken-seal @ 180x70](screens/artifactDecision--broken-seal@180x70.png)
+![artifactDecision · broken-seal @ 150x45](screens/artifactDecision--broken-seal@150x45.png)
+
+### artifactDecision · desecrated-altar
+
+![artifactDecision · desecrated-altar @ 180x70](screens/artifactDecision--desecrated-altar@180x70.png)
+![artifactDecision · desecrated-altar @ 150x45](screens/artifactDecision--desecrated-altar@150x45.png)
+
+### artifactDecision · doubled-back
+
+![artifactDecision · doubled-back @ 180x70](screens/artifactDecision--doubled-back@180x70.png)
+![artifactDecision · doubled-back @ 150x45](screens/artifactDecision--doubled-back@150x45.png)
+
+### artifactDecision · guardian-fight
+
+![artifactDecision · guardian-fight @ 180x70](screens/artifactDecision--guardian-fight@180x70.png)
+![artifactDecision · guardian-fight @ 150x45](screens/artifactDecision--guardian-fight@150x45.png)
+
+### artifactDecision · half-a-warning
+
+![artifactDecision · half-a-warning @ 180x70](screens/artifactDecision--half-a-warning@180x70.png)
+![artifactDecision · half-a-warning @ 150x45](screens/artifactDecision--half-a-warning@150x45.png)
+
+### artifactDecision · merchant
+
+![artifactDecision · merchant @ 180x70](screens/artifactDecision--merchant@180x70.png)
+![artifactDecision · merchant @ 150x45](screens/artifactDecision--merchant@150x45.png)
+
+### artifactDecision · open-chest
+
+![artifactDecision · open-chest @ 180x70](screens/artifactDecision--open-chest@180x70.png)
+![artifactDecision · open-chest @ 150x45](screens/artifactDecision--open-chest@150x45.png)
+
+### artifactDecision · twin-altars
+
+![artifactDecision · twin-altars @ 180x70](screens/artifactDecision--twin-altars@180x70.png)
+![artifactDecision · twin-altars @ 150x45](screens/artifactDecision--twin-altars@150x45.png)
+
+### artifactDecision · vigil-candle
+
+![artifactDecision · vigil-candle @ 180x70](screens/artifactDecision--vigil-candle@180x70.png)
+![artifactDecision · vigil-candle @ 150x45](screens/artifactDecision--vigil-candle@150x45.png)
+
+### artifactDecision · waiting-supplies
+
+![artifactDecision · waiting-supplies @ 180x70](screens/artifactDecision--waiting-supplies@180x70.png)
+![artifactDecision · waiting-supplies @ 150x45](screens/artifactDecision--waiting-supplies@150x45.png)
+
+## artifactDecisionPickCharacter
+
+### artifactDecisionPickCharacter
+
+![artifactDecisionPickCharacter @ 180x70](screens/artifactDecisionPickCharacter@180x70.png)
+![artifactDecisionPickCharacter @ 150x45](screens/artifactDecisionPickCharacter@150x45.png)
+
+### artifactDecisionPickCharacter · broken-seal
+
+![artifactDecisionPickCharacter · broken-seal @ 180x70](screens/artifactDecisionPickCharacter--broken-seal@180x70.png)
+![artifactDecisionPickCharacter · broken-seal @ 150x45](screens/artifactDecisionPickCharacter--broken-seal@150x45.png)
+
+### artifactDecisionPickCharacter · desecrated-altar
+
+![artifactDecisionPickCharacter · desecrated-altar @ 180x70](screens/artifactDecisionPickCharacter--desecrated-altar@180x70.png)
+![artifactDecisionPickCharacter · desecrated-altar @ 150x45](screens/artifactDecisionPickCharacter--desecrated-altar@150x45.png)
+
+### artifactDecisionPickCharacter · doubled-back
+
+![artifactDecisionPickCharacter · doubled-back @ 180x70](screens/artifactDecisionPickCharacter--doubled-back@180x70.png)
+![artifactDecisionPickCharacter · doubled-back @ 150x45](screens/artifactDecisionPickCharacter--doubled-back@150x45.png)
+
+### artifactDecisionPickCharacter · guardian-fight
+
+![artifactDecisionPickCharacter · guardian-fight @ 180x70](screens/artifactDecisionPickCharacter--guardian-fight@180x70.png)
+![artifactDecisionPickCharacter · guardian-fight @ 150x45](screens/artifactDecisionPickCharacter--guardian-fight@150x45.png)
+
+### artifactDecisionPickCharacter · half-a-warning
+
+![artifactDecisionPickCharacter · half-a-warning @ 180x70](screens/artifactDecisionPickCharacter--half-a-warning@180x70.png)
+![artifactDecisionPickCharacter · half-a-warning @ 150x45](screens/artifactDecisionPickCharacter--half-a-warning@150x45.png)
+
+### artifactDecisionPickCharacter · merchant
+
+![artifactDecisionPickCharacter · merchant @ 180x70](screens/artifactDecisionPickCharacter--merchant@180x70.png)
+![artifactDecisionPickCharacter · merchant @ 150x45](screens/artifactDecisionPickCharacter--merchant@150x45.png)
+
+### artifactDecisionPickCharacter · old-count
+
+![artifactDecisionPickCharacter · old-count @ 180x70](screens/artifactDecisionPickCharacter--old-count@180x70.png)
+![artifactDecisionPickCharacter · old-count @ 150x45](screens/artifactDecisionPickCharacter--old-count@150x45.png)
+
+### artifactDecisionPickCharacter · twin-altars
+
+![artifactDecisionPickCharacter · twin-altars @ 180x70](screens/artifactDecisionPickCharacter--twin-altars@180x70.png)
+![artifactDecisionPickCharacter · twin-altars @ 150x45](screens/artifactDecisionPickCharacter--twin-altars@150x45.png)
+
+### artifactDecisionPickCharacter · vigil-candle
+
+![artifactDecisionPickCharacter · vigil-candle @ 180x70](screens/artifactDecisionPickCharacter--vigil-candle@180x70.png)
+![artifactDecisionPickCharacter · vigil-candle @ 150x45](screens/artifactDecisionPickCharacter--vigil-candle@150x45.png)
+
+### artifactDecisionPickCharacter · waiting-supplies
+
+![artifactDecisionPickCharacter · waiting-supplies @ 180x70](screens/artifactDecisionPickCharacter--waiting-supplies@180x70.png)
+![artifactDecisionPickCharacter · waiting-supplies @ 150x45](screens/artifactDecisionPickCharacter--waiting-supplies@150x45.png)
+
+## artifactMenu
+
+### artifactMenu
+
+![artifactMenu @ 180x70](screens/artifactMenu@180x70.png)
+![artifactMenu @ 150x45](screens/artifactMenu@150x45.png)
+
+## campPrompt
+
+### campPrompt
+
+![campPrompt @ 180x70](screens/campPrompt@180x70.png)
+![campPrompt @ 150x45](screens/campPrompt@150x45.png)
+
+## campReflection
+
+### campReflection
+
+![campReflection @ 180x70](screens/campReflection@180x70.png)
+![campReflection @ 150x45](screens/campReflection@150x45.png)
+
+## characterInfo
+
+### characterInfo
+
+![characterInfo @ 180x70](screens/characterInfo@180x70.png)
+![characterInfo @ 150x45](screens/characterInfo@150x45.png)
+
+### characterInfo · boss
+
+![characterInfo · boss @ 180x70](screens/characterInfo--boss@180x70.png)
+![characterInfo · boss @ 150x45](screens/characterInfo--boss@150x45.png)
+
+### characterInfo · elite
+
+![characterInfo · elite @ 180x70](screens/characterInfo--elite@180x70.png)
+![characterInfo · elite @ 150x45](screens/characterInfo--elite@150x45.png)
+
+### characterInfo · normal
+
+![characterInfo · normal @ 180x70](screens/characterInfo--normal@180x70.png)
+![characterInfo · normal @ 150x45](screens/characterInfo--normal@150x45.png)
+
+## choiceNarration
+
+### choiceNarration · blood-altar · event.blood-altar.leave
+
+![choiceNarration · blood-altar · event.blood-altar.leave @ 180x70](screens/choiceNarration--blood-altar--event.blood-altar.leave@180x70.png)
+![choiceNarration · blood-altar · event.blood-altar.leave @ 150x45](screens/choiceNarration--blood-altar--event.blood-altar.leave@150x45.png)
+
+### choiceNarration · broken-seal · event.broken-seal.moveOn
+
+![choiceNarration · broken-seal · event.broken-seal.moveOn @ 180x70](screens/choiceNarration--broken-seal--event.broken-seal.moveOn@180x70.png)
+![choiceNarration · broken-seal · event.broken-seal.moveOn @ 150x45](screens/choiceNarration--broken-seal--event.broken-seal.moveOn@150x45.png)
+
+### choiceNarration · collapsed-floor · event.collapsed-floor.leave
+
+![choiceNarration · collapsed-floor · event.collapsed-floor.leave @ 180x70](screens/choiceNarration--collapsed-floor--event.collapsed-floor.leave@180x70.png)
+![choiceNarration · collapsed-floor · event.collapsed-floor.leave @ 150x45](screens/choiceNarration--collapsed-floor--event.collapsed-floor.leave@150x45.png)
+
+### choiceNarration · cursed-shrine · event.cursed-shrine.decline
+
+![choiceNarration · cursed-shrine · event.cursed-shrine.decline @ 180x70](screens/choiceNarration--cursed-shrine--event.cursed-shrine.decline@180x70.png)
+![choiceNarration · cursed-shrine · event.cursed-shrine.decline @ 150x45](screens/choiceNarration--cursed-shrine--event.cursed-shrine.decline@150x45.png)
+
+### choiceNarration · desecrated-altar · event.desecrated-altar.fight
+
+![choiceNarration · desecrated-altar · event.desecrated-altar.fight @ 180x70](screens/choiceNarration--desecrated-altar--event.desecrated-altar.fight@180x70.png)
+![choiceNarration · desecrated-altar · event.desecrated-altar.fight @ 150x45](screens/choiceNarration--desecrated-altar--event.desecrated-altar.fight@150x45.png)
+
+### choiceNarration · doubled-back · event.doubled-back.moveOn
+
+![choiceNarration · doubled-back · event.doubled-back.moveOn @ 180x70](screens/choiceNarration--doubled-back--event.doubled-back.moveOn@180x70.png)
+![choiceNarration · doubled-back · event.doubled-back.moveOn @ 150x45](screens/choiceNarration--doubled-back--event.doubled-back.moveOn@150x45.png)
+
+### choiceNarration · gambling-den · event.gambling-den.leave
+
+![choiceNarration · gambling-den · event.gambling-den.leave @ 180x70](screens/choiceNarration--gambling-den--event.gambling-den.leave@180x70.png)
+![choiceNarration · gambling-den · event.gambling-den.leave @ 150x45](screens/choiceNarration--gambling-den--event.gambling-den.leave@150x45.png)
+
+### choiceNarration · guardian-fight · event.guardian-fight.fight
+
+![choiceNarration · guardian-fight · event.guardian-fight.fight @ 180x70](screens/choiceNarration--guardian-fight--event.guardian-fight.fight@180x70.png)
+![choiceNarration · guardian-fight · event.guardian-fight.fight @ 150x45](screens/choiceNarration--guardian-fight--event.guardian-fight.fight@150x45.png)
+
+### choiceNarration · half-a-warning · event.half-a-warning.moveOn
+
+![choiceNarration · half-a-warning · event.half-a-warning.moveOn @ 180x70](screens/choiceNarration--half-a-warning--event.half-a-warning.moveOn@180x70.png)
+![choiceNarration · half-a-warning · event.half-a-warning.moveOn @ 150x45](screens/choiceNarration--half-a-warning--event.half-a-warning.moveOn@150x45.png)
+
+### choiceNarration · merchant · event.merchant.purchase
+
+![choiceNarration · merchant · event.merchant.purchase @ 180x70](screens/choiceNarration--merchant--event.merchant.purchase@180x70.png)
+![choiceNarration · merchant · event.merchant.purchase @ 150x45](screens/choiceNarration--merchant--event.merchant.purchase@150x45.png)
+
+### choiceNarration · old-count · event.old-count.moveOn
+
+![choiceNarration · old-count · event.old-count.moveOn @ 180x70](screens/choiceNarration--old-count--event.old-count.moveOn@180x70.png)
+![choiceNarration · old-count · event.old-count.moveOn @ 150x45](screens/choiceNarration--old-count--event.old-count.moveOn@150x45.png)
+
+### choiceNarration · open-chest · event.open-chest.take.chest
+
+![choiceNarration · open-chest · event.open-chest.take.chest @ 180x70](screens/choiceNarration--open-chest--event.open-chest.take.chest@180x70.png)
+![choiceNarration · open-chest · event.open-chest.take.chest @ 150x45](screens/choiceNarration--open-chest--event.open-chest.take.chest@150x45.png)
+
+### choiceNarration · sacrificial-circle · event.sacrificial-circle.leave.legacy
+
+![choiceNarration · sacrificial-circle · event.sacrificial-circle.leave.legacy @ 180x70](screens/choiceNarration--sacrificial-circle--event.sacrificial-circle.leave.legacy@180x70.png)
+![choiceNarration · sacrificial-circle · event.sacrificial-circle.leave.legacy @ 150x45](screens/choiceNarration--sacrificial-circle--event.sacrificial-circle.leave.legacy@150x45.png)
+
+### choiceNarration · still-breathing · event.still-breathing.moveOn
+
+![choiceNarration · still-breathing · event.still-breathing.moveOn @ 180x70](screens/choiceNarration--still-breathing--event.still-breathing.moveOn@180x70.png)
+![choiceNarration · still-breathing · event.still-breathing.moveOn @ 150x45](screens/choiceNarration--still-breathing--event.still-breathing.moveOn@150x45.png)
+
+### choiceNarration · temple.fury-and-blood.leave
+
+![choiceNarration · temple.fury-and-blood.leave @ 180x70](screens/choiceNarration--temple.fury-and-blood.leave@180x70.png)
+![choiceNarration · temple.fury-and-blood.leave @ 150x45](screens/choiceNarration--temple.fury-and-blood.leave@150x45.png)
+
+### choiceNarration · temple.plague-and-healing.leave
+
+![choiceNarration · temple.plague-and-healing.leave @ 180x70](screens/choiceNarration--temple.plague-and-healing.leave@180x70.png)
+![choiceNarration · temple.plague-and-healing.leave @ 150x45](screens/choiceNarration--temple.plague-and-healing.leave@150x45.png)
+
+### choiceNarration · the-delay · event.the-delay.moveOn
+
+![choiceNarration · the-delay · event.the-delay.moveOn @ 180x70](screens/choiceNarration--the-delay--event.the-delay.moveOn@180x70.png)
+![choiceNarration · the-delay · event.the-delay.moveOn @ 150x45](screens/choiceNarration--the-delay--event.the-delay.moveOn@150x45.png)
+
+### choiceNarration · the-one-who-stayed · event.the-one-who-stayed.moveOn
+
+![choiceNarration · the-one-who-stayed · event.the-one-who-stayed.moveOn @ 180x70](screens/choiceNarration--the-one-who-stayed--event.the-one-who-stayed.moveOn@180x70.png)
+![choiceNarration · the-one-who-stayed · event.the-one-who-stayed.moveOn @ 150x45](screens/choiceNarration--the-one-who-stayed--event.the-one-who-stayed.moveOn@150x45.png)
+
+### choiceNarration · the-wanderer · event.the-wanderer.moveOn
+
+![choiceNarration · the-wanderer · event.the-wanderer.moveOn @ 180x70](screens/choiceNarration--the-wanderer--event.the-wanderer.moveOn@180x70.png)
+![choiceNarration · the-wanderer · event.the-wanderer.moveOn @ 150x45](screens/choiceNarration--the-wanderer--event.the-wanderer.moveOn@150x45.png)
+
+### choiceNarration · twin-altars · event.twin-altars.chooseSecond
+
+![choiceNarration · twin-altars · event.twin-altars.chooseSecond @ 180x70](screens/choiceNarration--twin-altars--event.twin-altars.chooseSecond@180x70.png)
+![choiceNarration · twin-altars · event.twin-altars.chooseSecond @ 150x45](screens/choiceNarration--twin-altars--event.twin-altars.chooseSecond@150x45.png)
+
+### choiceNarration · vigil-candle · event.vigil-candle.moveOn
+
+![choiceNarration · vigil-candle · event.vigil-candle.moveOn @ 180x70](screens/choiceNarration--vigil-candle--event.vigil-candle.moveOn@180x70.png)
+![choiceNarration · vigil-candle · event.vigil-candle.moveOn @ 150x45](screens/choiceNarration--vigil-candle--event.vigil-candle.moveOn@150x45.png)
+
+### choiceNarration · waiting-supplies · event.waiting-supplies.moveOn
+
+![choiceNarration · waiting-supplies · event.waiting-supplies.moveOn @ 180x70](screens/choiceNarration--waiting-supplies--event.waiting-supplies.moveOn@180x70.png)
+![choiceNarration · waiting-supplies · event.waiting-supplies.moveOn @ 150x45](screens/choiceNarration--waiting-supplies--event.waiting-supplies.moveOn@150x45.png)
+
+### choiceNarration · wandering-hermit · event.wandering-hermit.leave
+
+![choiceNarration · wandering-hermit · event.wandering-hermit.leave @ 180x70](screens/choiceNarration--wandering-hermit--event.wandering-hermit.leave@180x70.png)
+![choiceNarration · wandering-hermit · event.wandering-hermit.leave @ 150x45](screens/choiceNarration--wandering-hermit--event.wandering-hermit.leave@150x45.png)
+
+## combatOver
+
+### combatOver · victory
+
+![combatOver · victory @ 180x70](screens/combatOver--victory@180x70.png)
+![combatOver · victory @ 150x45](screens/combatOver--victory@150x45.png)
+
+## eventArtifactSacrifice
+
+### eventArtifactSacrifice · sacrificial-circle
+
+![eventArtifactSacrifice · sacrificial-circle @ 180x70](screens/eventArtifactSacrifice--sacrificial-circle@180x70.png)
+![eventArtifactSacrifice · sacrificial-circle @ 150x45](screens/eventArtifactSacrifice--sacrificial-circle@150x45.png)
+
+## eventArtifactShop
+
+### eventArtifactShop · merchant
+
+![eventArtifactShop · merchant @ 180x70](screens/eventArtifactShop--merchant@180x70.png)
+![eventArtifactShop · merchant @ 150x45](screens/eventArtifactShop--merchant@150x45.png)
+
+## eventCoinGamble
+
+### eventCoinGamble · gambling-den
+
+![eventCoinGamble · gambling-den @ 180x70](screens/eventCoinGamble--gambling-den@180x70.png)
+![eventCoinGamble · gambling-den @ 150x45](screens/eventCoinGamble--gambling-den@150x45.png)
+
+## eventCombatReward
+
+### eventCombatReward · desecrated-altar
+
+![eventCombatReward · desecrated-altar @ 180x70](screens/eventCombatReward--desecrated-altar@180x70.png)
+![eventCombatReward · desecrated-altar @ 150x45](screens/eventCombatReward--desecrated-altar@150x45.png)
+
+### eventCombatReward · guardian-fight
+
+![eventCombatReward · guardian-fight @ 180x70](screens/eventCombatReward--guardian-fight@180x70.png)
+![eventCombatReward · guardian-fight @ 150x45](screens/eventCombatReward--guardian-fight@150x45.png)
+
+## eventCursedOffer
+
+### eventCursedOffer · cursed-shrine
+
+![eventCursedOffer · cursed-shrine @ 180x70](screens/eventCursedOffer--cursed-shrine@180x70.png)
+![eventCursedOffer · cursed-shrine @ 150x45](screens/eventCursedOffer--cursed-shrine@150x45.png)
+
+## eventExit
+
+### eventExit · broken-seal
+
+![eventExit · broken-seal @ 180x70](screens/eventExit--broken-seal@180x70.png)
+![eventExit · broken-seal @ 150x45](screens/eventExit--broken-seal@150x45.png)
+
+### eventExit · cursed-shrine
+
+![eventExit · cursed-shrine @ 180x70](screens/eventExit--cursed-shrine@180x70.png)
+![eventExit · cursed-shrine @ 150x45](screens/eventExit--cursed-shrine@150x45.png)
+
+### eventExit · desecrated-altar
+
+![eventExit · desecrated-altar @ 180x70](screens/eventExit--desecrated-altar@180x70.png)
+![eventExit · desecrated-altar @ 150x45](screens/eventExit--desecrated-altar@150x45.png)
+
+### eventExit · doubled-back
+
+![eventExit · doubled-back @ 180x70](screens/eventExit--doubled-back@180x70.png)
+![eventExit · doubled-back @ 150x45](screens/eventExit--doubled-back@150x45.png)
+
+### eventExit · gambling-den
+
+![eventExit · gambling-den @ 180x70](screens/eventExit--gambling-den@180x70.png)
+![eventExit · gambling-den @ 150x45](screens/eventExit--gambling-den@150x45.png)
+
+### eventExit · guardian-fight
+
+![eventExit · guardian-fight @ 180x70](screens/eventExit--guardian-fight@180x70.png)
+![eventExit · guardian-fight @ 150x45](screens/eventExit--guardian-fight@150x45.png)
+
+### eventExit · half-a-warning
+
+![eventExit · half-a-warning @ 180x70](screens/eventExit--half-a-warning@180x70.png)
+![eventExit · half-a-warning @ 150x45](screens/eventExit--half-a-warning@150x45.png)
+
+### eventExit · merchant
+
+![eventExit · merchant @ 180x70](screens/eventExit--merchant@180x70.png)
+![eventExit · merchant @ 150x45](screens/eventExit--merchant@150x45.png)
+
+### eventExit · still-breathing
+
+![eventExit · still-breathing @ 180x70](screens/eventExit--still-breathing@180x70.png)
+![eventExit · still-breathing @ 150x45](screens/eventExit--still-breathing@150x45.png)
+
+### eventExit · the-delay
+
+![eventExit · the-delay @ 180x70](screens/eventExit--the-delay@180x70.png)
+![eventExit · the-delay @ 150x45](screens/eventExit--the-delay@150x45.png)
+
+### eventExit · the-wanderer
+
+![eventExit · the-wanderer @ 180x70](screens/eventExit--the-wanderer@180x70.png)
+![eventExit · the-wanderer @ 150x45](screens/eventExit--the-wanderer@150x45.png)
+
+### eventExit · twin-altars
+
+![eventExit · twin-altars @ 180x70](screens/eventExit--twin-altars@180x70.png)
+![eventExit · twin-altars @ 150x45](screens/eventExit--twin-altars@150x45.png)
+
+### eventExit · vigil-candle
+
+![eventExit · vigil-candle @ 180x70](screens/eventExit--vigil-candle@180x70.png)
+![eventExit · vigil-candle @ 150x45](screens/eventExit--vigil-candle@150x45.png)
+
+## eventFortuneExchange
+
+### eventFortuneExchange · wandering-hermit
+
+![eventFortuneExchange · wandering-hermit @ 180x70](screens/eventFortuneExchange--wandering-hermit@180x70.png)
+![eventFortuneExchange · wandering-hermit @ 150x45](screens/eventFortuneExchange--wandering-hermit@150x45.png)
+
+## eventHpGamble
+
+### eventHpGamble · blood-altar
+
+![eventHpGamble · blood-altar @ 180x70](screens/eventHpGamble--blood-altar@180x70.png)
+![eventHpGamble · blood-altar @ 150x45](screens/eventHpGamble--blood-altar@150x45.png)
+
+### eventHpGamble · collapsed-floor
+
+![eventHpGamble · collapsed-floor @ 180x70](screens/eventHpGamble--collapsed-floor@180x70.png)
+![eventHpGamble · collapsed-floor @ 150x45](screens/eventHpGamble--collapsed-floor@150x45.png)
+
+## eventInstantReward
+
+### eventInstantReward · broken-seal
+
+![eventInstantReward · broken-seal @ 180x70](screens/eventInstantReward--broken-seal@180x70.png)
+![eventInstantReward · broken-seal @ 150x45](screens/eventInstantReward--broken-seal@150x45.png)
+
+### eventInstantReward · doubled-back
+
+![eventInstantReward · doubled-back @ 180x70](screens/eventInstantReward--doubled-back@180x70.png)
+![eventInstantReward · doubled-back @ 150x45](screens/eventInstantReward--doubled-back@150x45.png)
+
+### eventInstantReward · half-a-warning
+
+![eventInstantReward · half-a-warning @ 180x70](screens/eventInstantReward--half-a-warning@180x70.png)
+![eventInstantReward · half-a-warning @ 150x45](screens/eventInstantReward--half-a-warning@150x45.png)
+
+### eventInstantReward · old-count
+
+![eventInstantReward · old-count @ 180x70](screens/eventInstantReward--old-count@180x70.png)
+![eventInstantReward · old-count @ 150x45](screens/eventInstantReward--old-count@150x45.png)
+
+### eventInstantReward · open-chest
+
+![eventInstantReward · open-chest @ 180x70](screens/eventInstantReward--open-chest@180x70.png)
+![eventInstantReward · open-chest @ 150x45](screens/eventInstantReward--open-chest@150x45.png)
+
+### eventInstantReward · still-breathing
+
+![eventInstantReward · still-breathing @ 180x70](screens/eventInstantReward--still-breathing@180x70.png)
+![eventInstantReward · still-breathing @ 150x45](screens/eventInstantReward--still-breathing@150x45.png)
+
+### eventInstantReward · the-delay
+
+![eventInstantReward · the-delay @ 180x70](screens/eventInstantReward--the-delay@180x70.png)
+![eventInstantReward · the-delay @ 150x45](screens/eventInstantReward--the-delay@150x45.png)
+
+### eventInstantReward · the-one-who-stayed
+
+![eventInstantReward · the-one-who-stayed @ 180x70](screens/eventInstantReward--the-one-who-stayed@180x70.png)
+![eventInstantReward · the-one-who-stayed @ 150x45](screens/eventInstantReward--the-one-who-stayed@150x45.png)
+
+### eventInstantReward · the-wanderer
+
+![eventInstantReward · the-wanderer @ 180x70](screens/eventInstantReward--the-wanderer@180x70.png)
+![eventInstantReward · the-wanderer @ 150x45](screens/eventInstantReward--the-wanderer@150x45.png)
+
+### eventInstantReward · vigil-candle
+
+![eventInstantReward · vigil-candle @ 180x70](screens/eventInstantReward--vigil-candle@180x70.png)
+![eventInstantReward · vigil-candle @ 150x45](screens/eventInstantReward--vigil-candle@150x45.png)
+
+### eventInstantReward · waiting-supplies
+
+![eventInstantReward · waiting-supplies @ 180x70](screens/eventInstantReward--waiting-supplies@180x70.png)
+![eventInstantReward · waiting-supplies @ 150x45](screens/eventInstantReward--waiting-supplies@150x45.png)
+
+## eventPairedOffer
+
+### eventPairedOffer · twin-altars
+
+![eventPairedOffer · twin-altars @ 180x70](screens/eventPairedOffer--twin-altars@180x70.png)
+![eventPairedOffer · twin-altars @ 150x45](screens/eventPairedOffer--twin-altars@150x45.png)
+
+## floorMap
+
+### floorMap
+
+![floorMap @ 180x70](screens/floorMap@180x70.png)
+![floorMap @ 150x45](screens/floorMap@150x45.png)
+
+### floorMap · boss
+
+![floorMap · boss @ 180x70](screens/floorMap--boss@180x70.png)
+![floorMap · boss @ 150x45](screens/floorMap--boss@150x45.png)
+
+### floorMap · desecrated-altar · normal
+
+![floorMap · desecrated-altar · normal @ 180x70](screens/floorMap--desecrated-altar--normal@180x70.png)
+![floorMap · desecrated-altar · normal @ 150x45](screens/floorMap--desecrated-altar--normal@150x45.png)
+
+### floorMap · elite
+
+![floorMap · elite @ 180x70](screens/floorMap--elite@180x70.png)
+![floorMap · elite @ 150x45](screens/floorMap--elite@150x45.png)
+
+### floorMap · guardian-fight · normal
+
+![floorMap · guardian-fight · normal @ 180x70](screens/floorMap--guardian-fight--normal@180x70.png)
+![floorMap · guardian-fight · normal @ 150x45](screens/floorMap--guardian-fight--normal@150x45.png)
+
+### floorMap · normal
+
+![floorMap · normal @ 180x70](screens/floorMap--normal@180x70.png)
+![floorMap · normal @ 150x45](screens/floorMap--normal@150x45.png)
+
+### floorMap · old-count
+
+![floorMap · old-count @ 180x70](screens/floorMap--old-count@180x70.png)
+![floorMap · old-count @ 150x45](screens/floorMap--old-count@150x45.png)
+
+## fullLog
+
+### fullLog · blood-altar
+
+![fullLog · blood-altar @ 180x70](screens/fullLog--blood-altar@180x70.png)
+![fullLog · blood-altar @ 150x45](screens/fullLog--blood-altar@150x45.png)
+
+## gameover
+
+### gameover
+
+![gameover @ 180x70](screens/gameover@180x70.png)
+![gameover @ 150x45](screens/gameover@150x45.png)
+
+## gatekeeper
+
+### gatekeeper
+
+![gatekeeper @ 180x70](screens/gatekeeper@180x70.png)
+![gatekeeper @ 150x45](screens/gatekeeper@150x45.png)
+
+## itemDetail
+
+### itemDetail · normal
+
+![itemDetail · normal @ 180x70](screens/itemDetail--normal@180x70.png)
+![itemDetail · normal @ 150x45](screens/itemDetail--normal@150x45.png)
+
+## journal
+
+### journal
+
+![journal @ 180x70](screens/journal@180x70.png)
+![journal @ 150x45](screens/journal@150x45.png)
+
+## journalDeduction
+
+### journalDeduction · blood-altar
+
+![journalDeduction · blood-altar @ 180x70](screens/journalDeduction--blood-altar@180x70.png)
+![journalDeduction · blood-altar @ 150x45](screens/journalDeduction--blood-altar@150x45.png)
+
+### journalDeduction · desecrated-altar
+
+![journalDeduction · desecrated-altar @ 180x70](screens/journalDeduction--desecrated-altar@180x70.png)
+![journalDeduction · desecrated-altar @ 150x45](screens/journalDeduction--desecrated-altar@150x45.png)
+
+### journalDeduction · doubled-back
+
+![journalDeduction · doubled-back @ 180x70](screens/journalDeduction--doubled-back@180x70.png)
+![journalDeduction · doubled-back @ 150x45](screens/journalDeduction--doubled-back@150x45.png)
+
+### journalDeduction · guardian-fight
+
+![journalDeduction · guardian-fight @ 180x70](screens/journalDeduction--guardian-fight@180x70.png)
+![journalDeduction · guardian-fight @ 150x45](screens/journalDeduction--guardian-fight@150x45.png)
+
+### journalDeduction · half-a-warning
+
+![journalDeduction · half-a-warning @ 180x70](screens/journalDeduction--half-a-warning@180x70.png)
+![journalDeduction · half-a-warning @ 150x45](screens/journalDeduction--half-a-warning@150x45.png)
+
+### journalDeduction · merchant
+
+![journalDeduction · merchant @ 180x70](screens/journalDeduction--merchant@180x70.png)
+![journalDeduction · merchant @ 150x45](screens/journalDeduction--merchant@150x45.png)
+
+### journalDeduction · old-count
+
+![journalDeduction · old-count @ 180x70](screens/journalDeduction--old-count@180x70.png)
+![journalDeduction · old-count @ 150x45](screens/journalDeduction--old-count@150x45.png)
+
+### journalDeduction · sacrificial-circle
+
+![journalDeduction · sacrificial-circle @ 180x70](screens/journalDeduction--sacrificial-circle@180x70.png)
+![journalDeduction · sacrificial-circle @ 150x45](screens/journalDeduction--sacrificial-circle@150x45.png)
+
+### journalDeduction · twin-altars
+
+![journalDeduction · twin-altars @ 180x70](screens/journalDeduction--twin-altars@180x70.png)
+![journalDeduction · twin-altars @ 150x45](screens/journalDeduction--twin-altars@150x45.png)
+
+### journalDeduction · waiting-supplies
+
+![journalDeduction · waiting-supplies @ 180x70](screens/journalDeduction--waiting-supplies@180x70.png)
+![journalDeduction · waiting-supplies @ 150x45](screens/journalDeduction--waiting-supplies@150x45.png)
+
+## memoryIntro
+
+### memoryIntro
+
+![memoryIntro @ 180x70](screens/memoryIntro@180x70.png)
+![memoryIntro @ 150x45](screens/memoryIntro@150x45.png)
+
+## monsterInfo
+
+### monsterInfo
+
+![monsterInfo @ 180x70](screens/monsterInfo@180x70.png)
+![monsterInfo @ 150x45](screens/monsterInfo@150x45.png)
+
+### monsterInfo · normal
+
+![monsterInfo · normal @ 180x70](screens/monsterInfo--normal@180x70.png)
+![monsterInfo · normal @ 150x45](screens/monsterInfo--normal@150x45.png)
+
+## pickAction
+
+### pickAction · desecrated-altar · normal
+
+![pickAction · desecrated-altar · normal @ 180x70](screens/pickAction--desecrated-altar--normal@180x70.png)
+![pickAction · desecrated-altar · normal @ 150x45](screens/pickAction--desecrated-altar--normal@150x45.png)
+
+### pickAction · elite
+
+![pickAction · elite @ 180x70](screens/pickAction--elite@180x70.png)
+![pickAction · elite @ 150x45](screens/pickAction--elite@150x45.png)
+
+### pickAction · guardian-fight · normal
+
+![pickAction · guardian-fight · normal @ 180x70](screens/pickAction--guardian-fight--normal@180x70.png)
+![pickAction · guardian-fight · normal @ 150x45](screens/pickAction--guardian-fight--normal@150x45.png)
+
+### pickAction · normal
+
+![pickAction · normal @ 180x70](screens/pickAction--normal@180x70.png)
+![pickAction · normal @ 150x45](screens/pickAction--normal@150x45.png)
+
+## pickItemInCombat
+
+### pickItemInCombat · elite
+
+![pickItemInCombat · elite @ 180x70](screens/pickItemInCombat--elite@180x70.png)
+![pickItemInCombat · elite @ 150x45](screens/pickItemInCombat--elite@150x45.png)
+
+### pickItemInCombat · normal
+
+![pickItemInCombat · normal @ 180x70](screens/pickItemInCombat--normal@180x70.png)
+![pickItemInCombat · normal @ 150x45](screens/pickItemInCombat--normal@150x45.png)
+
+## pickItemOutOfCombat
+
+### pickItemOutOfCombat · broken-seal
+
+![pickItemOutOfCombat · broken-seal @ 180x70](screens/pickItemOutOfCombat--broken-seal@180x70.png)
+![pickItemOutOfCombat · broken-seal @ 150x45](screens/pickItemOutOfCombat--broken-seal@150x45.png)
+
+## pickSkill
+
+### pickSkill · boss
+
+![pickSkill · boss @ 180x70](screens/pickSkill--boss@180x70.png)
+![pickSkill · boss @ 150x45](screens/pickSkill--boss@150x45.png)
+
+### pickSkill · desecrated-altar · normal
+
+![pickSkill · desecrated-altar · normal @ 180x70](screens/pickSkill--desecrated-altar--normal@180x70.png)
+![pickSkill · desecrated-altar · normal @ 150x45](screens/pickSkill--desecrated-altar--normal@150x45.png)
+
+### pickSkill · elite
+
+![pickSkill · elite @ 180x70](screens/pickSkill--elite@180x70.png)
+![pickSkill · elite @ 150x45](screens/pickSkill--elite@150x45.png)
+
+### pickSkill · guardian-fight · normal
+
+![pickSkill · guardian-fight · normal @ 180x70](screens/pickSkill--guardian-fight--normal@180x70.png)
+![pickSkill · guardian-fight · normal @ 150x45](screens/pickSkill--guardian-fight--normal@150x45.png)
+
+### pickSkill · normal
+
+![pickSkill · normal @ 180x70](screens/pickSkill--normal@180x70.png)
+![pickSkill · normal @ 150x45](screens/pickSkill--normal@150x45.png)
+
+## pickTarget
+
+### pickTarget · boss
+
+![pickTarget · boss @ 180x70](screens/pickTarget--boss@180x70.png)
+![pickTarget · boss @ 150x45](screens/pickTarget--boss@150x45.png)
+
+### pickTarget · desecrated-altar · normal
+
+![pickTarget · desecrated-altar · normal @ 180x70](screens/pickTarget--desecrated-altar--normal@180x70.png)
+![pickTarget · desecrated-altar · normal @ 150x45](screens/pickTarget--desecrated-altar--normal@150x45.png)
+
+### pickTarget · elite
+
+![pickTarget · elite @ 180x70](screens/pickTarget--elite@180x70.png)
+![pickTarget · elite @ 150x45](screens/pickTarget--elite@150x45.png)
+
+### pickTarget · guardian-fight · normal
+
+![pickTarget · guardian-fight · normal @ 180x70](screens/pickTarget--guardian-fight--normal@180x70.png)
+![pickTarget · guardian-fight · normal @ 150x45](screens/pickTarget--guardian-fight--normal@150x45.png)
+
+### pickTarget · normal
+
+![pickTarget · normal @ 180x70](screens/pickTarget--normal@180x70.png)
+![pickTarget · normal @ 150x45](screens/pickTarget--normal@150x45.png)
+
+## rest
+
+### rest
+
+![rest @ 180x70](screens/rest@180x70.png)
+![rest @ 150x45](screens/rest@150x45.png)
+
+## room
+
+### room
+
+![room @ 180x70](screens/room@180x70.png)
+![room @ 150x45](screens/room@150x45.png)
+
+### room · blood-altar
+
+![room · blood-altar @ 180x70](screens/room--blood-altar@180x70.png)
+![room · blood-altar @ 150x45](screens/room--blood-altar@150x45.png)
+
+### room · broken-seal
+
+![room · broken-seal @ 180x70](screens/room--broken-seal@180x70.png)
+![room · broken-seal @ 150x45](screens/room--broken-seal@150x45.png)
+
+### room · collapsed-floor
+
+![room · collapsed-floor @ 180x70](screens/room--collapsed-floor@180x70.png)
+![room · collapsed-floor @ 150x45](screens/room--collapsed-floor@150x45.png)
+
+### room · cursed-shrine
+
+![room · cursed-shrine @ 180x70](screens/room--cursed-shrine@180x70.png)
+![room · cursed-shrine @ 150x45](screens/room--cursed-shrine@150x45.png)
+
+### room · desecrated-altar
+
+![room · desecrated-altar @ 180x70](screens/room--desecrated-altar@180x70.png)
+![room · desecrated-altar @ 150x45](screens/room--desecrated-altar@150x45.png)
+
+### room · doubled-back
+
+![room · doubled-back @ 180x70](screens/room--doubled-back@180x70.png)
+![room · doubled-back @ 150x45](screens/room--doubled-back@150x45.png)
+
+### room · gambling-den
+
+![room · gambling-den @ 180x70](screens/room--gambling-den@180x70.png)
+![room · gambling-den @ 150x45](screens/room--gambling-den@150x45.png)
+
+### room · guardian-fight
+
+![room · guardian-fight @ 180x70](screens/room--guardian-fight@180x70.png)
+![room · guardian-fight @ 150x45](screens/room--guardian-fight@150x45.png)
+
+### room · half-a-warning
+
+![room · half-a-warning @ 180x70](screens/room--half-a-warning@180x70.png)
+![room · half-a-warning @ 150x45](screens/room--half-a-warning@150x45.png)
+
+### room · merchant
+
+![room · merchant @ 180x70](screens/room--merchant@180x70.png)
+![room · merchant @ 150x45](screens/room--merchant@150x45.png)
+
+### room · old-count
+
+![room · old-count @ 180x70](screens/room--old-count@180x70.png)
+![room · old-count @ 150x45](screens/room--old-count@150x45.png)
+
+### room · open-chest
+
+![room · open-chest @ 180x70](screens/room--open-chest@180x70.png)
+![room · open-chest @ 150x45](screens/room--open-chest@150x45.png)
+
+### room · sacrificial-circle
+
+![room · sacrificial-circle @ 180x70](screens/room--sacrificial-circle@180x70.png)
+![room · sacrificial-circle @ 150x45](screens/room--sacrificial-circle@150x45.png)
+
+### room · still-breathing
+
+![room · still-breathing @ 180x70](screens/room--still-breathing@180x70.png)
+![room · still-breathing @ 150x45](screens/room--still-breathing@150x45.png)
+
+### room · the-delay
+
+![room · the-delay @ 180x70](screens/room--the-delay@180x70.png)
+![room · the-delay @ 150x45](screens/room--the-delay@150x45.png)
+
+### room · the-one-who-stayed
+
+![room · the-one-who-stayed @ 180x70](screens/room--the-one-who-stayed@180x70.png)
+![room · the-one-who-stayed @ 150x45](screens/room--the-one-who-stayed@150x45.png)
+
+### room · the-wanderer
+
+![room · the-wanderer @ 180x70](screens/room--the-wanderer@180x70.png)
+![room · the-wanderer @ 150x45](screens/room--the-wanderer@150x45.png)
+
+### room · twin-altars
+
+![room · twin-altars @ 180x70](screens/room--twin-altars@180x70.png)
+![room · twin-altars @ 150x45](screens/room--twin-altars@150x45.png)
+
+### room · vigil-candle
+
+![room · vigil-candle @ 180x70](screens/room--vigil-candle@180x70.png)
+![room · vigil-candle @ 150x45](screens/room--vigil-candle@150x45.png)
+
+### room · waiting-supplies
+
+![room · waiting-supplies @ 180x70](screens/room--waiting-supplies@180x70.png)
+![room · waiting-supplies @ 150x45](screens/room--waiting-supplies@150x45.png)
+
+### room · wandering-hermit
+
+![room · wandering-hermit @ 180x70](screens/room--wandering-hermit@180x70.png)
+![room · wandering-hermit @ 150x45](screens/room--wandering-hermit@150x45.png)
+
+## roomReward
+
+### roomReward · desecrated-altar · reward
+
+![roomReward · desecrated-altar · reward @ 180x70](screens/roomReward--desecrated-altar--reward@180x70.png)
+![roomReward · desecrated-altar · reward @ 150x45](screens/roomReward--desecrated-altar--reward@150x45.png)
+
+### roomReward · guardian-fight · reward
+
+![roomReward · guardian-fight · reward @ 180x70](screens/roomReward--guardian-fight--reward@180x70.png)
+![roomReward · guardian-fight · reward @ 150x45](screens/roomReward--guardian-fight--reward@150x45.png)
+
+### roomReward · reward
+
+![roomReward · reward @ 180x70](screens/roomReward--reward@180x70.png)
+![roomReward · reward @ 150x45](screens/roomReward--reward@150x45.png)
+
+## saveMenu
+
+### saveMenu
+
+![saveMenu @ 180x70](screens/saveMenu@180x70.png)
+![saveMenu @ 150x45](screens/saveMenu@150x45.png)
+
+### saveMenu · boss
+
+![saveMenu · boss @ 180x70](screens/saveMenu--boss@180x70.png)
+![saveMenu · boss @ 150x45](screens/saveMenu--boss@150x45.png)
+
+## skillDetail
+
+### skillDetail · boss
+
+![skillDetail · boss @ 180x70](screens/skillDetail--boss@180x70.png)
+![skillDetail · boss @ 150x45](screens/skillDetail--boss@150x45.png)
+
+### skillDetail · desecrated-altar · normal
+
+![skillDetail · desecrated-altar · normal @ 180x70](screens/skillDetail--desecrated-altar--normal@180x70.png)
+![skillDetail · desecrated-altar · normal @ 150x45](screens/skillDetail--desecrated-altar--normal@150x45.png)
+
+### skillDetail · elite
+
+![skillDetail · elite @ 180x70](screens/skillDetail--elite@180x70.png)
+![skillDetail · elite @ 150x45](screens/skillDetail--elite@150x45.png)
+
+### skillDetail · guardian-fight · normal
+
+![skillDetail · guardian-fight · normal @ 180x70](screens/skillDetail--guardian-fight--normal@180x70.png)
+![skillDetail · guardian-fight · normal @ 150x45](screens/skillDetail--guardian-fight--normal@150x45.png)
+
+### skillDetail · normal
+
+![skillDetail · normal @ 180x70](screens/skillDetail--normal@180x70.png)
+![skillDetail · normal @ 150x45](screens/skillDetail--normal@150x45.png)
+
+## temple
+
+### temple
+
+![temple @ 180x70](screens/temple@180x70.png)
+![temple @ 150x45](screens/temple@150x45.png)
