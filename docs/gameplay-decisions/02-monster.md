@@ -123,17 +123,21 @@ This gates 2 things, both in `src/data/floor.ts`: which **archetype** fills a ti
 (`eligibleAtDepth`: `minFloor ?? 0` at or below the depth), and — more importantly —
 which **`floorGeneration.roomCompositionTemplates` entry** (`data/balance-config.json`) **is even selectable** at a given depth
 (`poolsAtDepth`: a template is only eligible if *every* tier it lists has at least 1
-archetype available at that depth). This is deliberately not "fall back to the one low-`minFloor`
-archetype in that tier" — a template needing "strong" tier simply isn't rolled at all below
-whatever floor the earliest strong-tier archetype unlocks at, so early floors stop rolling
-strong-tier encounters entirely instead of always resolving to one repetitive stand-in.
+archetype available at that depth). A template needing a tier with no eligible archetypes
+is excluded rather than filled from another tier. Within each eligible tier, every archetype
+has an equal chance for each slot; slots are drawn independently, so repeated archetypes
+in one room remain possible.
+
+The early strong-tier pool is shared by Skeleton Guard and Zombie. Goblin Shaman joins
+at its own `minFloor`, so strong slots have more alternatives as the party descends.
 
 **Crash-safety invariant**, also enforced by the same validator: the weak tier, the medium tier,
 and the guard-room pool (`roles` including both `"elite"` and `"boss"`) must each have at least 1
 archetype at `minFloor: 0` — otherwise a room at floor 1 could have nothing eligible to spawn.
 Skeleton Guard (the roster's one triple-role archetype, in both the regular-combat and guard-room
-pools) is the one strong-tier/guard-eligible archetype that has to stay at `minFloor: 0` to satisfy
-the guard-room side of this invariant.
+pools) remains available at `minFloor: 0` to satisfy the guard-room side of this invariant.
+Zombie and Goblin Shaman have only the normal role; their strong power tier does not add
+them to the elite/boss guard-room pool.
 
 ### Targeting
 
