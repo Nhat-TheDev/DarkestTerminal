@@ -560,24 +560,24 @@
       "declined": "The stranger [[sets the three cups mouth-down]] without looking up. 'Changed your mind? Show me the face that walked away.'"
     },
     "reflection": {
-      "prompt": "The cups start clicking again before you've closed your purse.",
+      "prompt": "The stranger keeps shuffling the three cups, though nothing sits on the crate.",
       "options": [
         {
           "stance": "curious",
-          "text": "You watch his hands through two more rounds, trying to follow the right cup.",
+          "text": "You watch his hands until the cups stop, and point to one. He doesn't lift it.",
           "outcomes": [
             {
               "chance": 0.5,
               "effects": [
-                { "stat": "fear", "size": "large", "sign": -1, "readFrom": "trying to follow the right cup" },
-                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "two more rounds" }
+                { "stat": "fear", "size": "large", "sign": -1, "readFrom": "point to one" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "watch his hands until the cups stop" }
               ]
             },
             {
               "chance": 0.5,
               "effects": [
-                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "trying to follow the right cup" },
-                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "two more rounds" }
+                { "stat": "fear", "size": "medium", "sign": 1, "readFrom": "point to one" },
+                { "stat": "mp", "size": "small", "sign": -1, "readFrom": "watch his hands until the cups stop" }
               ]
             }
           ]
