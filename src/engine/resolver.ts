@@ -1,4 +1,5 @@
 import type { Character, Monster, Summon, SkillEffect, CombatStat, SurvivalStats, ActiveStatusEffect, LogEntry, StatusEffectDefinition, GameState, DamageType, Id } from "../types";
+import { COMBAT_FX, getBasicAttackVisual, getStatusVisual } from "../data/combatFx";
 import { getStatusEffect, statusDisplayName, statusSatisfiesRequirement, statusFamilyOf, rankLevelOf, COMBAT_STAT_LABEL } from "../data/statusEffects";
 import { t } from "../data/strings";
 import { BALANCE } from "../data/balanceConfig";
@@ -164,6 +165,8 @@ function computeCombatStatDelta(actor: Actor, effect: SkillEffect): number {
 
 export interface ResolveContext {
   log: LogEntry[];
+  attackVisual?: string | null;
+  removalVisuals?: boolean;
   statusEffectName?: string;
   skillName?: string;
   isMagic?: boolean;
@@ -228,6 +231,10 @@ function raceMultiplierFor(target: Actor, damageType: DamageType): number {
   return (1 - resist / 100) * (1 + weak / 100);
 }
 
+function outcome(actor: Actor, kind: keyof typeof COMBAT_FX.outcomes, sourceId?: Id, visual = COMBAT_FX.outcomes[kind]): Pick<LogEntry, "effect"> {
+  return { effect: { targetId: actor.id, ...(sourceId ? { sourceId } : {}), visual } };
+}
+
 export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: Actor, ctx: ResolveContext): number {
   if (effect.requiresTargetStatusId && !target.activeStatusEffects.some((s) => s.statusEffectId === effect.requiresTargetStatusId)) return 0;
   switch (effect.kind) {
@@ -269,15 +276,21 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const isStatusTick = isSelfTick && ctx.statusEffectName !== undefined;
       const finalDamage = shellAdjustedDamage(target, raceMultiplier === 0 ? 0 : Math.max(1, rawDamage), isStatusTick);
       const critMark = isCrit ? { crit: true as const } : {};
+      const basicAttack = !isCharacter(source) && !ctx.skillName && !ctx.statusEffectName;
+      const visual = ctx.attackVisual !== undefined ? ctx.attackVisual : basicAttack
+        ? getBasicAttackVisual(isSummon(source) ? "summons" : "monsters", source.archetypeId)
+        : null;
+      const hitSource = ctx.attackVisual !== undefined || basicAttack ? { sourceId: source.id, ...(visual ? { visual } : {}) } : {};
       if (ctx.unapplied && !isSelfTick) {
         const overkillKey = ctx.skillName ? (isCrit ? "resolver.overkillWithSkillCrit" : "resolver.overkillWithSkill") : isCrit ? "resolver.overkillCrit" : "resolver.overkill";
         const text = t(overkillKey, { target: nameOf(target), amount: finalDamage, source: nameOf(source), skill: ctx.skillName ?? "" });
-        ctx.log.push({ text, kind: "attack", hit: { targetId: target.id, amount: finalDamage, overkill: finalDamage, ...critMark } });
+        ctx.log.push({ text, kind: "attack", hit: { targetId: target.id, amount: finalDamage, overkill: finalDamage, ...critMark, ...hitSource } });
         return 0;
       }
       const hpBefore = target.hp;
       target.hp = Math.max(0, target.hp - finalDamage);
-      if (!isSelfTick) noteShellHit(target, ctx);
+      const shellLog: LogEntry[] = [];
+      if (!isSelfTick) noteShellHit(target, { ...ctx, log: shellLog });
       const sourceLabel = isSelfTick && ctx.statusEffectName ? ctx.statusEffectName : nameOf(source);
       const damageText =
         !isSelfTick && ctx.skillName
@@ -286,8 +299,8 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const hpLost = hpBefore - target.hp;
       if (!isSelfTick) noteDamageTaken(target, source.id, hpLost);
       const overkill = finalDamage - hpLost;
-      const hit = !isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: finalDamage, ...(overkill > 0 ? { overkill } : {}), ...critMark } } : {};
-      ctx.log.push({ text: damageText, kind: "attack", ...hit });
+      const hit = !isSelfTick && hpLost > 0 ? { hit: { targetId: target.id, amount: finalDamage, ...(overkill > 0 ? { overkill } : {}), ...critMark, ...hitSource } } : {};
+      ctx.log.push({ text: damageText, kind: "attack", ...hit }, ...shellLog);
       if (!isSelfTick && hpLost > 0 && target.hp > 0) openWounds(target, source, ctx, effect.ignoreDefensePercent ?? 0);
       if (target.hp <= 0) reviveIfGuarded(target, ctx);
       if (target.hp <= 0 && isCharacter(target)) target.isAlive = false;
@@ -298,7 +311,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         const healed = Math.min(source.maxHp - source.hp, Math.round(finalDamage * (effect.lifestealPercent / 100)));
         if (healed > 0) {
           source.hp += healed;
-          ctx.log.push({ text: t("resolver.heal", { target: nameOf(source), amount: healed }), kind: "heal" });
+          ctx.log.push({ text: t("resolver.heal", { target: nameOf(source), amount: healed }), kind: "heal", ...outcome(source, "heal", source.id) });
         }
       }
       return finalDamage;
@@ -317,14 +330,14 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       const critMultiplier = crit ? critMultiplierOf(effect) : 1;
       target.hp = Math.min(target.maxHp, target.hp + Math.round((baseHeal + healPower) * passiveHealBoost * lowHpBoost * highFearBoost * critMultiplier));
       const healed = target.hp - before;
-      ctx.log.push({ text: t(crit ? "resolver.healCrit" : "resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal", ...(crit ? { healCritOf: target.id } : {}) });
+      ctx.log.push({ text: t(crit ? "resolver.healCrit" : "resolver.heal", { target: nameOf(target), amount: healed }), kind: "heal", ...(crit ? { healCritOf: target.id } : {}), ...(healed > 0 ? outcome(target, "heal", source.id) : {}) });
       return healed;
     }
     case "restoreMp": {
       if (!isCharacter(target)) return 0;
       const before = target.mp;
       target.mp = Math.min(target.maxMp, target.mp + (effect.amount ?? 0));
-      ctx.log.push({ text: t("resolver.restoreMp", { target: nameOf(target), amount: target.mp - before }), kind: "heal" });
+      ctx.log.push({ text: t("resolver.restoreMp", { target: nameOf(target), amount: target.mp - before }), kind: "heal", ...(target.mp > before ? outcome(target, "mana", source.id) : {}) });
       return 0;
     }
     case "applyStatusEffect": {
@@ -342,6 +355,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
       return 0;
     }
     case "removeStatusEffect": {
+      ctx = { ...ctx, removalVisuals: ctx.removalVisuals ?? true };
       if (effect.removesHarmfulDots) {
         for (const active of [...target.activeStatusEffects]) {
           const def = getStatusEffect(active.statusEffectId);
@@ -375,6 +389,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         ctx.log.push({
           text: t("resolver.statChange", { target: nameOf(target), verb, amount: formatFear(Math.abs(delta)), stat: SURVIVAL_STAT_LABEL[effect.stat] }),
           kind: delta < 0 ? "buff" : "debuff",
+          ...outcome(target, delta < 0 ? "buff" : "debuff", source.id),
         });
       }
       return 0;
@@ -388,6 +403,7 @@ export function resolveSkillEffect(effect: SkillEffect, source: Actor, target: A
         ctx.log.push({
           text: t("resolver.statChange", { target: nameOf(target), verb, amount: Math.abs(delta), stat: COMBAT_STAT_LABEL[effect.combatStat] }),
           kind: delta < 0 ? "debuff" : "buff",
+          ...outcome(target, delta < 0 ? "debuff" : "buff", source.id),
         });
       }
       return 0;
@@ -444,7 +460,7 @@ function reviveIfGuarded(actor: Actor, ctx: ResolveContext): void {
   const def = getStatusEffect(guard.statusEffectId);
   actor.hp = Math.max(1, Math.round((actor.maxHp * def.reviveHpPercent!) / 100));
   actor.activeStatusEffects = actor.activeStatusEffects.filter((s) => s !== guard);
-  ctx.log.push({ text: t("resolver.revived", { target: nameOf(actor), status: statusDisplayName(def), hp: actor.hp }), kind: "heal" });
+  ctx.log.push({ text: t("resolver.revived", { target: nameOf(actor), status: statusDisplayName(def), hp: actor.hp }), kind: "heal", ...outcome(actor, "heal") });
 }
 
 /** A `healOnHitPercent` status heals the bearer for a share of the HP a hit it survived just took. */
@@ -453,7 +469,7 @@ function healOnHit(actor: Actor, hpLost: number, ctx: ResolveContext): void {
   if (percent <= 0) return;
   const before = actor.hp;
   actor.hp = Math.min(actor.maxHp, actor.hp + Math.round((hpLost * percent) / 100));
-  if (actor.hp > before) ctx.log.push({ text: t("resolver.heal", { target: nameOf(actor), amount: actor.hp - before }), kind: "heal" });
+  if (actor.hp > before) ctx.log.push({ text: t("resolver.heal", { target: nameOf(actor), amount: actor.hp - before }), kind: "heal", ...outcome(actor, "heal") });
 }
 
 /** A reflect passive (the Paladin's) — a share of every direct hit taken goes back to the attacker, unlocked at level 5/20/35. */
@@ -587,6 +603,7 @@ export function applyStatusEffectToActor(
         : t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(highestDef) }),
       kind: isHelpfulStatusEffect(highestDef) ? "buff" : "debuff",
       ...statusLandedTag(highestDef, landedOf),
+      ...(grew ? outcome(actor, isHelpfulStatusEffect(highestDef) ? "buff" : "debuff", sourceId, getStatusVisual(highestDef.id, isHelpfulStatusEffect(highestDef))) : {}),
     });
     return;
   }
@@ -625,6 +642,7 @@ export function applyStatusEffectToActor(
         : t("resolver.statusRefresh", { actor: nameOf(actor), effect: statusDisplayName(def) }),
       kind: isHelpfulStatusEffect(def) ? "buff" : "debuff",
       ...statusLandedTag(def, landedOf),
+      ...outcome(actor, isHelpfulStatusEffect(def) ? "buff" : "debuff", sourceId, getStatusVisual(def.id, isHelpfulStatusEffect(def))),
     });
     if (def.onMaxStacks && gainedANewStack && stackedAfter === def.maxStacks) {
       expireStatusEffect(actor, actor.activeStatusEffects[existingIndex]!, ctx);
@@ -652,6 +670,7 @@ export function applyStatusEffectToActor(
     text: t("resolver.statusApply", { actor: nameOf(actor), effect: statusDisplayName(def) }),
     kind: isHelpfulStatusEffect(def) ? "buff" : "debuff",
     ...statusLandedTag(def, landedOf),
+      ...outcome(actor, isHelpfulStatusEffect(def) ? "buff" : "debuff", sourceId, getStatusVisual(def.id, isHelpfulStatusEffect(def))),
   });
 }
 
@@ -684,7 +703,7 @@ export function removeStatusStacks(actor: Actor, statusEffectId: Id, count: numb
   }
   const index = actor.activeStatusEffects.indexOf(active);
   actor.activeStatusEffects[index] = { ...active, stacks: stacks - count, appliedAmounts };
-  ctx.log.push({ text: t("resolver.statusStacksRemoved", { actor: nameOf(actor), effect: statusDisplayName(getStatusEffect(statusEffectId)), stacks: stacks - count }), kind: "info" });
+  ctx.log.push({ text: t("resolver.statusStacksRemoved", { actor: nameOf(actor), effect: statusDisplayName(getStatusEffect(statusEffectId)), stacks: stacks - count }), kind: "info", ...(ctx.removalVisuals ? outcome(actor, isHelpfulStatusEffect(getStatusEffect(statusEffectId)) ? "dispel" : "cleanse") : {}) });
 }
 
 function undoStatusDeltas(actor: Actor, active: ActiveStatusEffect): void {
@@ -703,6 +722,7 @@ export function expireStatusEffect(actor: Actor, active: ActiveStatusEffect, ctx
   ctx.log.push({
     text: t("resolver.statusExpire", { actor: nameOf(actor), effect: statusDisplayName(def) }),
     kind: "info",
+    ...(ctx.removalVisuals ? outcome(actor, isHelpfulStatusEffect(def) ? "dispel" : "cleanse") : {}),
     ...(statusRole(def) === "buff" ? { buffLostOf: isSummon(actor) ? actor.ownerId : actor.id, ...(isSummon(actor) ? { buffLostOfSummon: true as const } : {}) } : {}),
   });
 }

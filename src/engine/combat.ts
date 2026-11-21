@@ -38,6 +38,7 @@ import { combatHooks } from "./combatHooks";
 import { advanceBar } from "./monsterBars";
 import { runMonsterTurn, finishMonsterTurn, fadeDamageMemory, fillTelegraphMeter } from "./monsterAI";
 import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
+import { COMBAT_FX, getBasicAttackVisual, getDamageAttackVisual, getSkillAttackVisual } from "../data/combatFx";
 import {
   type Actor,
   isCharacter,
@@ -99,6 +100,7 @@ export function commandedSkill(command: SkillDefinition, summon: Summon, summonS
   const scale = (v: number) => Math.round(v * power);
   return {
     ...command,
+    visualSourceId: minionSkill.id,
     name: t("combat.commandedSkillName", { summon: summon.name, skill: minionSkill.name }),
     target: minionSkill.target,
     isMagic: true,
@@ -128,6 +130,7 @@ export function withBasicAttackOverride(basic: SkillDefinition, actor: Character
   return {
     ...basic,
     name: override.name,
+    visualDamageType: override.damageType ?? (override.isMagic ? "magic" : "physical"),
     isMagic: override.isMagic ?? basic.isMagic,
     effects: [{ kind: "damage", amount: override.amount, offenseMultiplierPercent: override.offenseMultiplierPercent, damageType: override.damageType }],
   };
@@ -1023,7 +1026,7 @@ function syncPassiveThresholdStatus(source: Actor, log: LogEntry[]): boolean {
   if (belowThreshold && !active && rankDef?.thresholdStatusEffectId) {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rankDef.thresholdStatusEffectId, durationTurns: 99 }, source, source, { log });
   } else if (!belowThreshold && active) {
-    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: active.statusEffectId }, source, source, { log });
+    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: active.statusEffectId }, source, source, { log, removalVisuals: false });
   }
   return belowThreshold;
 }
@@ -1045,6 +1048,14 @@ function passiveSecondCloneProc(source: Character, combat: CombatState, ctx: Eng
     fromPassive: true,
     logKey: "combat.passiveCloneSpawned",
   });
+}
+
+function withRecoveryVisual(source: Actor, log: LogEntry[], apply: () => void): void {
+  const before = source.hp, start = log.length;
+  apply();
+  if (source.hp <= before) return;
+  const entry = log.slice(start).find((line) => line.kind === "heal" && !line.effect);
+  if (entry) entry.effect = { targetId: source.id, sourceId: source.id, visual: COMBAT_FX.outcomes.heal };
 }
 
 /**
@@ -1084,8 +1095,8 @@ function throwDice(effect: SkillEffect, skill: SkillDefinition, source: Characte
     const dealt = resolveOneDamageEffect(hit, { ...skill, isMagic: magic || (!effect.alternatesWithMagic && skill.isMagic) }, source, target, ctx, log, { guaranteedCrit: false, damageBonusPercent: 0 });
     landed = true;
     if (dealt > 0) {
-      for (const hook of combatHooks) hook.onDamageDealt?.(source, target, dealt, ctx, log);
-      if (wasAlive && !isActorAlive(target)) for (const hook of combatHooks) hook.onKill?.(source, target, log);
+      for (const hook of combatHooks) withRecoveryVisual(source, log, () => hook.onDamageDealt?.(source, target, dealt, ctx, log));
+      if (wasAlive && !isActorAlive(target)) for (const hook of combatHooks) withRecoveryVisual(source, log, () => hook.onKill?.(source, target, log));
     }
   }
   return landed;
@@ -1259,6 +1270,9 @@ function resolveOneDamageEffect(
       faith: ctx.faith,
       isMagic: skill.isMagic,
       skillName: skill.name,
+      attackVisual: skill.visualDamageType ? getDamageAttackVisual(skill.visualDamageType) : skill.visualSourceId ? getSkillAttackVisual(skill.visualSourceId) : !skill.fromItem && castByOwnClassSkill && skill.slot === 0 && isCharacter(source)
+        ? getBasicAttackVisual("classes", source.classId)
+        : getSkillAttackVisual(skill.id, skill.fromItem),
       isCrit,
       executeBonus: skill.executeBonus,
       bonusDamagePercent: stealthBreak.damageBonusPercent || undefined,
@@ -1861,7 +1875,7 @@ function castOnTarget(cast: Cast, target: Actor): void {
       }
     }
     if (finalEffect.kind === "damage" && appliedAmount > 0) {
-      for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
+      for (const hook of combatHooks) withRecoveryVisual(source, log, () => hook.onDamageDealt?.(source, target, appliedAmount, ctx, log));
       applyMonsterHitFear(source, target, combat, ctx);
       if (isMonster(source)) onStruckByMonster(target, source, combat, ctx);
       if (isCharacter(source) && !skill.fromItem && !cast.attackerBuffRolledOn.has(target)) {
@@ -1874,7 +1888,7 @@ function castOnTarget(cast: Cast, target: Actor): void {
         shareLifesteal(source, Math.round((appliedAmount * finalEffect.lifestealPercent) / 100), finalEffect.lifestealPartySharePercent, combat, ctx, log);
       }
       if (wasAliveBefore && !isActorAlive(target)) {
-        for (const hook of combatHooks) hook.onKill?.(source, target, log);
+        for (const hook of combatHooks) withRecoveryVisual(source, log, () => hook.onKill?.(source, target, log));
       }
     }
   }
@@ -1912,7 +1926,7 @@ function shareLifesteal(caster: Character, drawn: number, percent: number, comba
     const before = ally.hp;
     ally.hp = Math.min(ally.maxHp, ally.hp + amount);
     if (ally.hp === before) continue;
-    log.push({ text: t("combat.lifestealShared", { target: ally.name, amount: ally.hp - before, caster: caster.name }), kind: "heal" });
+    log.push({ text: t("combat.lifestealShared", { target: ally.name, amount: ally.hp - before, caster: caster.name }), kind: "heal", effect: { targetId: ally.id, sourceId: caster.id, visual: COMBAT_FX.outcomes.heal } });
     noteAffected(combat, ally);
   }
 }
