@@ -16,7 +16,7 @@ export function describeEffect(ranks: readonly SkillEffect[], offenseStat: Offen
   if (ranks.some((effect) => effect.kind !== first.kind)) {
     throw new Error(`an effect changes kind between ranks (${ranks.map((effect) => effect.kind).join(", ")})`);
   }
-  const used = new Set<string>(["kind"]);
+  const used = new Set<string>(["kind", "animation"]);
   const across = (pick: (effect: SkillEffect) => string | undefined): string | undefined => {
     const values = ranks.map(pick);
     return values.every((value) => value === undefined) ? undefined : joinRanks(values.map((value) => value ?? "—"));

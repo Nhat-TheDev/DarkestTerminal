@@ -1,9 +1,10 @@
 import { describe, test, expect } from "bun:test";
 import { RGBA } from "@opentui/core";
 import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, BATTLEFIELD_CONTENT_WIDTH } from "../src/ui/layout";
-import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, assertMonsterSpritesConsistent, renderSpriteInSlot, compositeSpriteRow, torchFrameForFaith, TORCH_SPRITES, CLASS_SPRITES, MONSTER_SPRITES, ELITE_SPRITES, spriteSlotLayout, type Sprite } from "../src/ui/sprites";
+import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, spriteForSummon, assertMonsterSpritesConsistent, renderSpriteInSlot, compositeSpriteRow, torchFrameForFaith, TORCH_SPRITES, CLASS_SPRITES, MONSTER_SPRITES, ELITE_SPRITES, SUMMON_SPRITES, MAX_UNIT_HEIGHT, spriteSlotLayout, type Sprite } from "../src/ui/sprites";
 import { CLASSES } from "../src/data/classes";
 import { MONSTER_ARCHETYPES, getArchetype, COMBAT_ROOM_ARCHETYPES, GUARD_ROOM_ARCHETYPES, FINAL_BOSS_ARCHETYPE } from "../src/data/monsters";
+import { SUMMON_ARCHETYPES } from "../src/data/summons";
 
 describe("sprite dimensions and palette consistency", () => {
   for (const { name, sprite, maxHeight } of ALL_SPRITES) {
@@ -38,6 +39,23 @@ describe("sprite dimensions and palette consistency", () => {
     for (const cls of CLASSES) {
       expect(() => spriteForClass(cls.id)).not.toThrow();
     }
+  });
+
+  test("every summon archetype has a dedicated sprite that fits a unit slot", () => {
+    expect(Object.keys(SUMMON_SPRITES).sort()).toEqual(SUMMON_ARCHETYPES.map(({ id }) => id).sort());
+    const summonSprites = SUMMON_ARCHETYPES.map(({ id }) => {
+      const sprite = spriteForSummon(id);
+      expect(sprite).toBe(SUMMON_SPRITES[id]!);
+      expect(ALL_SPRITES).toContainEqual({ name: `${id}-summon`, sprite, maxHeight: MAX_UNIT_HEIGHT });
+      expect(spriteWidth(sprite)).toBeLessThanOrEqual(SLOT_WIDTH);
+      return sprite.rows.join("\n");
+    });
+    expect(new Set(summonSprites).size).toBe(SUMMON_ARCHETYPES.length);
+  });
+
+  test("summon sprite lookup rejects unknown ids", () => {
+    expect(() => spriteForSummon("unknown-summon")).toThrow("No sprite for summon archetype: unknown-summon");
+    expect(() => spriteForSummon("toString")).toThrow("No sprite for summon archetype: toString");
   });
 
   test("sprite coverage matches roles exactly: normal/elite/boss/final-boss", () => {

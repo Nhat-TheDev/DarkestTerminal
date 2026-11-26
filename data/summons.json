@@ -3,6 +3,7 @@
     {
       "id": "shadow-clone",
       "name": "Shadow Clone",
+      "abbr": "CLN",
       "speed": 1,
       "attackRange": "melee",
       "actionWeights": {
@@ -17,6 +18,7 @@
     {
       "id": "goblin-thrower",
       "name": "Goblin Thrower",
+      "abbr": "GTH",
       "speed": 12,
       "attackRange": "ranged",
       "actionWeights": {
@@ -30,6 +32,7 @@
     {
       "id": "stone-golem",
       "name": "Stone Golem",
+      "abbr": "GLM",
       "speed": 6,
       "attackRange": "melee",
       "actionWeights": {
@@ -43,6 +46,7 @@
     {
       "id": "hellfire-imp",
       "name": "Hellfire Imp",
+      "abbr": "IMP",
       "speed": 16,
       "attackRange": "ranged",
       "actionWeights": {
@@ -56,6 +60,7 @@
     {
       "id": "healer-spirit",
       "name": "Healer Spirit",
+      "abbr": "SPR",
       "speed": 10,
       "attackRange": "ranged",
       "actionWeights": {
@@ -70,6 +75,7 @@
     {
       "id": "recall-totem",
       "name": "Recall Totem",
+      "abbr": "TTM",
       "speed": 1,
       "attackRange": "melee",
       "passive": true
@@ -86,7 +92,8 @@
         {
           "kind": "damage",
           "amount": 8,
-          "offenseMultiplierPercent": 110
+          "offenseMultiplierPercent": 110,
+          "animation": "rock"
         }
       ],
       "slot": 0,
@@ -102,7 +109,8 @@
         {
           "kind": "damage",
           "amount": 10,
-          "offenseMultiplierPercent": 90
+          "offenseMultiplierPercent": 90,
+          "animation": "shockwave"
         }
       ],
       "slot": 0,
@@ -119,14 +127,15 @@
         {
           "kind": "damage",
           "amount": 10,
-          "offenseMultiplierPercent": 130
+          "offenseMultiplierPercent": 130,
+          "animation": "fireball"
         },
         {
           "kind": "applyStatusEffect",
           "statusEffectId": "agony",
           "chance": 0.6,
-          "durationTurns": 3
-
+          "durationTurns": 3,
+          "animation": "burn"
         }
       ],
       "slot": 0,
@@ -143,7 +152,8 @@
         {
           "kind": "heal",
           "amount": 6,
-          "offenseMultiplierPercent": 100
+          "offenseMultiplierPercent": 100,
+          "animation": "heal"
         }
       ],
       "slot": 0,
@@ -160,7 +170,8 @@
         {
           "kind": "heal",
           "amount": 4,
-          "offenseMultiplierPercent": 80
+          "offenseMultiplierPercent": 80,
+          "animation": "heal"
         }
       ],
       "slot": 0,
@@ -197,11 +208,23 @@
         }
       },
       "onDeath": {
-        "offenseMultiplierPercent": [30, 40, 50],
-        "amount": [10, 15, 22],
+        "offenseMultiplierPercent": [
+          30,
+          40,
+          50
+        ],
+        "amount": [
+          10,
+          15,
+          22
+        ],
         "sourceStat": "attack",
         "statusEffectId": "bleeding",
-        "statusEffectChance": [0.3, 0.33, 0.37],
+        "statusEffectChance": [
+          0.3,
+          0.33,
+          0.37
+        ],
         "durationTurns": 3
       }
     },

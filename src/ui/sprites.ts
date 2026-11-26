@@ -13,6 +13,7 @@ export interface Sprite {
 
 interface SpritesFile {
   classes: Record<string, Sprite>;
+  summons: Record<string, Sprite>;
   monsters: Record<string, Sprite>;
   elites: Record<string, Sprite>;
   bosses: Record<string, Sprite>;
@@ -30,6 +31,7 @@ export const MAX_ELITE_HEIGHT = 11;
 export const MAX_BOSS_HEIGHT = 15;
 
 export const CLASS_SPRITES: Record<string, Sprite> = SPRITES.classes;
+export const SUMMON_SPRITES: Record<string, Sprite> = SPRITES.summons;
 export const MONSTER_SPRITES: Record<string, Sprite> = SPRITES.monsters;
 export const ELITE_SPRITES: Record<string, Sprite> = SPRITES.elites;
 export const BOSS_SPRITES: Record<string, Sprite> = SPRITES.bosses;
@@ -87,6 +89,11 @@ export function spriteForClass(classId: string): Sprite {
   const sprite = CLASS_SPRITES[classId];
   if (!sprite) throw new Error(`No sprite for class: ${classId}`);
   return sprite;
+}
+
+export function spriteForSummon(archetypeId: string): Sprite {
+  if (!Object.hasOwn(SUMMON_SPRITES, archetypeId)) throw new Error(`No sprite for summon archetype: ${archetypeId}`);
+  return SUMMON_SPRITES[archetypeId]!;
 }
 
 export function spriteForMonster(archetypeId: string, tier: MonsterTier): Sprite {
@@ -206,6 +213,7 @@ export function compositeSpriteRow(sprites: Sprite[], slotWidth: number, slotHei
 
 export const ALL_SPRITES: { name: string; sprite: Sprite; maxHeight: number }[] = [
   ...Object.entries(CLASS_SPRITES).map(([name, sprite]) => ({ name, sprite, maxHeight: MAX_UNIT_HEIGHT })),
+  ...Object.entries(SUMMON_SPRITES).map(([name, sprite]) => ({ name: `${name}-summon`, sprite, maxHeight: MAX_UNIT_HEIGHT })),
   ...Object.entries(MONSTER_SPRITES).map(([name, sprite]) => ({ name, sprite, maxHeight: MAX_UNIT_HEIGHT })),
   ...Object.entries(ELITE_SPRITES).map(([name, sprite]) => ({ name: `${name}-elite`, sprite, maxHeight: MAX_ELITE_HEIGHT })),
   ...Object.entries(BOSS_SPRITES).map(([name, sprite]) => ({ name: `${name}-boss`, sprite, maxHeight: MAX_BOSS_HEIGHT })),

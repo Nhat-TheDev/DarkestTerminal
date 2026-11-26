@@ -22,7 +22,7 @@
 
   { "id": "spiked-cloak", "name": "Spiked Cloak", "description": "A new spike was added for every close call its first owner walked away from. It's short exactly 1 spike of what would have been a matching set on both shoulders.", "rarity": "unique", "effects": [{ "kind": "reflectDamage", "percent": 10 }] },
   { "id": "serpent-ring", "name": "Serpent Ring", "description": "Carved as a warning to any thief who might try to lift it. The fangs are worn bright on the inside of the band, where the wearer's finger sat.", "rarity": "unique", "effects": [{ "kind": "poisonOnHit", "chance": 12, "statusEffectId": "poisoned", "durationTurns": 1 }] },
-  { "id": "thunder-totem", "name": "Thunder Totem", "description": "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "amount": 6, "offenseMultiplierPercent": 25, "isMagic": true }] },
+  { "id": "thunder-totem", "name": "Thunder Totem", "description": "Carved during a storm that lasted longer than anyone down here remembers a storm lasting. It started crackling, by every account, before the last line was even cut.", "rarity": "unique", "effects": [{ "kind": "autoDamage", "animation": "storm", "amount": 6, "offenseMultiplierPercent": 25, "isMagic": true }] },
   {
     "id": "armor-of-wholeness",
     "name": "Armor of Wholeness",
@@ -44,7 +44,7 @@
     "description": "The tyrant who wore this made sure people would learn the name. It was engraved inside the band, and the band has been filed smooth.",
     "rarity": "epic",
     "effects": [
-      { "kind": "autoDamage", "amount": 12, "offenseMultiplierPercent": 30 },
+      { "kind": "autoDamage", "animation": "impact", "amount": 12, "offenseMultiplierPercent": 30 },
       { "kind": "poisonOnHit", "chance": 8, "statusEffectId": "poisoned", "durationTurns": 1 }
     ]
   },

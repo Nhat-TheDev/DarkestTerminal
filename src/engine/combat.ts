@@ -37,7 +37,8 @@ import { applyRoundFear, applyHitFear, applyVictoryFearRelief, isPartyDying, app
 import { combatHooks } from "./combatHooks";
 import { advanceBar } from "./monsterBars";
 import { runMonsterTurn, finishMonsterTurn, fadeDamageMemory, fillTelegraphMeter } from "./monsterAI";
-import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, runInSession, runTicksInSession, unitId } from "./logSession";
+import { noteAffected, noteBasicAttack, noteDotEffect, noteFearChange, noteLifesteal, noteLostTurn, noteMiss, noteResisted, noteSkillTarget, noteSummonActor, runInSession, runTicksInSession, unitId } from "./logSession";
+import { COMBAT_FX, getBasicAttackVisual, getDamageAttackVisual, getReactionVisual } from "../data/combatFx";
 import {
   type Actor,
   isCharacter,
@@ -61,6 +62,7 @@ import {
   removeStatusStacks,
   noteDamageTaken,
   damageTakenMultiplier,
+  damageReaction,
 } from "./resolver";
 
 export interface EngineContext {
@@ -129,7 +131,7 @@ export function withBasicAttackOverride(basic: SkillDefinition, actor: Character
     ...basic,
     name: override.name,
     isMagic: override.isMagic ?? basic.isMagic,
-    effects: [{ kind: "damage", amount: override.amount, offenseMultiplierPercent: override.offenseMultiplierPercent, damageType: override.damageType }],
+    effects: [{ kind: "damage", animation: getDamageAttackVisual(override.damageType ?? (override.isMagic ? "magic" : "physical")), amount: override.amount, offenseMultiplierPercent: override.offenseMultiplierPercent, damageType: override.damageType }],
   };
 }
 
@@ -493,7 +495,7 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
           if (effect.offenseMultiplierPercent !== undefined) {
             const base = characterBaseStats(character);
             resolveSkillEffect(
-              { kind: "damage", amount: effect.amount, offenseMultiplierPercent: effect.offenseMultiplierPercent },
+              { kind: "damage", animation: getReactionVisual("autoDamage", effect.animation), amount: effect.amount, offenseMultiplierPercent: effect.offenseMultiplierPercent },
               character,
               target,
               {
@@ -510,9 +512,10 @@ function runArtifactAutoDamage(combat: CombatState, ctx: EngineContext): void {
           const amount = Math.round(effect.amount * damageTakenMultiplier(target));
           const hpBefore = target.hp;
           target.hp = Math.max(0, target.hp - amount);
+          const hpLost = hpBefore - target.hp;
           noteDamageTaken(target, character.id, hpBefore - target.hp);
           if (target.hp <= 0) advanceBar(target);
-          combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount, target: target.name }), kind: "attack" });
+          combat.log.push({ text: t("combat.artifactAutoDamage", { character: character.name, amount, target: target.name }), kind: "attack", ...damageReaction(target, hpLost, getReactionVisual("autoDamage", effect.animation), character.id) });
         }
       }
     },
@@ -549,7 +552,7 @@ function tryTriggerOverwatch(monsterRef: CombatantRef, combat: CombatState, ctx:
       const interrupts = def.interruptChance === undefined || ctx.rng.chance(def.interruptChance);
       const hitText = interrupts ? "combat.overwatchHit" : "combat.overwatchHitNoInterrupt";
       combat.log.push({ text: t(hitText, { actor: watcher.name, target: target.name }), kind: "attack" });
-      resolveSkillEffect({ kind: "damage", amount: def.overwatchShot?.amount ?? 0, offenseMultiplierPercent: def.overwatchShot?.offenseMultiplierPercent }, watcher, target, {
+      resolveSkillEffect({ kind: "damage", animation: getBasicAttackVisual("classes", watcher.classId), amount: def.overwatchShot?.amount ?? 0, offenseMultiplierPercent: def.overwatchShot?.offenseMultiplierPercent }, watcher, target, {
         log: combat.log,
         rollDamage: () => ctx.rng.next(),
       });
@@ -616,7 +619,7 @@ export function resolveRound(combat: CombatState, roundCtx: EngineContext, floor
         if (isActorAlive(actor)) tickSpecialEffects(actor, eligibleSpecial, { log: combat.log });
         afterDeaths(combat, ctx);
       },
-      { snapshot, bySummon: ref.kind === "summon" }
+      { snapshot, bySummon: ref.kind === "summon", summonActorId: ref.kind === "summon" ? ref.id : undefined }
     );
 
     if (isCombatOver(combat, ctx)) break;
@@ -795,6 +798,7 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
     kind: announceKind,
   });
   if (queued.source.kind === "item" && getItem(queued.source.itemId).effects.length === 0) combat.log.push({ text: t("game.itemNoEffect"), kind: "item" });
+  if (commanded) noteSummonActor(combat, commanded.id);
   const spawnedSummon = applySkillEffects(skill, actor, targets, combat, ctx, combat.log);
   if (queued.source.kind === "skill" && skill.grantsDice && actor.isAlive) addDice(actor, skill.grantsDice, combat.log);
   // A summon spawned mid-round isn't in this round's turnQueue, so it acts once right after the cast,
@@ -807,7 +811,7 @@ function runCharacterTurn(ref: CombatantRef, combat: CombatState, ctx: EngineCon
         runSummonTurn({ kind: "summon", id: spawnedSummon.id }, combat, ctx);
         pruneDeadSummons(combat, ctx, combat.log);
       },
-      { snapshot: sessionSnapshot(combat, ctx), bySummon: true }
+      { snapshot: sessionSnapshot(combat, ctx), bySummon: true, summonActorId: spawnedSummon.id }
     );
   }
   if (commanded) {
@@ -863,7 +867,7 @@ function triggerCounterAttack(bearer: Actor, attacker: Monster, combat: CombatSt
       for (const enemy of enemies) {
         if (!isActorAlive(enemy)) continue;
         noteBasicAttack(combat, bearer, enemy);
-        resolveSkillEffect({ kind: "damage", amount: counter.amount, offenseMultiplierPercent: counter.offenseMultiplierPercent }, bearer, enemy, {
+        resolveSkillEffect({ kind: "damage", animation: getReactionVisual("counterAttack", counter.animation), amount: counter.amount, offenseMultiplierPercent: counter.offenseMultiplierPercent }, bearer, enemy, {
           log: combat.log,
           skillName: statusDisplayName(def),
           rollDamage: () => ctx.rng.next(),
@@ -938,6 +942,7 @@ function applyOnHitAoeDamage(source: Character, combat: CombatState, ctx: Engine
       resolveSkillEffect(
         {
           kind: "damage",
+          animation: getReactionVisual("onHitAoeDamage", def.onHitAoeDamage.animation),
           amount: def.onHitAoeDamage.amount,
           ignoreDefensePercent: def.onHitAoeDamage.ignoreDefensePercent,
           offenseMultiplierPercent: def.onHitAoeDamage.offenseMultiplierPercent,
@@ -1023,7 +1028,7 @@ function syncPassiveThresholdStatus(source: Actor, log: LogEntry[]): boolean {
   if (belowThreshold && !active && rankDef?.thresholdStatusEffectId) {
     resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: rankDef.thresholdStatusEffectId, durationTurns: 99 }, source, source, { log });
   } else if (!belowThreshold && active) {
-    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: active.statusEffectId }, source, source, { log });
+    resolveSkillEffect({ kind: "removeStatusEffect", statusEffectId: active.statusEffectId }, source, source, { log, removalVisuals: false });
   }
   return belowThreshold;
 }
@@ -1040,11 +1045,19 @@ function passiveSecondCloneProc(source: Character, combat: CombatState, ctx: Eng
   // At most 1 passive clone at a time, beside the 1 the skill casts.
   if (existingClones.some((s) => s.fromPassive)) return;
   if (!ctx.rng.chance(chance)) return;
-  spawnAdditionalSummon({ kind: "summon", summonCastId: cast.id }, source, combat, ctx, log, {
+  spawnAdditionalSummon({ kind: "summon", animation: getReactionVisual("passiveSummon", passive.secondCloneAnimation), summonCastId: cast.id }, source, combat, ctx, log, {
     name: passive.secondCloneName,
     fromPassive: true,
     logKey: "combat.passiveCloneSpawned",
   });
+}
+
+function withRecoveryVisual(source: Actor, log: LogEntry[], apply: () => void): void {
+  const before = source.hp, start = log.length;
+  apply();
+  if (source.hp <= before) return;
+  const entry = log.slice(start).find((line) => line.kind === "heal" && !line.effect);
+  if (entry) entry.effect = { targetId: source.id, sourceId: source.id, visual: COMBAT_FX.outcomes.heal };
 }
 
 /**
@@ -1075,6 +1088,7 @@ function throwDice(effect: SkillEffect, skill: SkillDefinition, source: Characte
     const magic = effect.alternatesWithMagic === true && die % 2 === 1;
     const hit: SkillEffect = {
       kind: "damage",
+      animation: effect.animation,
       amount: base.amount,
       offenseMultiplierPercent: Math.round(((base.offenseMultiplierPercent ?? 100) * face) / 100),
       damageType: magic ? "magic" : base.damageType,
@@ -1084,8 +1098,8 @@ function throwDice(effect: SkillEffect, skill: SkillDefinition, source: Characte
     const dealt = resolveOneDamageEffect(hit, { ...skill, isMagic: magic || (!effect.alternatesWithMagic && skill.isMagic) }, source, target, ctx, log, { guaranteedCrit: false, damageBonusPercent: 0 });
     landed = true;
     if (dealt > 0) {
-      for (const hook of combatHooks) hook.onDamageDealt?.(source, target, dealt, ctx, log);
-      if (wasAlive && !isActorAlive(target)) for (const hook of combatHooks) hook.onKill?.(source, target, log);
+      for (const hook of combatHooks) withRecoveryVisual(source, log, () => hook.onDamageDealt?.(source, target, dealt, ctx, log));
+      if (wasAlive && !isActorAlive(target)) for (const hook of combatHooks) withRecoveryVisual(source, log, () => hook.onKill?.(source, target, log));
     }
   }
   return landed;
@@ -1259,6 +1273,9 @@ function resolveOneDamageEffect(
       faith: ctx.faith,
       isMagic: skill.isMagic,
       skillName: skill.name,
+      attackVisual: effect.animation !== undefined ? effect.animation : skill.fromItem ? COMBAT_FX.items[skill.id] ?? null : castByOwnClassSkill && skill.slot === 0 && isCharacter(source)
+        ? getBasicAttackVisual("classes", source.classId)
+        : getDamageAttackVisual(effect.damageType ?? (skill.isMagic ? "magic" : "physical")),
       isCrit,
       executeBonus: skill.executeBonus,
       bonusDamagePercent: stealthBreak.damageBonusPercent || undefined,
@@ -1383,7 +1400,7 @@ function addSummon(effect: SkillEffect, owner: Character, combat: CombatState, c
   };
   ctx.summons.push(summon);
   combat.combatants.push({ ref: { kind: "summon", id: summon.id }, speed: summon.speed });
-  log.push({ text: t(opts.logKey ?? "combat.summonSpawned", { owner: owner.name, summon: summon.name }), kind: "info" });
+  log.push({ text: t(opts.logKey ?? "combat.summonSpawned", { owner: owner.name, summon: summon.name }), kind: "info", ...(effect.animation ? { effect: { targetId: owner.id, sourceId: owner.id, visual: effect.animation } } : {}) });
   return summon;
 }
 
@@ -1426,7 +1443,7 @@ function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: Engin
   if (!burst) return;
   const targets = livingTargetableMonsterRefs(combat, ctx).map((r) => getActorByRef(r, ctx) as Monster);
   if (targets.length === 0) return;
-  // The owner's action, not part of whichever turn killed the summon.
+  // The burst gets its own session.
   runInSession(
     combat,
     summon.ownerId,
@@ -1445,7 +1462,7 @@ function triggerSummonDeathBurst(summon: Summon, combat: CombatState, ctx: Engin
         }
       }
     },
-    { snapshot: sessionSnapshot(combat, ctx), bySummon: true }
+    { snapshot: sessionSnapshot(combat, ctx), bySummon: true, summonActorId: summon.id }
   );
 }
 
@@ -1496,7 +1513,7 @@ function spawnMonsterSummons(effect: SkillEffect, summoner: Monster, combat: Com
     add.expReward = 0;
     ctx.monsters.push(add);
     combat.combatants.push({ ref: { kind: "monster", id: add.id }, speed: add.speed });
-    log.push({ text: t("combat.monsterSummoned", { actor: summoner.name, summon: add.name }), kind: "info" });
+    log.push({ text: t("combat.monsterSummoned", { actor: summoner.name, summon: add.name }), kind: "info", ...(i === 0 && effect.animation ? { effect: { targetId: summoner.id, sourceId: summoner.id, visual: effect.animation } } : {}) });
   }
 }
 
@@ -1861,7 +1878,7 @@ function castOnTarget(cast: Cast, target: Actor): void {
       }
     }
     if (finalEffect.kind === "damage" && appliedAmount > 0) {
-      for (const hook of combatHooks) hook.onDamageDealt?.(source, target, appliedAmount, ctx, log);
+      for (const hook of combatHooks) withRecoveryVisual(source, log, () => hook.onDamageDealt?.(source, target, appliedAmount, ctx, log));
       applyMonsterHitFear(source, target, combat, ctx);
       if (isMonster(source)) onStruckByMonster(target, source, combat, ctx);
       if (isCharacter(source) && !skill.fromItem && !cast.attackerBuffRolledOn.has(target)) {
@@ -1874,7 +1891,7 @@ function castOnTarget(cast: Cast, target: Actor): void {
         shareLifesteal(source, Math.round((appliedAmount * finalEffect.lifestealPercent) / 100), finalEffect.lifestealPartySharePercent, combat, ctx, log);
       }
       if (wasAliveBefore && !isActorAlive(target)) {
-        for (const hook of combatHooks) hook.onKill?.(source, target, log);
+        for (const hook of combatHooks) withRecoveryVisual(source, log, () => hook.onKill?.(source, target, log));
       }
     }
   }
@@ -1912,7 +1929,7 @@ function shareLifesteal(caster: Character, drawn: number, percent: number, comba
     const before = ally.hp;
     ally.hp = Math.min(ally.maxHp, ally.hp + amount);
     if (ally.hp === before) continue;
-    log.push({ text: t("combat.lifestealShared", { target: ally.name, amount: ally.hp - before, caster: caster.name }), kind: "heal" });
+    log.push({ text: t("combat.lifestealShared", { target: ally.name, amount: ally.hp - before, caster: caster.name }), kind: "heal", effect: { targetId: ally.id, sourceId: caster.id, visual: COMBAT_FX.outcomes.heal } });
     noteAffected(combat, ally);
   }
 }

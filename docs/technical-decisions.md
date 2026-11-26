@@ -360,3 +360,213 @@ The monster AI is filter → score → pick → target, with every rule declared
 - **Log lines are derived, not assigned per role**: `combat.monsterSkillAoe` for an `allEnemies` skill, `combat.useSkillPlain` for a `self`/`allAllies` skill, `combat.monsterSkillOnTargets` (the targets joined with `combat.targetListJoiner`) otherwise; a telegraph with `chargeEffects` writes `combat.telegraphChargeAoe` when its icon before the last fills, and every telegraph writes `combat.telegraphRelease`, a phase `combat.monsterPhase`, the shell `combat.shellBreaks`/`combat.shellReforms`.
 - **Why a meter, not a weighted telegraph.** A telegraph that was rolled like any other skill gave one turn of warning and locked its target on the charge turn, so a taunt used after the warning changed nothing. The meter gives several turns of visible warning and a known release turn, picks the target at the release, and lets the party answer with a taunt, a stun, silence or Interpose. The old `executeSkillId`, a finishing blow on one global cooldown, is gone for the same reason: each archetype sets its own `meterLength`, and a telegraph can be an area hit or multi-target.
 - **Why a stun never rewinds the meter.** The meter counts the boss's own turns, lost ones included, so a stun delays the release by one turn instead of resetting the warning; that is the cost the party pays for the control and the benefit it gets.
+
+## 6. Secondary combat animation contract
+
+Secondary damage, reactions and automatic summons show their own visual when they take
+effect. A poison tick, reflected hit or counterattack is a separate visible result, rather
+than only an HP change in the log. Runtime playback and Combat Effects use the same
+presets, positioning and cue timing. The runtime and editor data layout is described in
+[the developer guide](./developer-guide.md).
+
+### Scope
+
+Secondary animation coverage includes:
+
+- Damage over time: Poisoned I–III, Burning, Acid Burn, Bleeding, Agony and Hexed.
+- Deep Wound I–II damage triggered by a landed hit.
+- Damage reflection from Riposte, the Paladin passive, artifacts and abilities using the shared reflection hook.
+- Engaged I–III counterattacks.
+- Storm-Empowered I–III additional area damage.
+- Venomcraft bonus damage.
+- Automatic damage from Thunder Totem, Crown of Destruction, Thunderous Aura and Lodestone.
+- The additional Shadow Clone II created by Afterimage.
+- The summon components of Call the Warband, Gets Up, Bat Swarm and Unhurried.
+
+Preserve combat amounts, damage types, targeting, hit chances, cooldowns, turn order, random draws and summon limits. Animations present already-resolved results. They do not turn secondary damage into a new attack, trigger additional combat hooks, or change how reflection and damage-over-time mechanics resolve.
+
+Food and satiety changes, room events, audio, movement of character sprites and redesigns of existing primary attacks are outside scope. Command shows the commanded summon's skill animation. Healer Spirit and Recall Totem have no unused basic-attack animations.
+
+### Presentation rules
+
+#### Position and direction
+
+Use the existing bottom-based coordinate system for every new visual:
+
+- `Position Y = 0` places the last row of the animation frame on the shared bottom sprite row.
+- Negative Y raises the frame; positive Y lowers it.
+- Increasing frame height grows upward while keeping its bottom position.
+- Transparent rows at the bottom still count toward frame height.
+- Position X keeps its current attack-relative direction. Target-only outcome overlays retain the renderer's existing orientation.
+
+Use actual combatant IDs and the silhouette displayed for the event. An owner and a summon occupying the same slot are distinct participants. Use the participating summon when it deals or receives an effect; use the owner/caster when the effect is a summon appearance on that caster.
+
+Keep the existing battlefield clipping boundary. Author every shipped reaction so it is visible on short normal monsters, characters, summons, elites and bosses. Do not compensate for a taller target by moving the effect back to the target's vertical centre.
+
+#### Timing and event identity
+
+Every successful secondary result produces one visual cue per affected recipient. The cue belongs to the log entry that records that result and plays within its existing combat session.
+
+- A damage-over-time tick plays when that status actually removes HP, not merely because a new round starts.
+- A wound, reflect or follow-up plays after the triggering hit's impact, in the order in which its result is logged.
+- A counterattack plays in the counterattack's own session after the triggering hit.
+- Additional cues on the same recipient retain their order. Different recipients may animate in parallel under the existing reveal scheduler.
+- Reaction overlays have impact timing; they do not introduce a second approach or wind-up animation.
+- Skip, resize, session completion and cached battlefield redraws must not leave stale pixels or replay completed effects.
+
+Do not add extra random calls for visuals. Replaying or skipping animations must not resolve a mechanic again.
+
+#### Successful changes and suppression
+
+Damage visuals require actual HP loss. A fully immune hit, skipped conditional effect, failed proc, nonexistent target or wholly unapplied overkill produces no new reaction overlay. Existing miss and immunity markers remain unchanged.
+
+Summon visuals require a successful spawn. A failed proc, reached cap or invalid spawn produces no summon cue. A lethal damage result must display its visual against the living silhouette before the death/tombstone presentation takes over. Preserve existing revival and monster health-bar transitions; an actual HP loss followed by revival still qualifies as a damage event.
+
+### Coverage and visual selection
+
+| Mechanic | Trigger and recipient | Shipped visual | Required behavior |
+| --- | --- | --- | --- |
+| Poisoned I–III | Each damaging tick; status bearer | `poison` | One target overlay per status tick. Stack scaling changes damage, not the number of cues. |
+| Burning | Each damaging tick; status bearer | `burn` | A brief flame pulse at the bearer. |
+| Acid Burn | Each damaging tick; status bearer | `poison` | Reuse the poison reaction. |
+| Bleeding | Each damaging tick; status bearer | `bleed` | A short bleeding pulse. |
+| Agony | Each damaging tick; status bearer | `burn` | Animate the damage component; do not emit a second visual for an unchanged stat modifier. |
+| Hexed | Each damaging tick; status bearer | `hexed` | A violet curse sigil contracts and breaks apart on the bearer; no projectile from the bearer to itself. |
+| Deep Wound I–II | Each additional wound damage result; wounded actor | `deep-wound` | A dark crimson slit tears open and releases falling droplets, separate from the primary hit and any status-application animation. |
+| Status/passive reflection | Damage returned; original attacker | `reflect` | The bearer is the source and the original attacker is the recipient. Keep the current combined status/passive damage result as one result and one cue. |
+| Artifact/ability reflection | Damage returned by its hook; original attacker | `reflect` | Do not merge a separate hook result with the status/passive reflection result. |
+| Engaged I–III | Each landed counter hit; counter target | `counter` | Preserve the existing damage flash and show the counter visual once per affected enemy. |
+| Storm-Empowered I–III | Each additional area-damage result; affected enemy | `storm` | A target lightning burst on each recipient; retain the original attack visual separately. |
+| Venomcraft | Successful bonus-damage result; poisoned target | `poison` | Show the additional poison damage separately from the primary attack. |
+| Thunder Totem / Thunderous Aura | Automatic damage result; selected enemy | `storm` | The equipped bearer is the source. Visual styling does not change the mechanic's existing damage type. |
+| Crown of Destruction / Lodestone | Automatic damage result; selected enemy | `impact` | Animate every applied automatic hit; any successful poison application remains a separate status cue. |
+| Afterimage | Successful extra clone spawn; Ninja owner | `smoke` | Animate only the newly spawned passive clone event. The original skill's summon cue remains separate. |
+| Call the Warband / Gets Up | Successful summon component; summoner | `summon` | Keep the summon component's cue separate from the skill's other effects. |
+| Bat Swarm | Successful summon component; summoner | `smoke` | One cue for the component invocation even when several adds spawn. |
+| Unhurried | Successful summon component; summoner | `summon` | One cue for the component invocation even when several adds spawn. |
+
+For a summon component, emit one cue when at least one requested add was created. Do not emit one duplicate caster overlay per add. Independently executed summon components remain independent events.
+
+#### Reaction presets
+
+Reuse existing presets wherever the table selects one. Do not change an existing preset's phase, placement, palette or geometry to make it fit a new reaction.
+
+- `reflect`: a compact muted metal/white spark contracts at the recipient, making returned damage visible without a new beam across the battlefield.
+- `counter`: a separate slash-shaped impact preset, visible on incoming and outgoing counterattacks. The primary `slash` preset retains approach timing.
+- `hexed`: violet fragments gather into an angular curse sigil above the baseline, contract inward, then break apart. Its geometry and palette are distinct from `debuff`; status application remains independently configurable.
+- `deep-wound`: a narrow dark crimson slit opens vertically, widens briefly and releases droplets toward the baseline as it closes. Its geometry is distinct from `bleed`. Both ranks share the preset; rank and damage do not multiply cue count.
+
+These presets use target placement and impact timing. Their authored frame dimensions,
+frame counts, offsets and reveal durations are defined by `frames`, `offsetX`, `offsetY`
+and `ticks` in their `data/combat-fx.json` records, and remain editable in Combat Effects.
+Do not copy those tuning values into mechanics or another catalog.
+
+Reusing a preset does not change its duration.
+
+### Data contract
+
+#### Reaction defaults
+
+The `reactions` mapping table in `data/combat-fx.json` defines these defaults:
+
+| Mechanic family | Default preset |
+| --- | --- |
+| `damageOverTime` | `impact` |
+| `woundOnHit` | `deep-wound` |
+| `reflectDamage` | `reflect` |
+| `counterAttack` | `counter` |
+| `onHitAoeDamage` | `impact` |
+| `bonusDamage` | `impact` |
+| `autoDamage` | `impact` |
+| `passiveSummon` | `summon` |
+
+Keys describe engine mechanic families, not content IDs. Each key is required and accepts a preset ID or `null`. Every referenced preset must use target placement and impact timing. `null` disables that family's default visual.
+
+The single reflection mapping covers status, passive, artifact and shared ability reflection. Reflection has no per-source override, so combined reflection results have an unambiguous selection rule.
+
+#### Content overrides
+
+Use `animation?: string | null` on nested effect records wherever the mechanic already has its own record:
+
+- `status-effects.json`: damage entries in `perTurnEffects[]`, plus `woundOnHit`, `counterAttack`, and `onHitAoeDamage`. Healing ticks keep their existing outcome selection.
+- `artifacts.json` and `abilities.json`: effects with `kind: "autoDamage"`.
+- Existing summon skill effects in `monster-skills.json` retain their existing `animation` field.
+
+Scalar passive mechanics use `bonusDamageAnimation` and `secondCloneAnimation` on the class's `passiveSkill` record. Apply these to the corresponding generated damage/spawn event; do not hardcode class IDs in engine code.
+
+Selection is explicit and consistent:
+
+1. An explicit content override selects that preset. An explicit `null` stops selection and emits no animation.
+2. Without an override, a damage-over-time tick uses the existing status mapping if one is present, including the current application mapping for that status.
+3. Otherwise, use the matching `reactions` default. A null default emits no animation.
+
+This fallback is specific to secondary-event paths. It does not alter existing primary skill, item, basic-attack or status-application selection rules.
+
+Damage-tick overrides follow the coverage table, including `hexed` on Hexed's damage tick. Configure both Deep Wound ranks' nested `woundOnHit.animation` as `deep-wound`, Storm-Empowered's nested area damage as `storm`, Venomcraft's bonus as `poison`, Afterimage's extra clone as `smoke`, and the automatic damage sources as listed above. The named monster summon components use their coverage-table presets; other intentionally suppressed effects remain suppressed.
+
+#### Validation and compatibility
+
+Validate reaction keys, preset references and override types at load and save time. A reaction context must reject projectile, beam and approach presets, even where a general damage effect would otherwise accept them. Status application and damage ticks remain separately configurable.
+
+Deleting or renaming a preset must account for the reaction defaults and every content override. A save must reject dangling references with the offending catalog and field identified. Preserve unrelated mappings and edits when merging a stale editor draft; reaction fields use the same conflict protections.
+
+Existing saves and logs without secondary visual cues must continue to load. Loading a save does not retroactively add cues or replay historical reactions. No save-format bump is required solely for optional presentation metadata; a serialized contract change discovered during implementation must be handled through the existing migration workflow.
+
+### Combat log and renderer integration
+
+Keep cue metadata separate from mechanical resolution:
+
+- For direct secondary hits that already have `hit` metadata, such as counterattack and generated bonus damage, attach the actual `sourceId` and selected impact `visual` to that hit. Preserve existing flash behavior. Do not also attach the same animation as a separate `effect` cue.
+- For damage results that currently have no hit metadata, such as status ticks, wounds and reflection, attach an `effect` overlay cue to the existing result log. Do not manufacture a new direct hit to obtain a visual. These paths gain an overlay without changing hit counters, flash rules, proc eligibility or damage classification.
+- For the passive clone and monster summon components, attach an `effect` cue to one successful spawn log for that component invocation. Do not add extra narrative log lines solely to carry animation.
+
+Both scaled automatic damage and the flat automatic-damage branch must be covered. Source/recipient attribution must remain correct when both are player-side, when a summoned unit is involved, and when the source dies before its queued visual finishes.
+
+The UI reads already-resolved results and snapshots. It never mutates HP, reapplies a status or re-runs a proc to build an animation preview.
+
+### Editor requirements
+
+The **Reactive effects** mapping group contains every `reactions` key, with readable labels, a preset selector, **No effect**, and **View**. The selector lists only target/impact presets.
+
+The **Reaction overrides** group exposes the applicable status, passive and equipment records. Labels must distinguish **Status application** from **Damage tick**, and explain which mechanic a nested override controls. Show inherited mappings as **Game default**, distinct from **No effect**.
+
+Preset editing, frame resizing, Position, copying/parsing, saving and playback continue to use the same renderer as the game. Reaction previews show an impact overlay without an invented projectile approach or automatic damage flash. A counter-hit preview may include its existing damage flash.
+
+Editing a tick override must not silently change status application. Editing a reaction default must not overwrite explicit overrides. Reaction references participate in preset usage checks, rename/delete validation, conflict detection and reload/save protection.
+
+Character and normal-monster preview selectors are used for authoring reactions. Elite, boss and summon silhouettes must be covered by runtime integration tests; expanding editor participant selectors is outside scope.
+
+### Acceptance criteria
+
+| ID | Scenario | Expected result |
+| --- | --- | --- |
+| AC01 | A bearer loses HP to each listed damage-over-time status | Its configured tick overlay appears once on that bearer. Applying the status remains a separate event. |
+| AC02 | Poison stacks increase the tick amount | One cue represents the resolved tick, regardless of stack count. |
+| AC03 | A primary hit triggers either Deep Wound rank | The primary hit appears first, followed by exactly one `deep-wound` overlay for the additional HP loss. |
+| AC04 | Riposte, the Paladin passive or artifact reflection returns damage | The overlay appears on the original attacker. Combined status/passive reflection remains one cue; a separate artifact result remains separate. |
+| AC05 | Engaged counters one enemy or all enemies | Each landed counter shows `counter` and its existing flash on the actual recipient. |
+| AC06 | Storm-Empowered or Venomcraft adds damage | Every applied additional result gets the specified overlay/impact visual without replacing the original attack. |
+| AC07 | Each named automatic damage source activates | Its actual recipient receives the configured visual. Both flat and scaled engine branches are exercised. |
+| AC08 | Afterimage successfully creates Shadow Clone II | One smoke cue appears on the owner; a failed proc or reached cap emits none. |
+| AC09 | Each named monster summon component creates one or several adds | One caster cue appears per component invocation. Zero successful spawns produce none. Other skill effects keep their visuals. |
+| AC10 | A conditional effect is skipped, a target is immune, or damage removes no HP | No additional damage overlay is emitted; existing miss/immunity feedback remains. |
+| AC11 | A reaction kills its recipient, revives a guarded actor or advances a monster bar | The reaction is visible with the correct participant and snapshot; existing death/revival/bar behavior is preserved. |
+| AC12 | Owner and summon share a slot | The correct participant supplies the silhouette and receives the cue; completed visuals do not transfer to the next occupant. |
+| AC13 | Short/tall participants, reverse attacks, resized frames and signed Y offsets are used | Frame bottoms follow the shared baseline; shipped effects remain visible within the battlefield. |
+| AC14 | Two secondary events affect the same target, or one event affects several targets | Same-target results remain readable in order; multi-target results retain their recipient IDs and complete without stale pixels. |
+| AC15 | A mapping/override is null, inherited, renamed, deleted or concurrently edited | Selection and validation follow the data contract; saves preserve unrelated edits and reject conflicts or dangling references. |
+| AC16 | The player skips, resizes, saves or loads during/after reveal | No gameplay result repeats, no historical event is retroactively animated, and no overlay remains after its lifetime. |
+| AC17 | Combat is run with the same seed before and after animation integration | Gameplay outcomes and random-number consumption match; only presentation metadata and reveal duration may differ. |
+| AC18 | Hexed ticks and either Deep Wound rank trigger in runtime and editor playback | Hexed uses the violet `hexed` sigil and Deep Wound uses the crimson `deep-wound` slit/droplets. Both have distinct authored geometry, target/impact timing and their data-defined bottom offsets; neither substitutes `debuff` or `bleed`. |
+
+### Verification
+
+Engine tests cover cue presence and absence, source and recipient IDs, and unchanged
+mechanical results. Reveal and renderer tests cover ordering, impact-only timing,
+lifecycle cleanup, shared slots and baseline placement. Editor tests cover reaction
+defaults, overrides, reference validation and concurrent saves.
+
+AC17 requires a seeded before/after gameplay comparison or equivalent mechanical and
+random-draw assertions; an animation-presence assertion alone is insufficient. Runtime
+and editor playback should also be inspected for readability. The verification commands
+are `bun test`, `bun run typecheck`, `bun run docs:sync --check` and `bun run build`.

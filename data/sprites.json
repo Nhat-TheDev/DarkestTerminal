@@ -309,6 +309,141 @@
       }
     }
   },
+  "summons": {
+    "shadow-clone": {
+      "rows": [
+        "....LLLL....",
+        "...LHHHHL...",
+        "...HHVEVH...",
+        "..LHHHHHHL..",
+        "GLHHCHHCHHL.",
+        "GGLHHHCCHCC.",
+        ".GGLLHCCHCC.",
+        ".CGGLHHCHHC.",
+        ".CHLCHCHCHC.",
+        ".HHHCHHHCHH."
+      ],
+      "palette": {
+        "L": "#65527f",
+        "H": "#30283d",
+        "V": "#c299ed",
+        "E": "#171324",
+        "C": "#463656",
+        "G": "#9d8bb6"
+      }
+    },
+    "goblin-thrower": {
+      "rows": [
+        ".....SSS..RR.",
+        "..S.SHHH.RLRR",
+        "..SHHEEHL.RR.",
+        "...BHHHHHSB..",
+        "....CTTCSBB..",
+        "...SCTTC.....",
+        "..SHCTTTC....",
+        "....B..B.....",
+        "...BB..BB...."
+      ],
+      "palette": {
+        "S": "#536637",
+        "H": "#82984e",
+        "E": "#e0bb64",
+        "L": "#b6a18a",
+        "R": "#686361",
+        "B": "#473528",
+        "C": "#6f503e",
+        "T": "#a27b54"
+      }
+    },
+    "stone-golem": {
+      "rows": [
+        "....LLLLL....",
+        "...LSGGGGL...",
+        "...SSGAGAG...",
+        ".LLGSSGGGSLL.",
+        "LGLGSGLKGGLGL",
+        "LSSGSGLKGSSGL",
+        "GSSLSGSGGLSGG",
+        ".G..SLGGL..G.",
+        "...SSS.GGL...",
+        "..LSSS.SGGL.."
+      ],
+      "palette": {
+        "L": "#9e9c8d",
+        "G": "#737771",
+        "S": "#4e534f",
+        "A": "#e5a85b",
+        "K": "#373a38"
+      }
+    },
+    "hellfire-imp": {
+      "rows": [
+        "...H....H...",
+        "...HFOOFH...",
+        ".W..OOEO..W.",
+        "WWR.RRRO.RWW",
+        "WRR.ROOR.RRW",
+        "W.RRROORRR.W",
+        "...RRORR....",
+        "F..ORRRR....",
+        "O.ORR.RR....",
+        ".O.R..R....."
+      ],
+      "palette": {
+        "H": "#e9c08b",
+        "O": "#b34b2c",
+        "F": "#ff9b4f",
+        "W": "#632e36",
+        "R": "#89363a",
+        "E": "#ffe09a"
+      }
+    },
+    "healer-spirit": {
+      "rows": [
+        ".M..MMM....",
+        "LCL.MWW...L",
+        "MWCMBBB...A",
+        "LCWCBBB..A.",
+        ".MCWBWBWWW.",
+        "..WCLWL.A..",
+        ".MCML.L.A..",
+        ".CMLLLLA...",
+        "...D.D.A...",
+        "..........."
+      ],
+      "palette": {
+        "M": "#43786e",
+        "L": "#76b4a5",
+        "W": "#cce5cc",
+        "C": "#e2eed3",
+        "A": "#324e2d",
+        "B": "#8dc8c1",
+        "D": "#659a99"
+      }
+    },
+    "recall-totem": {
+      "rows": [
+        "...TTTTT..",
+        ".BBTGSGTBB",
+        "..BTSGGTB.",
+        "...TGGGT..",
+        "...TTTTT..",
+        "...LWWTL..",
+        "...TWWTL..",
+        "...LTTTL..",
+        "..LLTWTLL.",
+        ".BBBBBBBBB"
+      ],
+      "palette": {
+        "T": "#80533a",
+        "B": "#50392d",
+        "G": "#356b63",
+        "S": "#8fcdb8",
+        "L": "#aa7952",
+        "W": "#cf9c65"
+      }
+    }
+  },
   "monsters": {
     "dungeon-rat": {
       "rows": [

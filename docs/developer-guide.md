@@ -194,7 +194,7 @@ of the code doesn't need to know the data comes from JSON.
 | `data/backdrops.json` | Battlefield backdrops: the global render settings, the wall/floor `bases`, the `props`, and one `scenes` entry per room name (a base plus placed props) | `src/data/backdrops.ts` |
 | `data/level-growth.json` | Stat growth tiers by level/depth + elite/boss coefficients + `expTiers` + `maxLevel` | `src/data/levelGrowth.ts` |
 | `data/balance-config.json` | Shared balancing constants (drop rates, weights, thresholds, Cursed Coin amounts, Faith, temples, the rest room, reflection effect sizes...) | `src/data/balanceConfig.ts` |
-| `data/sprites.json` | Pixel-art (character grid + palette) for every class + every monster role (normal→`monsters`, elite→`elites`, boss→`bosses`; guard-only ships elite+boss only, final boss ships boss only) | `src/ui/sprites.ts` |
+| `data/sprites.json` | Pixel art (character grid and palette) for each class, player summon (`summons`), and monster role (normal→`monsters`, elite→`elites`, boss→`bosses`; guard-only ships elite+boss only, final boss ships boss only) | `src/ui/sprites.ts` |
 | `data/strings.json` | All text displayed in the UI. `{{name}}` inserts a value; `{{name\|one\|many}}` writes `one` when that value is 1 and `many` otherwise, so a count reads "1 turn" / "2 turns" | `src/data/strings.ts` |
 | `data/abilities.json` | Player-purchasable abilities (ability-buyback screen) | `src/data/abilities.ts` |
 | `data/growth-weights.json` | Per-class `growthWeights` multipliers layered on top of the shared level-growth curve | `src/data/growthWeights.ts` |
@@ -346,8 +346,8 @@ opposing side; one that missed, failed its chance or was thrown off adds nothing
 that lost a buff (it ran out, was removed or was spent — `LogSession.buffLostIds`, filled from the
 `buffLostOf` of the line `expireStatusEffect` logs), ▲ buffed, ✚ healed (a heal-over-time such as
 Mending counts here too, applied or expired), ⚚ caster of a buff/heal, ⊘ a unit whose turn was
-cancelled (stunned, too afraid to act, or cut short by an Overwatch shot — `LogSession.lostTurnIds`;
-a minion's lost turn shows on its owner), ♥ an attacker that drained HP from its own hit (`LogSession.lifestealIds`; a heal-on-kill is not
+cancelled (stunned, too afraid to act, or cut short by an Overwatch shot, recorded in `LogSession.lostTurnIds`),
+♥ an attacker that drained HP from its own hit (`LogSession.lifestealIds`; a heal-on-kill is not
 lifesteal and only shows its number), ♙ a unit whose summon took part in the session — it acted, was
 targeted, ticked, lost a buff or fell (`LogSession.summonIds`, the owner's id; the cast that summons it does not count),
 worn after the role icons it comes with. Blue marks the party, red the monsters, by the side of the
@@ -359,8 +359,11 @@ is a heal; damage over time, vulnerability, stealth and a stance such as Overwat
 casting or losing one lights the unit without a ▲ or ▼ (a damage-over-time status that lands on
 the opposing side still shows ⁂).
 Who those units are comes from `LogEntry.session` (`LogSession`, built in
-`src/engine/logSession.ts` and attached by `resolveRound`); a summon is recorded as its owner
-because it has no sprite. Round-start and round-end ticks are one actor-less session per block
+`src/engine/logSession.ts` and attached by `resolveRound`). Session role arrays use the owner's ID
+for a summon. `summonActorId` and `summonParticipantIds` identify the individual summons for
+battlefield playback. When a counter interrupts an action, the first entry of each segment carries
+its own `summonParticipantIds`, so a summon reached after the counter does not appear before it.
+Round-start and round-end ticks are one actor-less session per block
 that lights the units whose tick logged; its `cause` picks their icon — ⁂ a damage-over-time tick
 (`LogSession.tickDamageIds`) and ✚ a heal-over-time tick such as Mending (`healedIds`), both on a
 unit that received both whatever the net HP change, ☠ Dying, ✦ the bearer of an artifact's
@@ -382,14 +385,14 @@ one. A unit whose HP changed is never grey. A save writes every entry's snapshot
 `src/engine/save.ts`): a loaded fight never replays a resolved round, and the snapshots are most of
 a long fight's size.
 
-A summon is drawn as its owner, so the HP change of the summons a unit owns is written there too.
-Alone it reads like the owner's own number. When the owner changed as well, the owner's number shows
-first and, a beat after the impact (`SUMMON_BEAT_TICKS`), the summon's replaces it,
-led by ♙ (`-12` becomes `♙-12`). A summon that died, was dismissed or faded leaves the fight with the
-HP it left with (`CombatState.departedSummons`), so a killing hit is still a number and a fade-away
-is not one. The label under a party member's sprite carries one ♙ per living summon it owns
-(`NJ ♙♙`), counted from the replayed snapshot so a summon spawned later in the round appears with
-its own action.
+A participating player summon uses its own sprite, label (the archetype's three-letter `abbr`
+in `data/summons.json`), HP and outcome number in the same battlefield slot as its owner.
+The slot changes to the summon for its action, an incoming attack
+(including a miss), or a support effect aimed at it. A summon that falls during a multi-hit attack
+keeps its silhouette through the fatal hit. `CombatState.departedSummons` preserves the HP a
+summon had when it left, so a killing hit shows the loss and expiration preserves its last HP.
+When the session finishes or is skipped, the owner's sprite returns. Its label carries one ♙ per
+living summon, counted from the replayed snapshot while a round is being revealed.
 
 A unit that took 2 or more direct hits in one session shows them one at a time instead of their sum:
 `-53` at the impact, then `-52` a beat later. Each damage line of a direct hit carries the actor it
@@ -401,27 +404,19 @@ the hit loop in `applySkillEffects`): nothing is dealt, healed or hooked for the
 after the "is defeated" line as `Overkill on Dungeon Rat: 49 from Knight's Frenzied Slash.` (with the
 crit prefix when it crit; the line never says the unit takes damage). The battlefield still reads every
 hit of the cast, `-52!`, `-49`, `-51`.
-`RevealQueue` collects the hits per session (`focusHits`), moves to the next one every `HIT_BEAT_TICKS`
-from the impact (`hitStep`) and holds the last, and the session runs `HIT_BEAT_TICKS` longer for each
-hit past the first; a summon's number waits for the last hit. The log keeps that pace: the line of a
-unit's k-th hit, with the lines that follow it ("is defeated"), is revealed at beat k (`paceByBeat`), so
-the log names a hit when its number is up. When several units are hit more than once the lines of the
-same beat are revealed together, interleaved by beat rather than grouped per unit; the stored
-`combat.log` keeps the order they were logged in. `markerReading` picks the number, and
-only when the HP the hits took (their damage less their overkill) adds up to the unit's whole HP
-change: a heal landing on the same unit in the same session leaves the net on screen. The HP bar still
-moves once, at the impact. An area attack (one hit per target) reads as before, and so does the damage
-a summon takes (it is added to its owner's number, as above).
+`RevealQueue` tracks hit order and impact time per combatant. The log reveals each hit and the
+lines that follow it in scheduled order, while the stored `combat.log` preserves execution order.
+`markerReading` shows individual hit values when the total damage dealt, with overkill removed,
+matches the combatant's HP change. A heal that changes that total leaves the net change on screen.
+Where a summon shares a slot, the HP readout follows each scheduled hit when the hits account
+for the whole change.
 
 A critical hit or critical heal ends its number with `!` (`-80!`, `+30!`). The damage line of a hit
 carries `crit` in `LogEntry.hit` and a critical heal's line carries `healCritOf`, set in
 `resolveSkillEffect`; `RevealQueue` keeps them with the hits (`focusHits`, `focusHealCrits`) and
 `markerReading` picks the number and its crit together, so in a run of hits only the beats of hits that
 crit carry the `!`. When the hits do not add up to the unit's change, the net reads with `!` if any hit
-on the unit or any heal that landed on it was a crit. A summon's number is read the same way
-(`markerReading` over the hits that landed on the summon, so it too is the full damage and carries its
-own `!`); when its owner took hits in the same session it replaces the owner's number a beat later,
-after the owner's run of hits, and then reads its last hit. Colour and timing are unchanged.
+on the unit or any heal that landed on it was a crit.
 
 A character whose fear changed in a session (`LogSession.fearChangedIds`, noted by `noteFearChange`
 when a monster's hit lands, a skill or item's `modifyStat` moves it, the round ends, or the fight is
@@ -431,6 +426,181 @@ won) shows the change once everything else it wears has had its time: the reveal
 the change read from the `fear` that snapshots carry for characters. Party-wide fear (end of round,
 victory) has no line in the log, so its session (`runFearSession`) rides on one `LogEntry` with
 `hidden: true`, which `logLines` never renders; its beat starts at the impact.
+
+Combat effects are cell overlays (`src/ui/combatFx.ts`); characters and monsters stay in their
+slots. Melee attacks advance a pointed tip, reveal a downward arc or drop a hammer head.
+Projectiles travel between the actual source and target, beams span their horizontal
+centres along the common baseline, and spells can erupt at the target.
+Arrows, knives, shuriken, axes, rocks, bones, dice, fire, ice, holy and
+shadow magic, thrown flasks, webs and area attacks have authored frames and palettes.
+At impact the target's opaque sprite cells flash. A killing hit flashes the living sprite
+before a character or monster's tombstone appears. For a player summon, effects use the displayed
+summon's own anchor and silhouette in the owner's slot. Command's effects originate from the
+summon that carries out the order.
+
+Each skill effect declares `animation`: a preset id in `data/combat-fx.json`, or `null` to
+suppress its animation. Class skills declare it at every rank; monster and summon skills,
+including charge effects, use the same field. Command copies the executed summon's effects,
+retaining their animations and its own costs, power and cooldown. A status that replaces a
+basic attack chooses its strike from `damageTypes`.
+
+Class basic attacks read the damage effect's `animation` from the class's slot-zero skill,
+including when used as a fallback. They have no separate mapping in `combat-fx.json`.
+Overwatch's reactive shot uses that same animation, including an explicit `null`.
+
+`impact` paints a weapon-free collision for body, fist and shield blows; `claw` paints
+parallel rake marks. `acid-spit` and `card` are projectiles. `blood-drain` uses repeated
+beam tiles with pulses flowing back toward the caster. `smoke` and `summon` are target
+effects; successful summons display their configured smoke or rune ring on the caster.
+Their accompanying buffs and the struck target's status effects keep separate animations.
+
+`data/combat-fx.json` owns frames, palettes and defaults for effects outside authored skill
+arrays. `items` and monster/summon `basicAttacks` select a preset or `null`; `statuses` selects the default
+for a status applied without an explicit animation. `outcomes` supplies heal, mana, buff,
+debuff, cleanse and dispel defaults. The loader validates animation references, palettes,
+frames and support placement. Non-damage support animations must use target placement and
+impact timing. Missing animation fields on generated effects use the applicable defaults.
+
+The secondary-event coverage and acceptance criteria are defined in
+[technical-decisions.md §6](./technical-decisions.md#6-secondary-combat-animation-contract).
+
+`reactions` supplies target/impact defaults for damage-over-time ticks, wounds, reflection,
+counterattacks, area follow-ups, bonus damage, automatic damage and passive summons.
+An explicit content override wins; `null` suppresses that event. An omitted damage-tick
+override uses the status mapping, then `reactions.damageOverTime`; other secondary events
+inherit their reaction default. Damage entries in `perTurnEffects`, `woundOnHit`,
+`counterAttack`, `onHitAoeDamage` and equipment `autoDamage` effects accept `animation`.
+Class passives use `bonusDamageAnimation` and `secondCloneAnimation`.
+
+Hexed ticks use the violet `hexed` sigil; Deep Wound uses the crimson `deep-wound` tear.
+`reflect` and `counter` give returned damage and counterattacks their own impact visuals.
+All reaction defaults and overrides must reference target/impact presets. Preset usage
+checks include these references, including those in abilities and class passives.
+In Combat Effects, **Reactive effects** edits defaults and **Reaction overrides** edits
+individual status, passive and equipment events. Overrides save immediately and offer
+**Game default** or **No effect**. Save a new preset before assigning it. Select **Reaction**
+playback to preview an overlay without a projectile approach or an automatic hit flash.
+
+Each preset contains `palette` and `frames`. A frame has equal-width `rows` and integer
+`offsetX`/`offsetY` cell offsets. Single-character palette keys paint cells; `.` is transparent.
+`placement` is `target` (the default), `projectile` or `beam`. A frame's bottom row anchors
+to the units' common baseline: `offsetY = 0` aligns it with their bottom sprite row,
+negative Y lifts it and positive Y lowers it. Transparent bottom rows count toward frame
+height. Increasing frame height extends it upward without moving its bottom row.
+Target frames use the target's horizontal centre; projectile frames travel between the
+source and target's horizontal centres on the common baseline, with their per-frame
+offsets adding an authored arc or trail. Beam frames are short segments repeated
+at their original cell size between those same points.
+The final segment is cropped at the target; pixels, transparent gaps and thickness are never
+stretched. Author matching left and right edges for continuous joins. Each animation frame
+supplies its own repeating segment, editable with the existing pixel grid, palette and
+Copy/Parse controls. Positive X follows the attack and
+positive Y points down; incoming attacks mirror horizontally. The renderer places JSON
+pixels without generating weapon or spell shapes.
+
+`phase` is `approach` by default or `impact`. Approach frames sample the existing wind-up,
+so adding frames adds detail without lengthening it. Impact frames use `ticks` (one to one
+hundred reveal ticks), defaulting to their frame count. Support presets must use target
+placement and impact timing. `flash.mask` remains `target`; each `flash.frames` entry has
+nullable `partyColor` and `monsterColor`, and lasts one reveal tick.
+
+The resolver records optional `LogEntry.effect` cues when healing actually restores HP/MP,
+a status is applied or refreshed, a stat changes, or an explicit removal succeeds. Immune and
+resisted applications have no success cue. A full HP/MP bar produces no recovery effect.
+Regeneration, lifesteal, shared lifesteal and revival use recovery cues when they restore HP.
+Applying a regeneration status shows its status effect; its later recovery shows the heal.
+Damage ticks, wounds and reflected damage attach an overlay to their existing result log
+only when HP is lost. Its optional `effect.damage` records that loss so the reveal can keep
+the living silhouette through a lethal overlay; it does not create a direct hit or proc.
+Secondary direct hits retain their existing flash and carry their own impact visual.
+One successful monster-summon component emits one caster cue even when it creates several
+adds. Afterimage's extra clone uses the passive's configured summon visual.
+Explicitly removing a harmful status shows cleanse; removing a helpful one shows dispel.
+Natural expiry does not pretend to be either. Mixed skills can show damage on enemies and
+support effects on allies in the same session. Successful player and monster summons record
+their configured animation on the caster; an absent or null animation adds no cue, and a
+failed summon or a full monster-summon cap produces no success cue.
+
+Replay paints area hits on each affected target. Successful support effects play in log order
+on each target after their originating damage animation and flash. Different slots replay in
+parallel. When several targets share a slot, their hits and support effects play in sequence so
+each effect appears on the combatant it belongs to. A following attack on the same target waits for the support effect to finish
+before its approach starts. Hit markers and log lines follow that target's scheduled impacts,
+including when a support effect precedes the first hit. Each status cue has its own turn,
+even when several statuses share the same preset or one application applies several statuses
+under the same roll. Effects are not
+deduplicated. Each effect finishes before the session's fear feedback; the last queued effect
+extends the hold. HP snapshots update at session impact, and the battlefield slot a summon shares
+shows each occupant's HP at its own scheduled impact. Misses, damage-over-time ticks, reflection and
+pure overkill do not flash as direct damage. Existing logs without optional metadata remain
+readable. Effects use the existing reveal clock, consume no gameplay RNG and disappear when
+replay is skipped or finishes.
+
+The **Combat Effects** tab in `bun run game-editor` edits the full configuration. Its
+**Skill effects** group lists individual effects for every skill and rank, including charge
+effects. Selecting an animation saves that effect immediately; save new presets first.
+Every editor write to a catalog, `monsters.json` or `sprites.json` shares one queue around its
+read-modify-write, so overlapping edits retain each other's changes.
+Preset deletion or renaming is refused while a skill, item or status effect references it, so
+change those effects first. The data editor also exposes animation on its effect rows, checked
+by the same rules as the game loader. Its effect choices come from JSON. A Data Editor save sends
+the entry as it was loaded; if the entry changed on disk since (for example, an animation chosen
+in Combat Effects), the save is refused and the entry must be reloaded. Opening the Data Editor
+tab reloads its presets and entries.
+Select a frame, paint or erase cells, edit its shared palette, resize
+it or change its offsets. Palette keys can be renamed; every frame using that key updates
+together. Add, duplicate, delete and reorder frames; choose placement and timing for attacks,
+or edit target-effect duration. **Use frame count as duration** removes the explicit `ticks`
+override. Support presets retain their required target/impact settings. Flash frames have
+independent nullable character/monster tints and display their fixed target mask.
+**Copy frame** copies one frame as JSON; **Parse frame** reads the clipboard and validates
+it with the selected effect's palette before replacing the frame. **Revert**, beside these
+controls, restores the frame before the last successful parse until further edits or saving.
+Invalid input leaves the draft and any available revert intact. **Paste manually** opens a
+compact JSON field with **Apply JSON** for browsers where clipboard access is unavailable.
+
+Expand **Effect mappings** to choose visuals for skill effects, items, monster/summon basic
+attacks, statuses, recovery/status defaults and damage-type overrides. Search by name, ID or
+effect. **Unmapped (game default)** removes an optional override, including a previously
+saved one. **No effect** writes `null` only where allowed. Status and recovery choices are limited
+to target/impact presets. Each authored skill effect stores its own animation; generated
+effects without an explicit choice use the applicable defaults. **View**
+opens the mapped preset without discarding any draft changes.
+
+A class's first skill is edited through its effect rows, like every other class skill.
+Catalog entries with a saved effect mapping cannot be deleted or given a new ID in the
+Data Editor. Select **Unmapped (game default)** for the reported mapping and save first;
+**No effect** still stores a reference to the entry. Edits that keep the same ID remain
+available.
+
+Create a blank preset or duplicate an existing one with a new lowercase ID. Rename updates
+all mappings that reference the old ID; deletion is refused while any mapping uses it.
+`thrust`, `slash` and `blunt` are required preset IDs, so their frames remain editable but the
+IDs cannot be renamed or deleted. New presets preview before saving through the same renderer
+as the game. Reverse direction and character/monster selectors remain available.
+Selecting a frame inspects that frame on its own. Playback follows the effect's timing;
+attack playback includes the target's damage flash at impact, while support playback
+shows the target effect without a damage flash. A preset shared by attacks and support
+effects can be previewed in either context.
+
+All changes share one draft: switching effects or mapping groups keeps edits. **Save all
+changes** sends the draft and its loaded baseline. The server reads the latest file and merges
+only changed mapping rows and presets, preserving unrelated edits on disk. A concurrent change
+to the same preset, mapping row or flash configuration is rejected with its location; no part
+of that save is written and the draft stays available. Rename and delete are revalidated
+against all references after merging. Writes from the editor are serialized.
+
+The editor verifies a save after the server's watch-mode restart, merges unrelated saved
+changes into its baseline and retains newer edits made while saving as unsaved. If those newer edits overlap a preset or mapping
+changed on disk, the draft and its original baseline remain intact and the editor reports the
+conflict instead of silently accepting the other version as its baseline. Preview retries
+a brief network interruption during restart. Reload asks before discarding changes, and its
+response cannot overwrite a draft edited in flight or a newer save.
+Reload also refreshes the catalogs used by mapping search. Returning to Combat Effects
+refreshes those catalogs and the preview actors while keeping the current effect draft.
+Actor selections remain selected when they are still available. Saving unrelated draft
+edits keeps mappings removed on disk absent, even if their catalog entries were also deleted
+while the draft was open.
 
 The row holding this panel and the Log is `UNIT_BLOCK_HEIGHT` + 2 rows tall (`src/ui/layout.ts`):
 2 icon rows + 15 pixels + 3 label rows, plus the border, 22 rows in all. With the header and the
@@ -484,8 +654,8 @@ The remaining panels:
   Any key skips straight to the end of the reveal, in one render.
 
 The UI palette is `PALETTE` in `src/ui/theme.ts`. A class's or monster's chip
-label and color is its `style` (`{ abbr, color }`) in `data/classes.json` /
-`data/monsters.json`; a new class or monster also needs its sprite in
+label and color come from its `style` (`{ abbr, color }`) in `data/classes.json` or
+`data/monsters.json`. A new class, monster or player summon also needs its sprite in
 `data/sprites.json`.
 
 #### Backdrops

@@ -35,15 +35,6 @@ export const FOCUS_GLYPH = {
   fear: "◉",
 } as const;
 
-/** `beat`: the owner's own marker has shown, so the summons' may replace it. */
-export interface SummonFocus {
-  delta: number;
-  crit?: boolean;
-  beat: boolean;
-}
-
-const NO_SUMMON: SummonFocus = { delta: 0, beat: false };
-
 /** By the side of the unit wearing the icon, not the attacker's. */
 export const FOCUS_COLOR: Record<UnitSide, string> = { party: PALETTE.mp, monster: PALETTE.hpLow };
 
@@ -72,7 +63,7 @@ export function dimSprite(sprite: Sprite): Sprite {
 }
 
 /** `delta` is known from the session start, but its marker shows only once `impact` is reached. A non-zero `fearChange` replaces everything else the unit wears. */
-export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, delta = 0, impact = false, summon: SummonFocus = NO_SUMMON, fearChange = 0, crit = false): UnitFocus {
+export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, delta = 0, impact = false, fearChange = 0, crit = false): UnitFocus {
   if (!session) return { dim: false, icons: [], marker: null };
   const color = FOCUS_COLOR[side];
   const icon = (glyph: string): FocusIcon => ({ glyph, color });
@@ -122,7 +113,6 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
     session.actorId === id ||
     attacked ||
     delta !== 0 ||
-    summon.delta !== 0 ||
     debuffed ||
     dotLanded ||
     session.immuneIds.includes(id) ||
@@ -131,7 +121,7 @@ export function unitFocus(id: Id, side: UnitSide, session: LogSession | null, de
     session.lostTurnIds.includes(id) ||
     healed ||
     session.affectedIds.includes(id);
-  return { dim: !participates, icons, marker: impact ? outcomeMarker(id, side, session, delta, summon, crit) : null };
+  return { dim: !participates, icons, marker: impact ? outcomeMarker(id, side, session, delta, crit) : null };
 }
 
 function snapshotDeltas(before: CombatantSnapshot[] | null, after: CombatantSnapshot[] | null, read: (c: CombatantSnapshot) => number | undefined): Map<Id, number> {
@@ -170,16 +160,13 @@ export function markerReading(hits: readonly HitMark[] | undefined, net: number,
   return { amount: net, crit: healCrit || (hits?.some((hit) => hit.crit) ?? false) };
 }
 
-function hpMarker(amount: number, side: UnitSide, prefix = "", crit = false): FocusIcon {
+function hpMarker(amount: number, side: UnitSide, crit: boolean): FocusIcon {
   const mark = crit ? "!" : "";
-  return amount < 0 ? { glyph: `${prefix}-${-amount}${mark}`, color: MARKER_COLOR.damage[side] } : { glyph: `${prefix}+${amount}${mark}`, color: MARKER_COLOR.heal[side] };
+  return amount < 0 ? { glyph: `-${-amount}${mark}`, color: MARKER_COLOR.damage[side] } : { glyph: `+${amount}${mark}`, color: MARKER_COLOR.heal[side] };
 }
 
-/** A summon is drawn as its owner: when both changed, the owner's number shows first and the summon's replaces it on the summon beat. */
-function outcomeMarker(id: Id, side: UnitSide, session: LogSession, delta: number, summon: SummonFocus, crit: boolean): FocusIcon | null {
-  if (delta !== 0 && summon.delta !== 0 && summon.beat) return hpMarker(summon.delta, side, FOCUS_GLYPH.summon, summon.crit);
-  if (delta !== 0) return hpMarker(delta, side, "", crit);
-  if (summon.delta !== 0) return hpMarker(summon.delta, side, "", summon.crit);
+function outcomeMarker(id: Id, side: UnitSide, session: LogSession, delta: number, crit: boolean): FocusIcon | null {
+  if (delta !== 0) return hpMarker(delta, side, crit);
   if (session.missedIds.includes(id)) return { glyph: t("ui.focusMiss"), color: MARKER_COLOR.miss };
   return session.immuneIds.includes(id) ? { glyph: t("ui.focusImmune"), color: MARKER_COLOR.miss } : null;
 }
