@@ -39,7 +39,7 @@
   "files": ["bin", "README.md", "LICENSE"],
   "scripts": {
     "start": "bun run src/main.ts",
-    "build": "bun build ./src/main.ts --compile --define __DEV__=false --outfile dist/darkest-terminal",
+    "build": "bun build ./src/main.ts --compile --minify --define __DEV__=false --outfile dist/darkest-terminal",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "game-editor": "bun --watch tools/game-editor/server.ts",
