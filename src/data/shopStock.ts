@@ -1,4 +1,4 @@
-import type { BarterOffer, ItemDefinition, ItemTier, ShopOffer } from "../types";
+import type { BarterOffer, Id, ItemDefinition, ItemTier, ShopOffer } from "../types";
 import type { Rng } from "../engine/rng";
 import { BALANCE } from "./balanceConfig";
 import { tierWeightsByDepth } from "./artifacts";
@@ -23,12 +23,17 @@ function pickByTier(pool: ItemDefinition[], tiers: readonly ItemTier[], anchor: 
 }
 
 /** Unlike the shop stock, Legendary trophies are included. */
-export function rollBarterOffers(rng: Rng, depth: number): BarterOffer[] {
+export function rollBarterOffers(rng: Rng, depth: number, inventory: Readonly<Record<Id, number>> = {}): BarterOffer[] {
+  const { inventoryMaxWeight, inventoryHalfSaturation } = BALANCE.barter;
   const pool = BARTER_ENTRIES.map((entry) => getItem(entry.itemId)).filter((item) => trophyAvailableAt(item, depth));
   const offers: BarterOffer[] = [];
   while (offers.length < BALANCE.barter.offerCount && pool.length > 0) {
-    const [item] = pool.splice(rng.int(0, pool.length - 1), 1);
-    offers.push({ itemId: item!.id });
+    const item = rng.weightedPick(pool, (item) => {
+      const n = inventory[item.id] ?? 0;
+      return 1 + ((inventoryMaxWeight - 1) * n) / (n + inventoryHalfSaturation);
+    });
+    pool.splice(pool.indexOf(item), 1);
+    offers.push({ itemId: item.id });
   }
   return offers;
 }

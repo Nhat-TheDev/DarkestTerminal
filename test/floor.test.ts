@@ -38,15 +38,29 @@ describe("floor generation respects minFloor", () => {
     expect(sawAtFloor20).toBe(true);
   });
 
-  test("floor 1's only possible 'strong'-tier pick is skeleton-guard (the one strong-tier archetype with minFloor 0, by design)", () => {
+  test.each([
+    { depth: 1, expectedStrong: ["skeleton-guard", "zombie"] },
+    { depth: 9, expectedStrong: ["skeleton-guard", "zombie"] },
+    { depth: 10, expectedStrong: ["goblin-shaman", "skeleton-guard", "zombie"] },
+    { depth: 19, expectedStrong: ["goblin-shaman", "skeleton-guard", "zombie"] },
+  ])("floor $depth shares ordinary strong slots among the unlocked archetypes", ({ depth, expectedStrong }) => {
+    const counts = new Map<string, number>();
     for (let seed = 0; seed < 200; seed++) {
-      const rng = new Rng(seed);
-      const { monsters } = createFloor(rng, 1);
-      for (const m of monsters) {
-        const archetype = archetypeFor(m.id);
-        if (archetype.powerTier === "strong") expect(archetype.id).toBe("skeleton-guard");
+      const { floor, monsters } = createFloor(new Rng(seed), depth);
+      const byId = new Map(monsters.map((monster) => [monster.id, monster]));
+      for (const room of floor.rooms.filter((room) => room.type === "combat")) {
+        for (const id of room.monsterIds) {
+          const monster = byId.get(id)!;
+          const archetype = archetypeFor(id);
+          expect(monster.tier).toBe("normal");
+          expect(archetype.minFloor ?? 0).toBeLessThanOrEqual(depth);
+          if (archetype.powerTier === "strong") counts.set(archetype.id, (counts.get(archetype.id) ?? 0) + 1);
+        }
       }
     }
+    expect([...counts.keys()].sort()).toEqual([...expectedStrong]);
+    const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
+    for (const count of counts.values()) expect(Math.abs(count / total - 1 / expectedStrong.length)).toBeLessThan(0.05);
   });
 });
 
