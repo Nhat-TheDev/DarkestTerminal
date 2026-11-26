@@ -269,6 +269,7 @@
     "effects": [
       {
         "kind": "autoDamage",
+        "animation": "storm",
         "amount": 20,
         "offenseMultiplierPercent": 40,
         "isMagic": true
@@ -391,6 +392,7 @@
     "effects": [
       {
         "kind": "autoDamage",
+        "animation": "impact",
         "amount": 22,
         "offenseMultiplierPercent": 50
       },

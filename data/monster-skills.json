@@ -8,7 +8,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 14
+        "amount": 14,
+        "animation": "bite"
       }
     ],
     "slot": 0,
@@ -24,7 +25,8 @@
       {
         "kind": "damage",
         "amount": 12,
-        "lifestealPercent": 50
+        "lifestealPercent": 50,
+        "animation": "blood-drain"
       }
     ],
     "slot": 0,
@@ -40,7 +42,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 10
+        "amount": 10,
+        "animation": "acid-spit"
       },
       {
         "kind": "applyStatusEffect",
@@ -49,7 +52,8 @@
           "corroded"
         ],
         "chance": 0.5,
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "poison"
       }
     ],
     "slot": 0,
@@ -65,7 +69,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 15
+        "amount": 15,
+        "animation": "shadow"
       }
     ],
     "slot": 0,
@@ -80,13 +85,15 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 12
+        "amount": 12,
+        "animation": "bite"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "poisoned",
         "chance": 0.5,
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "poison"
       }
     ],
     "slot": 0,
@@ -102,7 +109,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 12
+        "amount": 12,
+        "animation": "bone"
       }
     ],
     "slot": 0,
@@ -118,7 +126,8 @@
       {
         "kind": "heal",
         "amount": 15,
-        "maxHpPercent": 20
+        "maxHpPercent": 20,
+        "animation": "heal"
       }
     ],
     "slot": 0,
@@ -133,7 +142,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 13
+        "amount": 13,
+        "animation": "bite"
       }
     ],
     "slot": 0,
@@ -149,13 +159,15 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 13
+        "amount": 13,
+        "animation": "web"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "webbed",
         "chance": 0.5,
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "web-status"
       }
     ],
     "slot": 0,
@@ -171,13 +183,15 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 13
+        "amount": 13,
+        "animation": "ice"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "weakened",
         "chance": 0.5,
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -192,13 +206,15 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 15
+        "amount": 15,
+        "animation": "fire-breath"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "burning",
         "chance": 0.5,
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "burn"
       }
     ],
     "slot": 0,
@@ -214,7 +230,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "guard",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "ward"
       }
     ],
     "slot": 0,
@@ -230,7 +247,8 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 15
+        "amount": 15,
+        "animation": "arrow"
       }
     ],
     "slot": 0,
@@ -246,7 +264,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "guard",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "ward"
       }
     ],
     "slot": 0,
@@ -261,13 +280,15 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 14
+        "amount": 14,
+        "animation": "blunt"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "weakened",
         "chance": 0.5,
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -282,13 +303,15 @@
     "effects": [
       {
         "kind": "damage",
-        "amount": 13
+        "amount": 13,
+        "animation": "claw"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "bleeding",
         "chance": 0.5,
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "bleed"
       }
     ],
     "slot": 0,
@@ -304,7 +327,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "held-ground",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "ward"
       }
     ],
     "slot": 0,
@@ -332,13 +356,15 @@
       {
         "kind": "damage",
         "amount": 18,
-        "offenseMultiplierPercent": 170
+        "offenseMultiplierPercent": 170,
+        "animation": "impact"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "enfeebled",
         "durationTurns": 2,
-        "chance": 0.5
+        "chance": 0.5,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -354,7 +380,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "riposte",
-        "durationTurns": 1
+        "durationTurns": 1,
+        "animation": "buff"
       }
     ],
     "slot": 0,
@@ -372,12 +399,14 @@
         "kind": "damage",
         "amount": 60,
         "ignoreDefensePercent": 40,
-        "offenseMultiplierPercent": 190
+        "offenseMultiplierPercent": 190,
+        "animation": "slash"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "weakened",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -395,13 +424,15 @@
       {
         "kind": "damage",
         "amount": 10,
-        "offenseMultiplierPercent": 40
+        "offenseMultiplierPercent": 40,
+        "animation": "web"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "webbed",
         "durationTurns": 2,
-        "chance": 0.6
+        "chance": 0.6,
+        "animation": "web-status"
       }
     ],
     "slot": 0,
@@ -430,12 +461,14 @@
       {
         "kind": "damage",
         "amount": 22,
-        "offenseMultiplierPercent": 60
+        "offenseMultiplierPercent": 60,
+        "animation": "bite"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "poisoned-ii",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "poison"
       }
     ],
     "slot": 0,
@@ -459,18 +492,21 @@
       {
         "kind": "damage",
         "amount": 40,
-        "offenseMultiplierPercent": 190
+        "offenseMultiplierPercent": 190,
+        "animation": "web"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "cocooned",
         "durationTurns": 1,
-        "requiresTargetStatusId": "webbed"
+        "requiresTargetStatusId": "webbed",
+        "animation": "web-status"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "poisoned-iii",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "poison"
       }
     ],
     "slot": 0,
@@ -495,7 +531,8 @@
       {
         "kind": "damage",
         "amount": 24,
-        "offenseMultiplierPercent": 110
+        "offenseMultiplierPercent": 110,
+        "animation": "bite"
       }
     ],
     "slot": 0,
@@ -529,7 +566,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "airborne",
-        "durationTurns": 1
+        "durationTurns": 1,
+        "animation": "buff"
       }
     ],
     "slot": 0,
@@ -549,7 +587,8 @@
           "min": 1,
           "max": 2
         },
-        "offenseMultiplierPercent": 65
+        "offenseMultiplierPercent": 65,
+        "animation": "claw"
       }
     ],
     "slot": 0,
@@ -565,13 +604,15 @@
       {
         "kind": "damage",
         "amount": 10,
-        "offenseMultiplierPercent": 55
+        "offenseMultiplierPercent": 55,
+        "animation": "fire-breath"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "burning",
         "durationTurns": 2,
-        "chance": 0.5
+        "chance": 0.5,
+        "animation": "burn"
       }
     ],
     "slot": 0,
@@ -597,12 +638,14 @@
       {
         "kind": "damage",
         "amount": 12,
-        "offenseMultiplierPercent": 90
+        "offenseMultiplierPercent": 90,
+        "animation": "fire-pillar"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "burning-vulnerable",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "burn"
       }
     ],
     "slot": 0,
@@ -626,12 +669,14 @@
       {
         "kind": "damage",
         "amount": 10,
-        "offenseMultiplierPercent": 190
+        "offenseMultiplierPercent": 190,
+        "animation": "fire-pillar"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "burning",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "burn"
       }
     ],
     "slot": 0,
@@ -641,7 +686,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "airborne",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "buff"
       }
     ]
   },
@@ -655,7 +701,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "empower",
-        "durationTurns": 99
+        "durationTurns": 99,
+        "animation": "buff"
       }
     ],
     "slot": 0,
@@ -671,12 +718,14 @@
       {
         "kind": "damage",
         "amount": 50,
-        "offenseMultiplierPercent": 170
+        "offenseMultiplierPercent": 170,
+        "animation": "slash"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "enfeebled",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -692,7 +741,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "guard-ii",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "ward"
       }
     ],
     "slot": 0,
@@ -709,7 +759,8 @@
       {
         "kind": "heal",
         "amount": 0,
-        "maxHpPercent": 35
+        "maxHpPercent": 35,
+        "animation": "heal"
       }
     ],
     "slot": 0,
@@ -729,12 +780,14 @@
       {
         "kind": "damage",
         "amount": 60,
-        "offenseMultiplierPercent": 200
+        "offenseMultiplierPercent": 200,
+        "animation": "impact"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "agony",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "burn"
       }
     ],
     "slot": 0,
@@ -751,12 +804,14 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "challenged",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "mark"
       },
       {
         "kind": "modifyStat",
         "stat": "fear",
-        "amount": 8
+        "amount": 8,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -790,7 +845,8 @@
         "kind": "damage",
         "amount": 50,
         "critChance": 0.25,
-        "offenseMultiplierPercent": 170
+        "offenseMultiplierPercent": 170,
+        "animation": "slash"
       }
     ],
     "slot": 0,
@@ -814,7 +870,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "fortify",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "ward"
       }
     ],
     "slot": 0,
@@ -831,7 +888,8 @@
       {
         "kind": "modifyStat",
         "stat": "fear",
-        "amount": 6
+        "amount": 6,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -848,12 +906,14 @@
       {
         "kind": "damage",
         "amount": 70,
-        "offenseMultiplierPercent": 200
+        "offenseMultiplierPercent": 200,
+        "animation": "slash"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "stunned",
-        "durationTurns": 1
+        "durationTurns": 1,
+        "animation": "stun"
       }
     ],
     "slot": 0,
@@ -881,12 +941,14 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "challenged",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "mark"
       },
       {
         "kind": "modifyStat",
         "stat": "fear",
-        "amount": 8
+        "amount": 8,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -910,7 +972,8 @@
       {
         "kind": "damage",
         "amount": 28,
-        "offenseMultiplierPercent": 120
+        "offenseMultiplierPercent": 120,
+        "animation": "blunt"
       }
     ],
     "slot": 0,
@@ -938,7 +1001,8 @@
       {
         "kind": "summonMonster",
         "monsterArchetypeId": "goblin",
-        "count": 1
+        "count": 1,
+        "animation": "summon"
       }
     ],
     "slot": 0,
@@ -958,7 +1022,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "rallied-ii",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "focus"
       }
     ],
     "slot": 0,
@@ -983,12 +1048,14 @@
       {
         "kind": "damage",
         "amount": 16,
-        "offenseMultiplierPercent": 70
+        "offenseMultiplierPercent": 70,
+        "animation": "blunt"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "weakened",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -1016,12 +1083,14 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "bloodrage",
-        "durationTurns": 99
+        "durationTurns": 99,
+        "animation": "buff"
       },
       {
         "kind": "summonMonster",
         "monsterArchetypeId": "orc-brute",
-        "count": 1
+        "count": 1,
+        "animation": "summon"
       }
     ],
     "slot": 0,
@@ -1037,12 +1106,14 @@
       {
         "kind": "damage",
         "amount": 20,
-        "offenseMultiplierPercent": 80
+        "offenseMultiplierPercent": 80,
+        "animation": "claw"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "bleeding",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "bleed"
       }
     ],
     "slot": 0,
@@ -1063,7 +1134,8 @@
           "statusEffectId": "bleeding",
           "percentPerStack": 20
         },
-        "offenseMultiplierPercent": 85
+        "offenseMultiplierPercent": 85,
+        "animation": "bite"
       }
     ],
     "slot": 0,
@@ -1087,7 +1159,8 @@
       {
         "kind": "summonMonster",
         "monsterArchetypeId": "vampire-bat",
-        "count": 2
+        "count": 2,
+        "animation": "smoke"
       }
     ],
     "slot": 0,
@@ -1116,7 +1189,8 @@
         "kind": "damage",
         "amount": 10,
         "lifestealPercent": 100,
-        "offenseMultiplierPercent": 190
+        "offenseMultiplierPercent": 190,
+        "animation": "bite"
       }
     ],
     "slot": 0,
@@ -1141,12 +1215,14 @@
       {
         "kind": "damage",
         "amount": 14,
-        "offenseMultiplierPercent": 70
+        "offenseMultiplierPercent": 70,
+        "animation": "tentacle"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "shredded",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -1166,13 +1242,15 @@
       {
         "kind": "damage",
         "amount": 12,
-        "offenseMultiplierPercent": 65
+        "offenseMultiplierPercent": 65,
+        "animation": "shadow-burst"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "corroded",
         "durationTurns": 2,
-        "chance": 0.5
+        "chance": 0.5,
+        "animation": "poison"
       }
     ],
     "slot": 0,
@@ -1188,7 +1266,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "regeneration",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "buff"
       }
     ],
     "slot": 0,
@@ -1206,7 +1285,8 @@
         "kind": "damage",
         "amount": 40,
         "lifestealPercent": 50,
-        "offenseMultiplierPercent": 145
+        "offenseMultiplierPercent": 145,
+        "animation": "shadow-burst"
       }
     ],
     "slot": 0,
@@ -1223,7 +1303,8 @@
       {
         "kind": "damage",
         "amount": 70,
-        "offenseMultiplierPercent": 170
+        "offenseMultiplierPercent": 170,
+        "animation": "impact"
       }
     ],
     "slot": 0,
@@ -1239,12 +1320,14 @@
       {
         "kind": "damage",
         "amount": 20,
-        "offenseMultiplierPercent": 110
+        "offenseMultiplierPercent": 110,
+        "animation": "shockwave"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "slowed",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -1260,14 +1343,16 @@
       {
         "kind": "damage",
         "amount": 90,
-        "offenseMultiplierPercent": 210
+        "offenseMultiplierPercent": 210,
+        "animation": "impact"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "stunned",
         "durationTurns": 1,
         "target": "allEnemies",
-        "chance": 0.6
+        "chance": 0.6,
+        "animation": "stun"
       }
     ],
     "slot": 0,
@@ -1284,7 +1369,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "empower",
-        "durationTurns": 99
+        "durationTurns": 99,
+        "animation": "buff"
       }
     ],
     "slot": 0,
@@ -1301,12 +1387,14 @@
       {
         "kind": "damage",
         "amount": 22,
-        "offenseMultiplierPercent": 135
+        "offenseMultiplierPercent": 135,
+        "animation": "shadow-beam"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "withered",
-        "durationTurns": 3
+        "durationTurns": 3,
+        "animation": "fear"
       }
     ],
     "slot": 0,
@@ -1322,12 +1410,14 @@
       {
         "kind": "summonMonster",
         "monsterArchetypeId": "skeleton-mage",
-        "count": 1
+        "count": 1,
+        "animation": "summon"
       },
       {
         "kind": "summonMonster",
         "monsterArchetypeId": "skeleton",
-        "count": 1
+        "count": 1,
+        "animation": "summon"
       }
     ],
     "slot": 0,
@@ -1347,7 +1437,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "marked",
-        "durationTurns": 4
+        "durationTurns": 4,
+        "animation": "mark"
       }
     ],
     "slot": 0,
@@ -1380,11 +1471,13 @@
       {
         "kind": "damage",
         "amount": 65,
-        "offenseMultiplierPercent": 280
+        "offenseMultiplierPercent": 280,
+        "animation": "shadow-burst"
       },
       {
         "kind": "removeStatusEffect",
-        "statusEffectId": "marked"
+        "statusEffectId": "marked",
+        "animation": "cleanse"
       }
     ],
     "slot": 0,
@@ -1412,12 +1505,14 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "marked",
-        "durationTurns": 4
+        "durationTurns": 4,
+        "animation": "mark"
       },
       {
         "kind": "summonMonster",
         "monsterArchetypeId": "skeleton",
-        "count": 2
+        "count": 2,
+        "animation": "summon"
       }
     ],
     "slot": 0,
@@ -1433,7 +1528,8 @@
       {
         "kind": "damage",
         "amount": 20,
-        "offenseMultiplierPercent": 115
+        "offenseMultiplierPercent": 115,
+        "animation": "tentacle"
       }
     ],
     "slot": 0,
@@ -1454,7 +1550,8 @@
         "kind": "damage",
         "amount": 16,
         "ignoreDefensePercent": 100,
-        "offenseMultiplierPercent": 100
+        "offenseMultiplierPercent": 100,
+        "animation": "tentacle"
       }
     ],
     "slot": 0,
@@ -1470,17 +1567,20 @@
       {
         "kind": "damage",
         "amount": 22,
-        "offenseMultiplierPercent": 155
+        "offenseMultiplierPercent": 155,
+        "animation": "tentacle"
       },
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "blinded",
-        "durationTurns": 2
+        "durationTurns": 2,
+        "animation": "blind"
       },
       {
         "kind": "modifyStat",
         "stat": "fear",
-        "amount": 8
+        "amount": 8,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -1497,7 +1597,8 @@
         "kind": "damage",
         "amount": 70,
         "ignoreDefensePercent": 40,
-        "offenseMultiplierPercent": 250
+        "offenseMultiplierPercent": 250,
+        "animation": "tentacle"
       }
     ],
     "slot": 0,
@@ -1515,7 +1616,8 @@
         "kind": "damage",
         "amount": 60,
         "ignoreDefensePercent": 50,
-        "offenseMultiplierPercent": 205
+        "offenseMultiplierPercent": 205,
+        "animation": "tentacle"
       }
     ],
     "slot": 0,
@@ -1537,7 +1639,8 @@
         "kind": "damage",
         "amount": 70,
         "ignoreDefensePercent": 60,
-        "offenseMultiplierPercent": 190
+        "offenseMultiplierPercent": 190,
+        "animation": "tentacle"
       }
     ],
     "slot": 0,
@@ -1554,7 +1657,8 @@
       {
         "kind": "applyStatusEffect",
         "statusEffectId": "knitting-ii",
-        "durationTurns": 6
+        "durationTurns": 6,
+        "animation": "buff"
       }
     ],
     "slot": 0,
@@ -1570,7 +1674,8 @@
       {
         "kind": "modifyStat",
         "stat": "fear",
-        "amount": 12
+        "amount": 12,
+        "animation": "debuff"
       }
     ],
     "slot": 0,
@@ -1587,12 +1692,14 @@
         "kind": "damage",
         "amount": 30,
         "offenseMultiplierPercent": 200,
-        "ignoreDefensePercent": 30
+        "ignoreDefensePercent": 30,
+        "animation": "explosion"
       },
       {
         "kind": "damage",
         "amount": 99999,
-        "target": "self"
+        "target": "self",
+        "animation": "explosion"
       }
     ],
     "slot": 0,

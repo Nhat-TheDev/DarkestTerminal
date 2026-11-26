@@ -1,0 +1,4738 @@
+{
+  "flash": {
+    "mask": "target",
+    "frames": [
+      {
+        "partyColor": "#e5484d",
+        "monsterColor": "#fff0c6"
+      },
+      {
+        "partyColor": "#e5484d",
+        "monsterColor": "#fff0c6"
+      }
+    ]
+  },
+  "presets": {
+    "acid-spit": {
+      "placement": "projectile",
+      "phase": "approach",
+      "palette": {
+        "A": "#b1e34b",
+        "B": "#62852c",
+        "C": "#e1ff93"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A......",
+            "...CAACC.",
+            "A.A.AAAAC",
+            ".B...BBA.",
+            "...A....."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "...A..A..",
+            "A....ACC.",
+            ".A.AAAAAC",
+            "..B..BBA.",
+            "....A...."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "....A....",
+            ".C...ACC.",
+            "A.A.AAAAC",
+            "...AABBA.",
+            "..A......"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".A..A....",
+            "..C..ACC.",
+            ".A.AAAAAC",
+            "A....BBA.",
+            "...AA...."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".C.....C.",
+            "...A.C...",
+            "A.A...A.A",
+            "...B.A...",
+            ".B.....A."
+          ]
+        }
+      ]
+    },
+    "impact": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#eee3bc",
+        "B": "#c69b63",
+        "C": "#fff8e4"
+      },
+      "frames": [
+        {
+          "offsetX": -5,
+          "offsetY": 0,
+          "rows": [
+            "...........",
+            "...........",
+            "...........",
+            ".....B.....",
+            "....BCB....",
+            ".....B.....",
+            "...........",
+            "...........",
+            "..........."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": 0,
+          "rows": [
+            "...........",
+            "...........",
+            ".....B.B...",
+            ".....AA....",
+            "...BACAB...",
+            "....AA.....",
+            "...B..B....",
+            "...........",
+            "..........."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": 0,
+          "rows": [
+            "...........",
+            "...B.B..B..",
+            "....AA.AA..",
+            ".....AA....",
+            "..BAACAAB..",
+            "....AA..B..",
+            "..BA..A....",
+            "...B...B...",
+            "..........."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": 0,
+          "rows": [
+            ".B.B.B..B..",
+            "BAAA.A..A..",
+            "....AA.AAAB",
+            "BA.A.AA.A..",
+            "BAAAACAAAAB",
+            "..A.AA..A..",
+            "BAAA..AA.B.",
+            ".A.AAA.A...",
+            "B...B...B.."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": 0,
+          "rows": [
+            ".A.A.A..A.A",
+            "AA.A.......",
+            ".........AA",
+            "A..........",
+            ".A.......AA",
+            "...........",
+            "AA.......AA",
+            ".A..AA.A...",
+            "A...A...A.."
+          ]
+        }
+      ]
+    },
+    "claw": {
+      "placement": "target",
+      "phase": "approach",
+      "palette": {
+        "A": "#eed7cf",
+        "B": "#aa6559",
+        "C": "#fff0de"
+      },
+      "frames": [
+        {
+          "offsetX": -6,
+          "offsetY": 0,
+          "rows": [
+            ".C...C...C...",
+            ".............",
+            ".............",
+            ".............",
+            ".............",
+            ".............",
+            ".............",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": 0,
+          "rows": [
+            ".A...A...A...",
+            ".AB..AB..AB..",
+            ".C...C...C...",
+            ".............",
+            ".............",
+            ".............",
+            ".............",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": 0,
+          "rows": [
+            ".A...A...A...",
+            ".AB..AB..AB..",
+            ".AB..AB..AB..",
+            "..AB..AB..AB.",
+            "..C...C...C..",
+            ".............",
+            ".............",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": 0,
+          "rows": [
+            ".A...A...A...",
+            ".AB..AB..AB..",
+            ".AB..AB..AB..",
+            "..AB..AB..AB.",
+            "..AB..AB..AB.",
+            "..AB..AB..AB.",
+            ".C...C...C...",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": 0,
+          "rows": [
+            ".A...A...A...",
+            ".AB..AB..AB..",
+            ".AB..AB..AB..",
+            "..AB..AB..AB.",
+            "..AB..AB..AB.",
+            "..AB..AB..AB.",
+            ".AB..AB..AB..",
+            ".C...C...C..."
+          ]
+        }
+      ]
+    },
+    "smoke": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#8d899a",
+        "B": "#5a5468",
+        "C": "#c6bfd2"
+      },
+      "frames": [
+        {
+          "offsetX": -7,
+          "offsetY": 1,
+          "rows": [
+            "...............",
+            "...............",
+            "...............",
+            ".........BAB...",
+            "....BAB..ACA...",
+            "....ACA..BAB...",
+            "....BAB.BAB....",
+            "....ACA.ACA....",
+            "....BAB.BAB....",
+            "...............",
+            "..............."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": 1,
+          "rows": [
+            "...............",
+            "...............",
+            ".........BBB...",
+            "....BBBBBAAAB..",
+            "...BAAABBACAB..",
+            "...BACABBAAAB..",
+            "...BAAABAAAB...",
+            "...BACABACAB...",
+            "...BAAABAAAB...",
+            "....BBB.BBB....",
+            "..............."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": 1,
+          "rows": [
+            "...............",
+            "..........B....",
+            ".....B..BAAAB..",
+            "...BAAAAAAAAA..",
+            "...AAAAAAACAAB.",
+            "..BAACAAAAAAA..",
+            "...AAAAAAAAAB..",
+            "..BAACAAACAAB..",
+            "...AAAAAAAAA...",
+            "...BAAABAAAB...",
+            ".....B...B....."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": 1,
+          "rows": [
+            "...............",
+            "..........BB...",
+            "....B.BBA.AAAB.",
+            "...BAA.AAA.AAB.",
+            "..B.ACA.ACC.AB.",
+            "..BA.CCA.ACA.B.",
+            "..BAA.AAA.AAB..",
+            "...ACC.ACC.AB..",
+            "..B.ACA.ACA.B..",
+            "...B.AAB.AAB...",
+            "....B.B.B.B...."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": 1,
+          "rows": [
+            "...............",
+            "........B..B...",
+            "....B..A.......",
+            "......A..C..B..",
+            "..B..C.....A...",
+            "....C..A..A....",
+            "...A.....C..B..",
+            "..B..C..C......",
+            ".......A..A....",
+            "...A..A.....B..",
+            ".....B..B..B..."
+          ]
+        }
+      ]
+    },
+    "card": {
+      "placement": "projectile",
+      "phase": "approach",
+      "palette": {
+        "A": "#eee8d7",
+        "B": "#9b91a1",
+        "C": "#c7001b",
+        "D": "#7a7ebd"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -6,
+          "rows": [
+            "CCAAAAA",
+            "AAAAAAA",
+            "AAAAACC"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -6,
+          "rows": [
+            "BBBBBBB",
+            "BDDDDDB",
+            "BBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -6,
+          "rows": [
+            "CCAAAAA",
+            "AAAAAAA",
+            "AAAAACC"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -6,
+          "rows": [
+            "BBBBBBB",
+            "BDDDDDB",
+            "BBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -6,
+          "rows": [
+            "CCAAAAA",
+            "AAAAAAA",
+            "AAAAACC"
+          ]
+        }
+      ]
+    },
+    "summon": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#a998ed",
+        "B": "#5c668f",
+        "C": "#d5e8ff"
+      },
+      "frames": [
+        {
+          "offsetX": -7,
+          "offsetY": 0,
+          "rows": [
+            "...............",
+            "...............",
+            "...............",
+            "...............",
+            "...............",
+            "......AAA......",
+            ".....B.C.B.....",
+            "......BBB......",
+            "..............."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": 0,
+          "rows": [
+            "...............",
+            "...............",
+            "...............",
+            "...............",
+            "...............",
+            "....AAAAAAA....",
+            "..BBB.....BBB..",
+            "....BBBBBBB....",
+            "..............."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": 0,
+          "rows": [
+            "...............",
+            "...............",
+            "...............",
+            "...C...C...C...",
+            "C..AAAAAAAAA..C",
+            ".AAAA.....AAAA.",
+            "BB...........BB",
+            ".BBBB.....BBBB.",
+            "....BBBBBBB...."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": 0,
+          "rows": [
+            "...C...C...C...",
+            "C..C...C...C..C",
+            "C..C...C...C..C",
+            "C.............C",
+            "....AAAAAAA....",
+            ".AAAA.....AAAA.",
+            "BB...........BB",
+            ".BBBB.....BBBB.",
+            "....BBBBBBB...."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": 0,
+          "rows": [
+            "C..C...C...C..C",
+            "C.............C",
+            "...............",
+            "...............",
+            "....A..A..A....",
+            ".A...........A.",
+            "B.............B",
+            "..B.........B..",
+            "....B..B..B...."
+          ]
+        }
+      ]
+    },
+    "blood-drain": {
+      "placement": "beam",
+      "phase": "approach",
+      "palette": {
+        "A": "#c45367",
+        "B": "#9d345b",
+        "C": "#f09b9e"
+      },
+      "frames": [
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "........",
+            "BBBBBBAA",
+            "........"
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "........",
+            "BBBBBACB",
+            "........"
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "........",
+            "BBBBAABB",
+            "........"
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "........",
+            "BBBACBBB",
+            "........"
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -3,
+          "rows": [
+            "........",
+            "BBAABBBB",
+            "........"
+          ]
+        }
+      ]
+    },
+    "explosion": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#fff5de",
+        "B": "#ffe083",
+        "C": "#f6a22c",
+        "D": "#c64e2a"
+      },
+      "frames": [
+        {
+          "offsetX": -7,
+          "offsetY": -1,
+          "rows": [
+            "...............",
+            "...............",
+            "...............",
+            ".......C.......",
+            ".C.CC.CBC.CC.C.",
+            ".......C.......",
+            "...............",
+            "...............",
+            "..............."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": -1,
+          "rows": [
+            "...............",
+            "...............",
+            "....C..C..C....",
+            "......CBC......",
+            ".CC.CCBBBCC.CC.",
+            "......CBC......",
+            "....C..C..C....",
+            "...............",
+            "..............."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": -1,
+          "rows": [
+            "...............",
+            "...C.......C...",
+            "......CCC......",
+            "....CCBBBCC....",
+            "C.CCBBAAABBCC.C",
+            "....CCBBBCC....",
+            "......CCC......",
+            "...C.......C...",
+            "..............."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": -1,
+          "rows": [
+            "..C..DDDDD..C..",
+            ".C..DCCCCCD..C.",
+            "...DCBBBBBCD...",
+            ".DDCBAA.AABCDD.",
+            "CCBAAA...AAABCC",
+            ".DDCBAA.AABCDD.",
+            "...DCBBBBBCD...",
+            ".C..DCCCCCD..C.",
+            "..C..DDDDD..C.."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": -1,
+          "rows": [
+            "..D.........D..",
+            "....C.....C....",
+            "D......B......D",
+            "..C..B...B..C..",
+            "...............",
+            "..C..B...B..C..",
+            "D......B......D",
+            "....C.....C....",
+            "..D.........D.."
+          ]
+        }
+      ]
+    },
+    "bite": {
+      "placement": "target",
+      "phase": "approach",
+      "palette": {
+        "A": "#9f937a",
+        "B": "#793d36",
+        "C": "#fff0d5"
+      },
+      "frames": [
+        {
+          "offsetX": -6,
+          "offsetY": -1,
+          "rows": [
+            "..BBBBBBBBB..",
+            "...CACACAC...",
+            "...C.....C...",
+            ".............",
+            ".............",
+            ".............",
+            "...CACACAC...",
+            "..BBBBBBBBB.."
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": -1,
+          "rows": [
+            ".............",
+            "..BBBBBBBBB..",
+            "...CACACAC...",
+            "...C.....C...",
+            ".............",
+            "...CACACAC...",
+            "..BBBBBBBBB..",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": -1,
+          "rows": [
+            ".............",
+            ".............",
+            "C.BBBBBBBBB.C",
+            ".C.CACACAC.C.",
+            "...CACACAC...",
+            "C.BBBBBBBBB.C",
+            ".............",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": -1,
+          "rows": [
+            ".............",
+            "..BBBBBBBBB..",
+            "...CACACAC...",
+            "...C.....C...",
+            ".............",
+            "...CACACAC...",
+            "..BBBBBBBBB..",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": -1,
+          "rows": [
+            ".............",
+            ".............",
+            "C.BBBBBBBBB.C",
+            ".C.CACACAC.C.",
+            "...CACACAC...",
+            "C.BBBBBBBBB.C",
+            ".............",
+            "............."
+          ]
+        }
+      ]
+    },
+    "thrust": {
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#8f9dae",
+        "C": "#ffffff",
+        "D": "#939495"
+      },
+      "frames": [
+        {
+          "offsetX": -12,
+          "offsetY": -2,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        },
+        {
+          "offsetX": -11,
+          "offsetY": -2,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        },
+        {
+          "offsetX": -9,
+          "offsetY": -2,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        },
+        {
+          "offsetX": -7,
+          "offsetY": -2,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            "...D...",
+            "AAC..D.",
+            ".AAACCC",
+            "BBB..D.",
+            "...D..."
+          ]
+        }
+      ]
+    },
+    "slash": {
+      "palette": {
+        "A": "#e4d4a1",
+        "B": "#796d50",
+        "C": "#fff0c6"
+      },
+      "frames": [
+        {
+          "offsetX": -8,
+          "offsetY": -9,
+          "rows": [
+            "C"
+          ]
+        },
+        {
+          "offsetX": -8,
+          "offsetY": -7,
+          "rows": [
+            "AC.",
+            ".AC",
+            "..C"
+          ]
+        },
+        {
+          "offsetX": -8,
+          "offsetY": -5,
+          "rows": [
+            "BB...",
+            ".BC..",
+            "..AC.",
+            "...AC",
+            "....C"
+          ]
+        },
+        {
+          "offsetX": -8,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            ".BA...",
+            "..AA..",
+            "...AA.",
+            "....AC",
+            "....CC",
+            "....C."
+          ]
+        },
+        {
+          "offsetX": -8,
+          "offsetY": -2,
+          "rows": [
+            ".B....",
+            ".BB...",
+            "..BA..",
+            "...AA.",
+            "....AC",
+            "....CC",
+            "...CC.",
+            "...C.."
+          ]
+        }
+      ]
+    },
+    "blunt": {
+      "palette": {
+        "A": "#9eae8f",
+        "B": "#5e7458",
+        "C": "#cfeab8"
+      },
+      "frames": [
+        {
+          "offsetX": -5,
+          "offsetY": -9,
+          "rows": [
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -8,
+          "rows": [
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -7,
+          "rows": [
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -7,
+          "rows": [
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -6,
+          "rows": [
+            ".......C",
+            "...C.C.C",
+            ".C.CCCCC",
+            "CCCCCCCA",
+            "CCAAAAAB",
+            ".CBBBBBB"
+          ]
+        }
+      ]
+    },
+    "arrow": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#8f9dae",
+        "C": "#ffffff",
+        "D": "#afb5bb"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "....D...",
+            "B....C..",
+            ".AAAACCC",
+            "B....C..",
+            "....D..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "....D...",
+            "B....C..",
+            ".AAAACCC",
+            "B....C..",
+            "....D..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "....D...",
+            "B....C..",
+            ".AAAACCC",
+            "B....C..",
+            "....D..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "....D...",
+            "B....C..",
+            ".AAAACCC",
+            "B....C..",
+            "....D..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "....D...",
+            "B....C..",
+            ".AAAACCC",
+            "B....C..",
+            "....D..."
+          ]
+        }
+      ]
+    },
+    "knife": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#8f9dae",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            "ABCCCC",
+            ".B...."
+          ]
+        }
+      ]
+    },
+    "shuriken": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#8f9dae",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "..A..",
+            "..AB.",
+            "AACAA",
+            ".BA..",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "..A..",
+            "..AB.",
+            "AACAA",
+            ".BA..",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "A...A",
+            ".ABA.",
+            "..C..",
+            ".ABA.",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "A...A",
+            ".ABA.",
+            "..C..",
+            ".ABA.",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "..A..",
+            "..AB.",
+            "AACAA",
+            ".BA..",
+            "..A.."
+          ]
+        }
+      ]
+    },
+    "axe": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#d5dfe8",
+        "B": "#3c5d3e",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "AAAAC",
+            "..ACC",
+            ".AAAC",
+            "..B..",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "AAAAC",
+            "..ACC",
+            ".AAAC",
+            "..B..",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "..B..",
+            "..B..",
+            "CAAA.",
+            "CCA..",
+            "CAAAA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "..B..",
+            "..B..",
+            "CAAA.",
+            "CCA..",
+            "CAAAA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "AAAAC",
+            "..ACC",
+            ".AAAC",
+            "..B..",
+            "..B.."
+          ]
+        }
+      ]
+    },
+    "rock": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#bcb19b",
+        "B": "#706759",
+        "C": "#e4ddcd"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".AAA.",
+            "AACAB",
+            ".AABB"
+          ]
+        }
+      ]
+    },
+    "bone": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ded5bd"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "AA......AA",
+            "..AAAAAA..",
+            "AA......AA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "AA......AA",
+            "..AAAAAA..",
+            "AA......AA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "AA..AA",
+            "..AA..",
+            "..AA..",
+            "..AA..",
+            "AA..AA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "AA..AA",
+            "..AA..",
+            "..AA..",
+            "..AA..",
+            "AA..AA"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": 8,
+          "rows": [
+            "AA......AA",
+            "..AAAAAA..",
+            "AA......AA"
+          ]
+        }
+      ]
+    },
+    "dice": {
+      "placement": "target",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#e6dcc3",
+        "C": "#a43f3f"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -14,
+          "rows": [
+            "AAA",
+            "ACA",
+            "AAA"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -12,
+          "rows": [
+            "AAA",
+            "CAC",
+            "AAA"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -8,
+          "rows": [
+            "AAC",
+            "ACA",
+            "CAA"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            "CAC",
+            "AAA",
+            "CAC"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "CAC",
+            "ACA",
+            "CAC"
+          ]
+        }
+      ]
+    },
+    "fireball": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "...AABA.",
+            "AABBCCBA",
+            "..ABABA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "...AABA.",
+            "AABBCCBA",
+            "..ABABA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "...AABA.",
+            "AABBCCBA",
+            "..ABABA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "...AABA.",
+            "AABBCCBA",
+            "..ABABA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".AB...B.",
+            "A...A..A",
+            "...B....",
+            ".AB..BA."
+          ]
+        }
+      ]
+    },
+    "arcane": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#9bc8ef",
+        "C": "#ecf7ff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".......",
+            "...A...",
+            "..ACA..",
+            "...A...",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".......",
+            "...A...",
+            "..ACA..",
+            "...A...",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".......",
+            "...A...",
+            "..ACA..",
+            "...A...",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".......",
+            "...A...",
+            "..ACA..",
+            "...A...",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".A...A.",
+            "A..C..A",
+            "..C.C..",
+            "A..C..A",
+            ".A...A."
+          ]
+        }
+      ]
+    },
+    "ice": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#c9f5ff",
+        "B": "#66bce3",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "..CCCCCC.",
+            "CCCCAAAAC",
+            "...BBBBA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "..CCCCCC.",
+            "CCCCAAAAC",
+            "...BBBBA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "..CCCCCC.",
+            "CCCCAAAAC",
+            "...BBBBA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            "..CCCCCC.",
+            "CCCCAAAAC",
+            "...BBBBA."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "C.C...C",
+            "AC.C.AC",
+            ".B.....",
+            "....AC.",
+            "BC...B."
+          ]
+        }
+      ]
+    },
+    "holy": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#fff0b0",
+        "B": "#d4b95e",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".......",
+            "...C...",
+            "..CCC..",
+            "...C...",
+            ".......",
+            ".......",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "...A...",
+            "...C...",
+            ".ACCCA.",
+            "...C...",
+            "...A...",
+            "...A...",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".A.A.A.",
+            "...C...",
+            "BACCCAB",
+            "...C...",
+            ".A.A.A.",
+            "...A...",
+            "...B..."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "...AAA...",
+            "...AAA...",
+            "AAACCCAAA",
+            "AAACCCAAA",
+            "...AAA...",
+            "...AAA...",
+            "...AAA...",
+            "...AAA...",
+            "...AAA...",
+            "...BBB..."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "BB..A..BB",
+            "BB.....BB",
+            "....C....",
+            "AA.CCC.AA",
+            "....C....",
+            "BB.....BB",
+            "BB..A..BB",
+            "....A....",
+            "....A....",
+            "....A...."
+          ]
+        }
+      ]
+    },
+    "shadow": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#b19be5",
+        "B": "#725593",
+        "C": "#e0ceff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "..B..",
+            ".ABA.",
+            "BACAB",
+            ".ABA.",
+            "..B.."
+          ]
+        }
+      ]
+    },
+    "flask": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#a6db67",
+        "B": "#527f42",
+        "C": "#d9f4ad"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "ACAA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            ".A...A.",
+            "..A...A",
+            "A...A..",
+            "A.....A",
+            "..A..A."
+          ]
+        }
+      ]
+    },
+    "fire-flask": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "ACAA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            ".B...B.",
+            "..B...B",
+            "B...B..",
+            "B.....B",
+            "..B..B."
+          ]
+        }
+      ]
+    },
+    "ice-flask": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#c9f5ff",
+        "B": "#66bce3",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "ACAA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            ".A...A.",
+            "..A...A",
+            "A...A..",
+            "A.....A",
+            "..A..A."
+          ]
+        }
+      ]
+    },
+    "thunder-flask": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#a8cafa",
+        "B": "#7597c9",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "ACAA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -5,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -4,
+          "rows": [
+            ".BB.",
+            ".CC.",
+            "AAAA",
+            "AACA",
+            ".AA."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            ".C...C.",
+            "..A...A",
+            "C...A..",
+            "A.....C",
+            "..A..A."
+          ]
+        }
+      ]
+    },
+    "lightning": {
+      "placement": "beam",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#b6d5ff",
+        "B": "#668bc4",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            ".ABB.....",
+            ".CCCA....",
+            "BABBCA..B",
+            "CA..BCACC",
+            "B....ACAB",
+            ".....BBB.",
+            "......B.."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            ".ABB.....",
+            ".CCCA....",
+            "BABBCA..B",
+            "CA..BCACC",
+            "B....ACAB",
+            ".....BBB.",
+            "......B.."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            ".B....B..",
+            ".CA..BCA.",
+            "BACA.CABB",
+            "CABCAA.AC",
+            "B..BCB..B",
+            "...BB....",
+            "....B...."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            ".B....B..",
+            ".CA..BCA.",
+            "BACA.CABB",
+            "CABCAA.AC",
+            "B..BCB..B",
+            "...BB....",
+            "....B...."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            ".ABB.....",
+            ".CCCA....",
+            "BABBCA..B",
+            "CA..BCACC",
+            "B....ACAB",
+            ".....BBB.",
+            "......B.."
+          ]
+        }
+      ]
+    },
+    "shadow-beam": {
+      "placement": "beam",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#604899",
+        "B": "#3e2a55",
+        "C": "#8a6fb8"
+      },
+      "frames": [
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            "..........",
+            "..........",
+            "AAAAAABCCC",
+            "CCCBAAAAAA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            "..........",
+            "..........",
+            "AAAAAABCCC",
+            "CCCBAAAAAA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            "..........",
+            "..........",
+            "ABCCCAAAAA",
+            "AAAAACCCBA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            "..........",
+            "..........",
+            "ABCCCAAAAA",
+            "AAAAACCCBA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            "..........",
+            "..........",
+            "AAAAAABCCC",
+            "CCCBAAAAAA",
+            "..........",
+            "..........",
+            ".........."
+          ]
+        }
+      ]
+    },
+    "fire-breath": {
+      "placement": "beam",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            ".......CC",
+            ".CBCBBBBB",
+            "CBCAAACAA",
+            "AAAACAAAC",
+            "BCBAABCBA",
+            ".BC.CCBCB",
+            "........C"
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            ".......CC",
+            ".CBCBBBBB",
+            "CBCAAACAA",
+            "AAAACAAAC",
+            "BCBAABCBA",
+            ".BC.CCBCB",
+            "........C"
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            "..CC.....",
+            "CBAB.CCBC",
+            "ACAACCABA",
+            "BACAAABAC",
+            "CAAC.CCBA",
+            "CBCC...BC",
+            "...C....."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            "..CC.....",
+            "CBAB.CCBC",
+            "ACAACCABA",
+            "BACAAABAC",
+            "CAAC.CCBA",
+            "CBCC...BC",
+            "...C....."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -1,
+          "rows": [
+            ".......CC",
+            "..CCCCBAB",
+            "CBBCAACAB",
+            "ACAABAAAC",
+            "BBACABABA",
+            ".CCCBCCBB",
+            "......CC."
+          ]
+        }
+      ]
+    },
+    "fire-pillar": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "CBAAACBAA",
+            "BACAAAAC.",
+            ".AABCABA.",
+            ".BBAAACB.",
+            "B.CBAA.B.",
+            "B..ACAA.B",
+            "...AAB...",
+            ".B.CAA.B.",
+            "..BBAC...",
+            "..CAABB..",
+            "B.BACAA.B",
+            "..CAACBA.",
+            "..ABCABC.",
+            ".CAAABCBC",
+            "AABACAAAB"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "CBAAACBAA",
+            "BACAAAAC.",
+            "..ABCABA.",
+            ".BBAAACB.",
+            "B.CBAA.B.",
+            "B.AACAA.B",
+            "...AAB...",
+            ".B.CAA.B.",
+            "..BBAC...",
+            "..CAABB..",
+            "B..ACAA.B",
+            "..CAACB..",
+            ".AABCABC.",
+            ".CAAABCBC",
+            "AABACAAAB"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "BAABCAAAB",
+            ".CAAABCAA",
+            ".ABCAAAB.",
+            ".CAABCBA.",
+            "B.CBAAAC.",
+            "..CACBA.B",
+            ".B.AAAB..",
+            "B..CAB..A",
+            ".A.AAC.B.",
+            "..CBAAA..",
+            "B.AACAAC.",
+            ".CBAABCB.",
+            ".AACAABA.",
+            ".CBABCABC",
+            "CAACAABCB"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            "BAABCAAAB",
+            ".CAAABCAA",
+            ".ABCAAAB.",
+            ".CAABCBA.",
+            "B.CBAAAC.",
+            "..CACBA.B",
+            ".B.AAAB..",
+            "B..CAB..A",
+            ".A.AAC.B.",
+            "..CBAAA..",
+            "B.AACAAC.",
+            ".CBAABCB.",
+            ".AACAABA.",
+            ".CBABCABC",
+            "CAACAABCB"
+          ]
+        },
+        {
+          "offsetX": 54,
+          "offsetY": -2,
+          "rows": [
+            "CBAAACBAA",
+            "BACAAAAC.",
+            ".AABCABA.",
+            ".BBAAACB.",
+            "B.CBAAAB.",
+            "B.AACAA.B",
+            "...AAB...",
+            ".B.CAA.B.",
+            "..BBAC...",
+            "..CAABB..",
+            "B.BACAA.B",
+            "..CAACBA.",
+            ".AABCABC.",
+            ".CAAABCBC",
+            "AABACAAAB"
+          ]
+        }
+      ]
+    },
+    "ice-burst": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#c9f5ff",
+        "B": "#66bce3",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            "...C.C...",
+            "....C....",
+            "...C.C...",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A...A..",
+            "...C.C...",
+            "AAA.C.AAA",
+            "...C.C...",
+            "..A...A.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "C.A...A.C",
+            "...B.B...",
+            "AAB...BAA",
+            "...B.B...",
+            "C.A...A.C"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "C.A...A.C",
+            "...B.B...",
+            "AAB...BAA",
+            "...B.B...",
+            "C.A...A.C"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "C.B...B.C",
+            "....C....",
+            "AB.CCC.BA",
+            "....C....",
+            "C.B...B.C"
+          ]
+        }
+      ]
+    },
+    "storm": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#b6d5ff",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "..A...A..",
+            ".AC..AC..",
+            "AC..AC...",
+            "A.C.A.C..",
+            "A..AC..C.",
+            "AC..AC...",
+            ".AC..AC..",
+            "..AC..AC.",
+            ".A.AC..AA",
+            "A...A...A",
+            "....AC..A",
+            "....A.CAC",
+            "...AC.AC.",
+            "..AC..C.C",
+            ".AC...A.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "..A...A..",
+            ".AC..AC..",
+            "AC..AC...",
+            "A.C.A.C..",
+            "A..AC..C.",
+            "AC..AC..C",
+            ".AC..AC..",
+            "..AC..AC.",
+            ".A.AC..AA",
+            "A...A...A",
+            "A...AC..A",
+            ".A..A.CAC",
+            "...AC.AC.",
+            "..AC..C.C",
+            ".AC...A.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "AC...AC..",
+            ".AC...AC.",
+            "..AC...AC",
+            ".C.AC...A",
+            "A..A.C..C",
+            "..AC..CAC",
+            ".AC...AC.",
+            "AC...AC..",
+            "A.A.AC...",
+            "C..AA....",
+            "A...C....",
+            "C...AC...",
+            "AC...AC..",
+            ".AC...AC.",
+            "..A....A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "AC...AC..",
+            ".AC...AC.",
+            "..AC...AC",
+            ".C.AC...A",
+            "A..A.C..C",
+            "..AC..CAC",
+            ".AC...AC.",
+            "AC...AC..",
+            "A.A.AC...",
+            "C..AA.C..",
+            "A...C..C.",
+            "C...AC..C",
+            "AC...AC..",
+            ".AC...AC.",
+            "..A....A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "..A...A..",
+            ".AC..AC..",
+            "AC..AC...",
+            "A.C.A.C..",
+            "A..AC..C.",
+            "AC..AC..A",
+            ".AC..AC.A",
+            "..AC..AC.",
+            ".A.AC..AA",
+            "A...A...A",
+            "A...AC..A",
+            ".A..A.CAC",
+            ".A.AC.AC.",
+            "..AC..C.C",
+            ".AC...A.."
+          ]
+        }
+      ]
+    },
+    "poison-cloud": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#a6db67",
+        "B": "#527f42",
+        "C": "#d9f4ad"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".............",
+            ".............",
+            ".............",
+            "......A......",
+            ".....AAA.....",
+            "......A......",
+            ".............",
+            ".............",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".............",
+            ".............",
+            ".............",
+            ".....ACA.....",
+            "....ACAAB....",
+            ".....ABB.....",
+            ".............",
+            ".............",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".............",
+            ".............",
+            ".....AAA.....",
+            "...AACCAAA...",
+            "..ACAAACABB..",
+            "...AACAABB...",
+            ".....BBB.....",
+            ".............",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".............",
+            "...AAAAAAA...",
+            ".AAACCCCCAAA.",
+            "AAAC..C..CAAA",
+            "AAAACC.CCAAAA",
+            "AAAACACACAAAB",
+            ".AAAAAAAAABB.",
+            "...BBBBBBB...",
+            "............."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "..A.......A..",
+            ".A.........A.",
+            "....AAAAA....",
+            "A..A..A..A..A",
+            "...AAA.AAA...",
+            "A...A.A.A...A",
+            ".............",
+            ".A.........A.",
+            "..A.......A.."
+          ]
+        }
+      ]
+    },
+    "shockwave": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#c0aa84"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".......",
+            "..A.A..",
+            ".A...A.",
+            ".A...A.",
+            ".A...A.",
+            "..A.A..",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".......",
+            "..A.A..",
+            ".A...A.",
+            ".A...A.",
+            ".A...A.",
+            "..A.A..",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "..A.A..",
+            ".A...A.",
+            "A.....A",
+            "A.....A",
+            "A.....A",
+            ".A...A.",
+            "..A.A.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "..A.A..",
+            ".A...A.",
+            "A.....A",
+            "A.....A",
+            "A.....A",
+            ".A...A.",
+            "..A.A.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".A...A.",
+            "A.....A",
+            "A.....A",
+            ".A...A.",
+            "A.....A",
+            "A.....A",
+            ".A...A."
+          ]
+        }
+      ]
+    },
+    "web": {
+      "placement": "projectile",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#ddd9c8"
+      },
+      "frames": [
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            ".........",
+            ".........",
+            "....A....",
+            "...AAA...",
+            "....A....",
+            ".........",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            ".........",
+            ".........",
+            "....A....",
+            "...AAA...",
+            "....A....",
+            ".........",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            ".........",
+            ".........",
+            "....A....",
+            "...AAA...",
+            "....A....",
+            ".........",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            ".........",
+            ".........",
+            "....A....",
+            "...AAA...",
+            "....A....",
+            ".........",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            "A...A...A",
+            ".A.AAA.A.",
+            "A.A.A.A.A",
+            "AAAAAAAAA",
+            "A.A.A.A.A",
+            ".A.AAA.A.",
+            "A...A...A"
+          ]
+        }
+      ]
+    },
+    "shadow-burst": {
+      "placement": "target",
+      "phase": "approach",
+      "ticks": 6,
+      "palette": {
+        "A": "#b19be5",
+        "B": "#725593",
+        "C": "#e0ceff"
+      },
+      "frames": [
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            "....C....",
+            "...CAC...",
+            "....C....",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            "....C....",
+            "...CAC...",
+            "..CABAC..",
+            "...CAC...",
+            "....C...."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            "..C.C.C..",
+            "...AAA...",
+            ".CAABAAC.",
+            "...AAA...",
+            "..C.C.C.."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            "..C.C.C..",
+            "...AAA...",
+            ".CAABAAC.",
+            "...AAA...",
+            "..C.C.C.."
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -3,
+          "rows": [
+            "CA..C..AC",
+            "...BAB...",
+            "A.B...B.A",
+            "...BAB...",
+            "CA..C..AC"
+          ]
+        }
+      ]
+    },
+    "tentacle": {
+      "placement": "beam",
+      "phase": "approach",
+      "ticks": 5,
+      "palette": {
+        "A": "#c28b9c",
+        "B": "#755565",
+        "C": "#eed0d4",
+        "D": "#6fd889"
+      },
+      "frames": [
+        {
+          "offsetX": 0,
+          "offsetY": -2,
+          "rows": [
+            "..........",
+            "..........",
+            "DDDAAADDDA",
+            "CCBBCCCBBC",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -2,
+          "rows": [
+            "..........",
+            "..........",
+            "ADDDAAADDD",
+            "CCCBBCCCBB",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -2,
+          "rows": [
+            "..........",
+            "..........",
+            "DADDDAAADD",
+            "BCCCBBCCCB",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -2,
+          "rows": [
+            "..........",
+            "..........",
+            "DDADDDAAAD",
+            "BBCCCBBCCC",
+            "..........",
+            ".........."
+          ]
+        },
+        {
+          "offsetX": 0,
+          "offsetY": -2,
+          "rows": [
+            "..........",
+            "..........",
+            "DDDADDDAAA",
+            "CBBCCCBBCC",
+            "..........",
+            ".........."
+          ]
+        }
+      ]
+    },
+    "heal": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#80d89d",
+        "B": "#69d38e",
+        "C": "#d6ffe2"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": 1,
+          "rows": [
+            ".....",
+            ".....",
+            "..B..",
+            ".....",
+            "....."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            ".....",
+            "..B..",
+            ".BAB.",
+            "..B..",
+            "....."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "..B..",
+            "..A..",
+            "BACAB",
+            "..A..",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "..B..",
+            ".BAB.",
+            "BACAB",
+            ".BAB.",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            "A.A.A",
+            "..C..",
+            "AC.CA",
+            "..C..",
+            "A.A.A"
+          ]
+        }
+      ]
+    },
+    "mana": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#91bfff",
+        "C": "#e6f1ff"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": 1,
+          "rows": [
+            "..A..",
+            ".ACA.",
+            "ACCCA",
+            ".ACA.",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            "A...A",
+            "..A..",
+            ".ACA.",
+            "..A..",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "A...A",
+            "..A..",
+            ".ACA.",
+            "..A..",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "A...A",
+            "..A..",
+            ".ACA.",
+            "..A..",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            "A...A",
+            "..A..",
+            ".ACA.",
+            "..A..",
+            "A...A"
+          ]
+        }
+      ]
+    },
+    "buff": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#7ae17c",
+        "B": "#41e53e"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": 2,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 1,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            "....B....",
+            "...BBB...",
+            "....A....",
+            ".B..A..B.",
+            "BBB...BBB",
+            ".A.....A.",
+            ".A.....A."
+          ]
+        }
+      ]
+    },
+    "ward": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#a8cee2",
+        "C": "#eaf8ff"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".........",
+            ".........",
+            ".........",
+            "...AAA...",
+            "...A.A...",
+            "....A....",
+            ".........",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".........",
+            ".........",
+            "..AAAAA..",
+            "..A...A..",
+            "..A...A..",
+            "...A.A...",
+            "....A....",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".........",
+            ".AAAAAAA.",
+            ".A.....A.",
+            ".A..A..A.",
+            ".A..A..A.",
+            ".A.....A.",
+            "..A...A..",
+            "...AAA..."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "AAAAAAAAA",
+            "A.......A",
+            "A.CACAC.A",
+            "A.A.A.A.A",
+            "A..CAC..A",
+            ".A..A..A.",
+            "..A...A..",
+            "...AAA..."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "AAAAAAAAA",
+            "A.......A",
+            "A.CACAC.A",
+            "A.A.A.A.A",
+            "A..CAC..A",
+            ".A..A..A.",
+            "..A...A..",
+            "...AAA..."
+          ]
+        }
+      ]
+    },
+    "focus": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#fff0b0",
+        "B": "#d4b95e",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            ".B.....B.",
+            "B..AAA..B",
+            ".AA.B.AA.",
+            "A..BCB..A",
+            ".AA.B.AA.",
+            "B..AAA..B",
+            ".B.....B."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            ".B.....B.",
+            "B..AAA..B",
+            ".AA.B.AA.",
+            "A..BCB..A",
+            ".AA.B.AA.",
+            "B..AAA..B",
+            ".B.....B."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            ".........",
+            "...AAA...",
+            ".AA.B.AA.",
+            "A..BCB..A",
+            ".AA.B.AA.",
+            "...AAA...",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            ".........",
+            "...AAA...",
+            ".AA.B.AA.",
+            "A..BCB..A",
+            ".AA.B.AA.",
+            "...AAA...",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            ".B.....B.",
+            "B..AAA..B",
+            ".AA.B.AA.",
+            "A..BCB..A",
+            ".AA.B.AA.",
+            "B..AAA..B",
+            ".B.....B."
+          ]
+        }
+      ]
+    },
+    "haste": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#9ce1cf",
+        "B": "#61a08e"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": 1,
+          "rows": [
+            "...AA...",
+            ".AA..AA.",
+            "A......A",
+            "...BB...",
+            ".BB..BB.",
+            "B......B"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": 0,
+          "rows": [
+            "...AA...",
+            ".AA..AA.",
+            "A......A",
+            "...BB...",
+            ".BB..BB.",
+            "B......B"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            "...AA...",
+            ".AA..AA.",
+            "A......A",
+            "...BB...",
+            ".BB..BB.",
+            "B......B"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "...AA...",
+            ".AA..AA.",
+            "A......A",
+            "...BB...",
+            ".BB..BB.",
+            "B......B"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "...AA...",
+            ".AA..AA.",
+            "A......A",
+            "...BB...",
+            ".BB..BB.",
+            "B......B"
+          ]
+        }
+      ]
+    },
+    "debuff": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#c795c4",
+        "B": "#80577e"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -3,
+          "rows": [
+            ".A.....A.",
+            ".A.....A.",
+            "BBB...BBB",
+            ".B..A..B.",
+            "....A....",
+            "...BBB...",
+            "....B...."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -2,
+          "rows": [
+            ".A.....A.",
+            ".A.....A.",
+            "BBB...BBB",
+            ".B..A..B.",
+            "....A....",
+            "...BBB...",
+            "....B...."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".A.....A.",
+            ".A.....A.",
+            "BBB...BBB",
+            ".B..A..B.",
+            "....A....",
+            "...BBB...",
+            "....B...."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".A.....A.",
+            ".A.....A.",
+            "BBB...BBB",
+            ".B..A..B.",
+            "....A....",
+            "...BBB...",
+            "....B...."
+          ]
+        },
+        {
+          "offsetX": -49,
+          "offsetY": 0,
+          "rows": [
+            ".A.....A.",
+            ".A.....A.",
+            "BBB...BBB",
+            ".B..A..B.",
+            "....A....",
+            "...BBB...",
+            "....B...."
+          ]
+        }
+      ]
+    },
+    "poison": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#a6db67",
+        "B": "#2e4625",
+        "C": "#abc482"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": 0,
+          "rows": [
+            "..AAAAA..",
+            ".ABBABBA.",
+            ".AAABAAA.",
+            "..A.A.A..",
+            "CCC...CCC",
+            "...CCC...",
+            "CCC...CCC"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -1,
+          "rows": [
+            "..AAAAA..",
+            ".ABBABBA.",
+            ".AAABAAA.",
+            "..A.A.A..",
+            "CCC...CCC",
+            "...CCC...",
+            "CCC...CCC"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "..AAAAA..",
+            ".ABBABBA.",
+            ".AAABAAA.",
+            "..A.A.A..",
+            "CCC...CCC",
+            "...CCC...",
+            "CCC...CCC"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            "..AAAAA..",
+            ".ABBABBA.",
+            ".AAABAAA.",
+            "..A.A.A..",
+            "CCC...CCC",
+            "...CCC...",
+            "CCC...CCC"
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..AAAAA..",
+            ".ABBABBA.",
+            ".AAABAAA.",
+            "..A.A.A..",
+            "CCC...CCC",
+            "...CCC...",
+            "CCC...CCC"
+          ]
+        }
+      ]
+    },
+    "burn": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 6,
+      "palette": {
+        "A": "#ffcf61",
+        "B": "#ef7b2d",
+        "C": "#9d3426"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A.A..",
+            "A.BA..A",
+            "ABABAA.",
+            ".ABCBA.",
+            "..ACB.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A.A..",
+            "A.BA..A",
+            "ABABAA.",
+            ".ABCBA.",
+            "..ACB.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A.B..",
+            "A..AA..",
+            ".BABABA",
+            ".ABCBA.",
+            "..BCA.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A.B..",
+            "A..AA..",
+            ".BABABA",
+            ".ABCBA.",
+            "..BCA.."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            "..A.B..",
+            "A.A...B",
+            ".AABAB.",
+            ".ACCBA.",
+            "..ACA.."
+          ]
+        }
+      ]
+    },
+    "bleed": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#801e1e"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -5,
+          "rows": [
+            ".A....",
+            ".A....",
+            "AAA.A.",
+            ".A..A.",
+            "...AAA",
+            "....A."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -4,
+          "rows": [
+            ".A....",
+            ".A....",
+            "AAA.A.",
+            ".A..A.",
+            "...AAA",
+            "....A."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".A....",
+            ".A....",
+            "AAA.A.",
+            ".A..A.",
+            "...AAA",
+            "....A."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            ".A....",
+            ".A....",
+            "AAA.A.",
+            ".A..A.",
+            "...AAA",
+            "....A."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            ".A....",
+            ".A....",
+            "AAA.A.",
+            ".A..A.",
+            "...AAA",
+            "....A."
+          ]
+        }
+      ]
+    },
+    "stun": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#f0d483"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -8,
+          "rows": [
+            "..A.A..",
+            "A.....A",
+            "..A.A.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -8,
+          "rows": [
+            "..A.A..",
+            "A.....A",
+            "..A.A.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -8,
+          "rows": [
+            ".A.A.A.",
+            ".......",
+            ".A.A.A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -8,
+          "rows": [
+            ".A.A.A.",
+            ".......",
+            ".A.A.A."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -8,
+          "rows": [
+            "..A.A..",
+            "A.....A",
+            "..A.A.."
+          ]
+        }
+      ]
+    },
+    "blind": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#9e98ad",
+        "B": "#605a70",
+        "C": "#d0cada"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".......",
+            ".AAAAA.",
+            "A.BBB.A",
+            ".AAAAA.",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".......",
+            ".AAAAA.",
+            "A.BCB.A",
+            ".AAAAA.",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".......",
+            ".AAACA.",
+            "A.BCB.A",
+            ".ACAAA.",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".......",
+            ".AAACA.",
+            "A.BCB.A",
+            ".ACAAA.",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".....C.",
+            ".AAACA.",
+            "A.BCB.A",
+            ".ACAAA.",
+            ".C....."
+          ]
+        }
+      ]
+    },
+    "silence": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#b19be5"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            ".........",
+            "....A....",
+            ".........",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            "...A.A...",
+            "....A....",
+            "...A.A...",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".........",
+            "..AA.AA..",
+            "....A....",
+            "..AA.AA..",
+            "........."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            ".A.....A.",
+            "..AA.AA..",
+            "....A....",
+            "..AA.AA..",
+            ".A.....A."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -3,
+          "rows": [
+            "AA.....AA",
+            "..AA.AA..",
+            "....A....",
+            "..AA.AA..",
+            "AA.....AA"
+          ]
+        }
+      ]
+    },
+    "fear": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#b99bc9",
+        "B": "#6c526e"
+      },
+      "frames": [
+        {
+          "offsetX": -4,
+          "offsetY": -1,
+          "rows": [
+            ".AAAAA.",
+            "ABBABBA",
+            "AAABAAA",
+            ".A.A.A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -2,
+          "rows": [
+            ".AAAAA.",
+            "ABBABBA",
+            "AAABAAA",
+            ".A.A.A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AAAAA.",
+            "ABBABBA",
+            "AAABAAA",
+            ".A.A.A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -3,
+          "rows": [
+            ".AAAAA.",
+            "ABBABBA",
+            "AAABAAA",
+            ".A.A.A."
+          ]
+        },
+        {
+          "offsetX": -4,
+          "offsetY": -4,
+          "rows": [
+            ".AAAAA.",
+            "ABBABBA",
+            "AAABAAA",
+            ".A.A.A."
+          ]
+        }
+      ]
+    },
+    "mark": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#df9e9e",
+        "B": "#9c626e",
+        "C": "#ffe3d5"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "...AAA...",
+            ".AA...AA.",
+            "A...B...A",
+            "A..BCB..A",
+            "A...B...A",
+            ".AA...AA.",
+            "...AAA..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "...AAA...",
+            ".AA...AA.",
+            "A...B...A",
+            "A..BCB..A",
+            "A...B...A",
+            ".AA...AA.",
+            "...AAA..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "...AAA...",
+            ".AA...AA.",
+            "A...B...A",
+            "A.BBCBB.A",
+            "A...B...A",
+            ".AA...AA.",
+            "...AAA..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "...AAA...",
+            ".AA...AA.",
+            "A...B...A",
+            "A.BBCBB.A",
+            "A...B...A",
+            ".AA...AA.",
+            "...AAA..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "...AAA...",
+            ".AA.B.AA.",
+            "A...B...A",
+            "ABBBCBBBA",
+            "A...B...A",
+            ".AA.B.AA.",
+            "...AAA..."
+          ]
+        }
+      ]
+    },
+    "cleanse": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#d6f4dc",
+        "C": "#ffffff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+            "C.C.C.C.C"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            ".........",
+            "..A......",
+            ".ACA...A.",
+            "..A...ACA",
+            ".......A.",
+            "C.C.C.C.C"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            "..A......",
+            ".ACA...A.",
+            "..A...ACA",
+            ".......A.",
+            "....C....",
+            "C.C.C.C.C"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            "..A......",
+            ".......A.",
+            "....A....",
+            "...ACA...",
+            ".C..A....",
+            "C.C.C.C.C"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            ".......A.",
+            "....A....",
+            ".A.ACA...",
+            "ACA.A....",
+            ".A.......",
+            "C.C.C.C.C"
+          ]
+        }
+      ]
+    },
+    "dispel": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#b19be5",
+        "C": "#e0ceff"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+            "C.C.C.C.C"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            ".........",
+            "..A......",
+            ".ACA...A.",
+            "..A...ACA",
+            ".......A.",
+            "C.C.C.C.C"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            "..A......",
+            ".ACA...A.",
+            "..A...ACA",
+            ".......A.",
+            "....C....",
+            "C.C.C.C.C"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            "..A......",
+            ".......A.",
+            "....A....",
+            "...ACA...",
+            ".C..A....",
+            "C.C.C.C.C"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -1,
+          "rows": [
+            ".......A.",
+            "....A....",
+            ".A.ACA...",
+            "ACA.A....",
+            ".A.......",
+            "C.C.C.C.C"
+          ]
+        }
+      ]
+    },
+    "web-status": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#ddd9c8",
+        "B": "#9e9b90"
+      },
+      "frames": [
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            "BB..A..BB",
+            ".ABBABBA.",
+            "A.A.B.A.A",
+            "AAAAAAAAA",
+            "A.A.A.A.A",
+            ".A.AAA.A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            "A...A...A",
+            "BB.AAA.BB",
+            "A.BBABB.A",
+            "AAAABAAAA",
+            "A.A.A.A.A",
+            ".A.AAA.A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            "A...A...A",
+            ".A.AAA.A.",
+            "BBA.A.ABB",
+            "AABBABBAA",
+            "A.A.B.A.A",
+            ".A.AAA.A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            "A...A...A",
+            ".A.AAA.A.",
+            "A.A.A.A.A",
+            "BBAAAAABB",
+            "A.BBABB.A",
+            ".A.ABA.A.",
+            "A...A...A"
+          ]
+        },
+        {
+          "offsetX": -5,
+          "offsetY": -2,
+          "rows": [
+            "A...A...A",
+            ".A.AAA.A.",
+            "A.A.A.A.A",
+            "AAAAAAAAA",
+            "BBA.A.ABB",
+            ".ABBABBA.",
+            "A...B...A"
+          ]
+        }
+      ]
+    },
+    "reflect": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#9caaa9",
+        "B": "#c9d2cd",
+        "C": "#f2e9cf"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "..A..",
+            ".....",
+            "A...A",
+            ".....",
+            "..A.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            "A...A",
+            ".B.B.",
+            "..C..",
+            ".B.B.",
+            "A...A"
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".....",
+            ".A.A.",
+            "..C..",
+            ".A.A.",
+            "....."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".....",
+            "..B..",
+            ".BCB.",
+            "..B..",
+            "....."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": -1,
+          "rows": [
+            ".....",
+            ".....",
+            "..A..",
+            ".....",
+            "....."
+          ]
+        }
+      ]
+    },
+    "counter": {
+      "palette": {
+        "A": "#e4d4a1",
+        "B": "#796d50",
+        "C": "#fff0c6"
+      },
+      "frames": [
+        {
+          "offsetX": -6,
+          "offsetY": -9,
+          "rows": [
+            "C"
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": -7,
+          "rows": [
+            "AC.",
+            ".AC",
+            "..C"
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": -5,
+          "rows": [
+            "BB...",
+            ".BC..",
+            "..AC.",
+            "...AC",
+            "....C"
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": -3,
+          "rows": [
+            ".B....",
+            ".BA...",
+            "..AA..",
+            "...AA.",
+            "....AC",
+            "....CC",
+            "....C."
+          ]
+        },
+        {
+          "offsetX": -6,
+          "offsetY": -2,
+          "rows": [
+            ".B....",
+            ".BB...",
+            "..BA..",
+            "...AA.",
+            "....AC",
+            "....CC",
+            "...CC.",
+            "...C.."
+          ]
+        }
+      ],
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5
+    },
+    "hexed": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#664180",
+        "B": "#aa67c7",
+        "C": "#e4b8ed"
+      },
+      "frames": [
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "A.....A",
+            ".......",
+            "..B.B..",
+            ".......",
+            "..B.B..",
+            ".......",
+            "A.....A"
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            ".A...A.",
+            "..B.B..",
+            ".B...B.",
+            "...C...",
+            ".B...B.",
+            "..B.B..",
+            ".A...A."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            "...A...",
+            "..B.B..",
+            ".B.C.B.",
+            "A.C.C.A",
+            ".B.C.B.",
+            "..B.B..",
+            "...A..."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            ".......",
+            "...A...",
+            "..BCB..",
+            ".ACCA..",
+            "..BCB..",
+            "...A...",
+            "......."
+          ]
+        },
+        {
+          "offsetX": -3,
+          "offsetY": -2,
+          "rows": [
+            ".A.....",
+            ".....B.",
+            ".......",
+            "..C....",
+            ".......",
+            ".....A.",
+            ".B....."
+          ]
+        }
+      ]
+    },
+    "deep-wound": {
+      "placement": "target",
+      "phase": "impact",
+      "ticks": 5,
+      "palette": {
+        "A": "#6e1c32",
+        "B": "#bd3548",
+        "C": "#ed6a65"
+      },
+      "frames": [
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            ".....",
+            "..A..",
+            "..A..",
+            "..B..",
+            "..A..",
+            ".....",
+            "....."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            "..A..",
+            "..BA.",
+            ".ABA.",
+            "..BA.",
+            "..A..",
+            ".....",
+            "....."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            "..A..",
+            ".ABA.",
+            ".BCB.",
+            ".ABA.",
+            "..BA.",
+            "..B..",
+            "....."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            ".....",
+            "..A..",
+            "..B..",
+            "..A..",
+            "...B.",
+            ".B...",
+            "..B.."
+          ]
+        },
+        {
+          "offsetX": -2,
+          "offsetY": 0,
+          "rows": [
+            ".....",
+            ".....",
+            ".....",
+            "..A..",
+            ".....",
+            "...B.",
+            ".B..."
+          ]
+        }
+      ]
+    }
+  },
+  "basicAttacks": {
+    "monsters": {
+      "dungeon-rat": "thrust",
+      "black-bat": "thrust",
+      "slime": "blunt",
+      "goblin": "slash",
+      "cultist-initiate": "shadow",
+      "ghoulish-crawler": "thrust",
+      "vampire-bat": "thrust",
+      "toxic-toad": "thrust",
+      "skeleton": "slash",
+      "zombie": "slash",
+      "snake": "thrust",
+      "lizard": "thrust",
+      "spider": "thrust",
+      "goblin-shaman": "arcane",
+      "cultist-zealot": "shadow",
+      "ghost": "shadow",
+      "skeleton-mage": "arcane",
+      "dire-wolf": "thrust",
+      "swamp-slime": "blunt",
+      "lava-slime": "blunt",
+      "fire-elemental": "fireball",
+      "water-elemental": "blunt",
+      "gargoyle": "slash",
+      "lesser-vampire": "thrust",
+      "skeleton-archer": "arrow",
+      "skeleton-warrior": "slash",
+      "orc-brute": "blunt",
+      "wraith": "shadow",
+      "armored-beetle": "blunt",
+      "cave-bear": "blunt",
+      "lesser-golem": "blunt",
+      "mimic": "thrust",
+      "skeleton-guard": "slash",
+      "giant-spider": "thrust",
+      "dragon": "slash",
+      "zombie-knight": "slash",
+      "dark-knight": "slash",
+      "orc-chieftain": "slash",
+      "vampire-lord": "slash",
+      "void-amalgamation": "blunt",
+      "ancient-golem": "blunt",
+      "lich": "shadow",
+      "the-founder": "tentacle"
+    },
+    "summons": {
+      "shadow-clone": "thrust",
+      "goblin-thrower": "rock",
+      "stone-golem": "blunt",
+      "hellfire-imp": "fireball",
+      "healer-spirit": null,
+      "recall-totem": null
+    }
+  },
+  "items": {
+    "small-health-potion": null,
+    "large-health-potion": null,
+    "small-mana-potion": null,
+    "large-mana-potion": null,
+    "exploration-kit": null,
+    "calming-draught": null,
+    "antidote": null,
+    "whetstone": null,
+    "temporary-ward": null,
+    "cracker-string": "flask",
+    "pitch-bomb": "fire-flask",
+    "frost-flask": "ice-flask",
+    "thunder-charge": "thunder-flask",
+    "blister-bomb": "fire-flask",
+    "rot-bomb": "flask",
+    "honing-oil": null,
+    "marrow-broth": null,
+    "serpent-oil": null,
+    "tar-flask": null,
+    "smoke-pellet": null,
+    "bandage-roll": null,
+    "resin-wrap": null,
+    "repelling-smoke-powder": null,
+    "acid-vial": null,
+    "war-paint": null,
+    "fracture-charge": null,
+    "deafening-charge": null,
+    "rally-standard": null,
+    "bulwark-draught": null,
+    "field-tonic": null,
+    "spark-salt": null,
+    "scholars-candle": null,
+    "hushed-bell": null,
+    "etched-lens": null,
+    "pitch-pipe": null,
+    "burn-salve": null,
+    "styptic-powder": null,
+    "eyewash": null,
+    "thread-knife": null,
+    "lye-wash": null,
+    "smelling-salts": null,
+    "mending-paste": null,
+    "purge-draught": null,
+    "greater-health-potion": null,
+    "greater-mana-potion": null,
+    "vermin-hide": null,
+    "predator-sinew": null,
+    "chitin-shard": null,
+    "cult-rag": null,
+    "grave-cloth": null,
+    "old-bone": null,
+    "ooze-residue": null,
+    "warband-trophy": null,
+    "elemental-core": null,
+    "wraith-essence": null,
+    "stone-core": null,
+    "bat-blood": null,
+    "bear-claw": null,
+    "silk-gland": null,
+    "prayer-beads": null,
+    "rotten-bandage": null,
+    "bone-shield-fragment": null,
+    "slime-solution": null,
+    "knuckle-guard": null,
+    "ember": null,
+    "hollow-plate": null,
+    "core-fragment": null,
+    "venom-thorn": null,
+    "warped-vambrace": null,
+    "broken-oath-sigil": null,
+    "warlords-trophy-chain": null,
+    "nobles-signet": null,
+    "dragon-scale": null,
+    "unraveled-fragment": null,
+    "weathered-keystone": null,
+    "phylactery-shard": null,
+    "grave-dust": null,
+    "rotten-flesh": null,
+    "broken-blade-fragment": null,
+    "rat-tail": null,
+    "venom-gland": null
+  },
+  "damageTypes": {
+    "physical": "slash",
+    "magic": "arcane",
+    "fire": "fireball",
+    "ice": "ice",
+    "lightning": "lightning",
+    "holy": "holy",
+    "poison": "poison-cloud",
+    "bleed": "bleed"
+  },
+  "outcomes": {
+    "heal": "heal",
+    "mana": "mana",
+    "buff": "buff",
+    "debuff": "debuff",
+    "cleanse": "cleanse",
+    "dispel": "dispel"
+  },
+  "statuses": {
+    "guard": "ward",
+    "guard-ii": "ward",
+    "guard-iii": "ward",
+    "held-ground": "ward",
+    "interposed": "buff",
+    "breached": "debuff",
+    "breached-ii": "debuff",
+    "breached-iii": "debuff",
+    "through-the-breach": "focus",
+    "through-the-breach-ii": "focus",
+    "through-the-breach-iii": "focus",
+    "taunt": "mark",
+    "challenge": "mark",
+    "rallied": "focus",
+    "rallied-ii": "focus",
+    "rallied-iii": "focus",
+    "poison-coated": "poison",
+    "venom-edge": "buff",
+    "venom-edge-ii": "buff",
+    "poisoned": "poison",
+    "poisoned-ii": "poison",
+    "poisoned-iii": "poison",
+    "burning": "burn",
+    "weakened": "debuff",
+    "weakened-ii": "debuff",
+    "stunned": "stun",
+    "stagger": "stun",
+    "empower": "buff",
+    "fortify": "ward",
+    "distracted": "debuff",
+    "mending": "buff",
+    "mending-ii": "buff",
+    "mending-iii": "buff",
+    "regeneration": "buff",
+    "poison-vulnerable": "poison",
+    "burning-vulnerable": "burn",
+    "bleeding-vulnerable": "bleed",
+    "acid-burn-vulnerable": "poison",
+    "acid-burn": "poison",
+    "corroded": "poison",
+    "webbed": "web-status",
+    "storm-empowered": "buff",
+    "storm-empowered-ii": "buff",
+    "storm-empowered-iii": "buff",
+    "storm-recoil": "debuff",
+    "bleeding": "bleed",
+    "deep-wound": "bleed",
+    "deep-wound-ii": "bleed",
+    "stealthed": "smoke",
+    "stealthed-ii": "smoke",
+    "stealthed-iii": "smoke",
+    "smoke-cover": "haste",
+    "smoke-cover-ii": "haste",
+    "smoke-cover-iii": "haste",
+    "skittish": "haste",
+    "spirit-bound": "buff",
+    "stone-skin": "ward",
+    "hellfire-kindled": "focus",
+    "overwatched": "focus",
+    "overwatched-ii": "focus",
+    "overwatched-iii": "focus",
+    "blinded": "blind",
+    "blinded-ii": "blind",
+    "blinded-iii": "blind",
+    "agony": "burn",
+    "totems-strength": "buff",
+    "bloodrage": "buff",
+    "bloodrage-ii": "buff",
+    "bloodrage-iii": "buff",
+    "shredded": "debuff",
+    "shredded-ii": "debuff",
+    "shredded-iii": "debuff",
+    "slowed": "debuff",
+    "enfeebled": "debuff",
+    "whetstones-edge": "buff",
+    "temporary-wards-hold": "ward",
+    "honing-oils-edge": "buff",
+    "marrow-broths-mend": "buff",
+    "tar-flasks-drag": "debuff",
+    "smoke-pellets-haze": "blind",
+    "bandage-rolls-mend": "buff",
+    "resin-wraps-ward": "ward",
+    "repelling-powders-veil": "debuff",
+    "acid-vials-breach": "debuff",
+    "war-paints-edge": "buff",
+    "fracture-charges-breach": "debuff",
+    "deafening-charges-din": "stun",
+    "rally-standards-edge": "buff",
+    "bulwark-draughts-ward": "ward",
+    "spark-salts-focus": "focus",
+    "scholars-candles-focus": "focus",
+    "hushed-bells-focus": "focus",
+    "etched-lens-focus": "focus",
+    "pitch-pipes-focus": "focus",
+    "blooded": "buff",
+    "attuned": "buff",
+    "hardened": "buff",
+    "quickened": "buff",
+    "knitting": "buff",
+    "knitting-ii": "buff",
+    "knitting-iii": "buff",
+    "knitting-iv": "buff",
+    "knitting-v": "buff",
+    "knitting-vi": "buff",
+    "challenged": "mark",
+    "marked": "mark",
+    "withered": "fear",
+    "riposte": "buff",
+    "airborne": "buff",
+    "engaged": "mark",
+    "engaged-ii": "mark",
+    "engaged-iii": "mark",
+    "sanctified": "buff",
+    "sanctified-ii": "buff",
+    "sanctified-iii": "buff",
+    "steadfast": "buff",
+    "consoled": "buff",
+    "absolved": "buff",
+    "absolved-ii": "buff",
+    "absolved-iii": "buff",
+    "netted": "web-status",
+    "ballad": "focus",
+    "ballad-ii": "focus",
+    "ballad-iii": "focus",
+    "hexed": "fear",
+    "pact": "focus",
+    "pact-ii": "focus",
+    "pact-iii": "focus",
+    "silenced": "silence",
+    "provoked": "mark",
+    "confused": "fear",
+    "rigged": "buff",
+    "sharp-face": "buff",
+    "dull-face": "debuff",
+    "bright-face": "focus",
+    "dim-face": "debuff",
+    "defiance": "buff",
+    "defiance-ii": "buff",
+    "defiance-iii": "buff",
+    "guardian-angel": "buff",
+    "guardian-angel-ii": "buff",
+    "guardian-angel-iii": "buff",
+    "vigil-channel": "holy",
+    "vigil-light": "buff",
+    "searing-light": "burn",
+    "condemned": "mark",
+    "condemned-ii": "mark",
+    "condemned-iii": "mark",
+    "martyrs-grace": "buff",
+    "martyrs-grace-ii": "buff",
+    "martyrs-grace-iii": "buff",
+    "cleansing-light": "buff",
+    "cleansing-light-ii": "buff",
+    "cleansing-light-iii": "buff",
+    "chilled": "ice-burst",
+    "frozen": "ice-burst",
+    "cocooned": "web-status",
+    "blessed": "buff"
+  },
+  "reactions": {
+    "damageOverTime": "impact",
+    "woundOnHit": "deep-wound",
+    "reflectDamage": "reflect",
+    "counterAttack": "counter",
+    "onHitAoeDamage": "impact",
+    "bonusDamage": "impact",
+    "autoDamage": "impact",
+    "passiveSummon": "summon"
+  }
+}

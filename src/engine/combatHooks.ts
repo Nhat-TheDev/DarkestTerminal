@@ -1,5 +1,6 @@
 import type { Character, LogEntry } from "../types";
-import { type Actor, damageTakenMultiplier, isCharacter, isMonster, noteDamageTaken, resolveSkillEffect } from "./resolver";
+import { type Actor, damageReaction, damageTakenMultiplier, isCharacter, isMonster, noteDamageTaken, resolveSkillEffect } from "./resolver";
+import { getReactionVisual } from "../data/combatFx";
 import { rollPoisonOnHit, totalReflectDamagePercent, totalLifestealPercent, totalHealOnKill } from "./artifacts";
 import { getStatusEffect, statusSatisfiesRequirement } from "../data/statusEffects";
 import { t } from "../data/strings";
@@ -33,9 +34,10 @@ export function applyArtifactReflectDamage(bearer: Character, attacker: Actor, d
   if (reflected <= 0) return;
   const hpBefore = attacker.hp;
   attacker.hp = Math.max(0, attacker.hp - reflected);
+  const hpLost = hpBefore - attacker.hp;
   noteDamageTaken(attacker, bearer.id, hpBefore - attacker.hp);
   if (attacker.hp <= 0 && isMonster(attacker)) advanceBar(attacker);
-  log.push({ text: t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }), kind: "attack" });
+  log.push({ text: t("combat.reflectDamage", { attacker: attacker.name, amount: reflected, bearer: bearer.name }), kind: "attack", ...damageReaction(attacker, hpLost, getReactionVisual("reflectDamage"), bearer.id) });
 }
 
 export function applyArtifactLifesteal(bearer: Character, damageDealt: number, log: LogEntry[]): void {
@@ -105,7 +107,7 @@ const targetStatusBonusHook: SkillEffectHooks = {
     // These two fields zero out mitigatedOffense, so the bonus is bonusAmount scaled only by race,
     // fear, crit and variance, not a second attack-vs-defense roll.
     resolveSkillEffect(
-      { kind: "damage", amount: bonusAmount, damageType: passive.bonusDamageType, ignoreDefensePercent: 100, offenseMultiplierPercent: 0 },
+      { kind: "damage", animation: getReactionVisual("bonusDamage", passive.bonusDamageAnimation), amount: bonusAmount, damageType: passive.bonusDamageType, ignoreDefensePercent: 100, offenseMultiplierPercent: 0 },
       source,
       target,
       { log, rollDamage: () => ctx.rng.next() }

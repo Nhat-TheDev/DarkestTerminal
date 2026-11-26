@@ -336,9 +336,9 @@ describe("status effect mechanics text", () => {
   // `harmful` only decides whether the status reads as a debuff and is cleansable; it carries no number or rule of its own.
   const BOOKKEEPING = ["id", "name", "description", "rankOf", "rankLevel", "levelsStack", "tickCategory", "harmful"];
   const PER_TURN_SHOWN = ["kind", "amount", "combatStat", "minPercent", "maxHpPercent", "offenseMultiplierPercent"];
-  const PER_TURN_BOOKKEEPING = ["damageType"];
+  const PER_TURN_BOOKKEEPING = ["damageType", "animation"];
   const AOE_SHOWN = ["amount", "isMagic", "offenseMultiplierPercent", "ignoreDefensePercent"];
-  const AOE_BOOKKEEPING = ["damageType"];
+  const AOE_BOOKKEEPING = ["damageType", "animation"];
   const BREAK_SHOWN = ["basicAttackGuaranteedCrit", "skillDamageBonusPercent"];
 
   test("every field a status carries is either shown in its text or known to be bookkeeping", () => {

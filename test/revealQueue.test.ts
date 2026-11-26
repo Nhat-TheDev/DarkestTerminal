@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FEAR_BEAT_TICKS, HIT_BEAT_TICKS, IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS, SUMMON_BEAT_TICKS } from "../src/ui/revealQueue";
+import { FEAR_BEAT_TICKS, HIT_BEAT_TICKS, IMPACT_TICKS, RevealQueue, SESSION_MIN_TICKS } from "../src/ui/revealQueue";
 import type { LogEntry, LogSession } from "../src/types";
 
 function session(id: number): LogSession {
@@ -20,20 +20,6 @@ function drain(queue: RevealQueue, maxTicks = 500) {
 }
 
 describe("RevealQueue", () => {
-  test("a summon's beat comes SUMMON_BEAT_TICKS after the impact and inside the session's minimum hold", () => {
-    const q = new RevealQueue();
-    q.enqueue(entries("a", 2, session(1)));
-    const beat: boolean[] = [];
-    while (q.active) {
-      q.tick();
-      beat.push(q.summonBeat);
-    }
-    const first = beat.indexOf(true);
-    expect(first).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS);
-    expect(first).toBeLessThan(SESSION_MIN_TICKS);
-    expect(beat.slice(0, first).every((b) => !b)).toBe(true);
-  });
-
   test("a session where fear rose shows it once its usual hold has run, then holds FEAR_BEAT_TICKS longer", () => {
     const q = new RevealQueue();
     q.enqueue(entries("a", 2, { ...session(1), fearChangedIds: ["p1"] }));
@@ -68,15 +54,6 @@ describe("RevealQueue", () => {
       expect(q.fearBeat).toBe(false);
     }
     expect(ticks).toBe(SESSION_MIN_TICKS);
-  });
-
-  test("lines with no session never beat", () => {
-    const q = new RevealQueue();
-    q.enqueue(entries("p", 3));
-    while (q.active) {
-      q.tick();
-      expect(q.summonBeat).toBe(false);
-    }
   });
 
   test("the first line of a session appears on the first tick, in the same step as its highlight", () => {
@@ -234,28 +211,14 @@ describe("RevealQueue hit beats", () => {
     expect(stepsOf(q).at(-1)).toBe(1);
   });
 
-  test("a summon's number waits for the last hit", () => {
-    const q = new RevealQueue();
-    q.enqueue(hitEntries(session(1), "m1", [53, 52, 54]));
-    const beat: boolean[] = [];
-    while (q.active) {
-      q.tick();
-      if (q.focus) beat.push(q.summonBeat);
-    }
-    expect(beat.indexOf(true)).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS + 2 * HIT_BEAT_TICKS);
-  });
-
-  test("with no hits nothing changes: step 0, no hits, the usual summon beat", () => {
+  test("with no hits nothing changes: step 0, no hits", () => {
     const q = new RevealQueue();
     q.enqueue(entries("a", 2, session(1)));
-    const beat: boolean[] = [];
     while (q.active) {
       q.tick();
       expect(q.hitStep).toBe(0);
       expect(q.focusHits.size).toBe(0);
-      if (q.focus) beat.push(q.summonBeat);
     }
-    expect(beat.indexOf(true)).toBe(IMPACT_TICKS + SUMMON_BEAT_TICKS);
   });
 });
 
@@ -358,4 +321,50 @@ describe("RevealQueue paces a session's lines by hit beat", () => {
     q.tick();
     expect(q.flush().map((e) => e.text)).toEqual(["A1", "B1", "A2", "B2"]);
   });
+});
+
+test("a support effect delays the following attack, its log and only that target's hit marker", () => {
+  const q = new RevealQueue(), s = session(1);
+  q.enqueue([
+    { text: "first", kind: "attack", session: s, hit: { targetId: "a", amount: 1, visual: "fireball" } },
+    { text: "burn", kind: "debuff", session: s, effect: { targetId: "a", visual: "burn" } },
+    { text: "second", kind: "attack", session: s, hit: { targetId: "a", amount: 2, visual: "knife" } },
+    { text: "parallel", kind: "attack", session: s, hit: { targetId: "b", amount: 3, visual: "arrow" } },
+  ]);
+  let lastSupport = -1, secondApproach = -1, secondImpact = -1, secondLog = -1, parallelImpact = -1;
+  for (let tick = 0; q.active && tick < 100; tick++) {
+    const logs = q.tick();
+    if (logs.some((entry) => entry.text === "second")) secondLog = tick;
+    if (q.supportFrames.length) {
+      lastSupport = tick;
+      expect(q.attackFrames.some((frame) => frame.hit.visual === "knife")).toBe(false);
+      expect(q.hitStepFor("a")).toBe(0);
+    }
+    if (q.attackFrames.some((frame) => frame.hit.visual === "knife" && frame.progress === 0)) secondApproach = tick;
+    if (q.attackFrames.some((frame) => frame.hit.visual === "knife" && frame.impactAge === 0)) { secondImpact = tick; expect(q.hitStepFor("a")).toBe(1); }
+    if (q.attackFrames.some((frame) => frame.hit.targetId === "b" && frame.impactAge === 0)) parallelImpact = tick;
+    if (q.focus) expect(q.hitStepFor("b")).toBe(tick < IMPACT_TICKS ? -1 : 0);
+  }
+  expect(secondApproach).toBe(lastSupport + 1);
+  expect(secondImpact).toBe(secondApproach + IMPACT_TICKS);
+  expect(secondLog).toBe(secondImpact);
+  expect(parallelImpact).toBe(IMPACT_TICKS);
+  expect(q.active).toBe(false);
+});
+
+test("a support before the first hit finishes before that hit's approach and flush clears the schedule", () => {
+  const q = new RevealQueue(), s = session(1);
+  q.enqueue([
+    { text: "buff", kind: "buff", session: s, effect: { targetId: "a", visual: "buff" } },
+    { text: "strike", kind: "attack", session: s, hit: { targetId: "a", amount: 1, visual: "thrust" } },
+  ]);
+  let sawSupport = false, sawStrike = false;
+  for (let tick = 0; q.active && tick < 100; tick++) {
+    q.tick();
+    if (q.supportFrames.length) { sawSupport = true; expect(q.attackFrames).toEqual([]); expect(q.hitStepFor("a")).toBe(-1); }
+    if (q.attackFrames.length) { sawStrike = true; expect(sawSupport).toBe(true); expect(q.supportFrames).toEqual([]); q.flush(); }
+  }
+  expect(sawStrike).toBe(true);
+  expect(q.attackFrames).toEqual([]);
+  expect(q.supportFrames).toEqual([]);
 });

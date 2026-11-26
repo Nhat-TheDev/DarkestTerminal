@@ -50,7 +50,7 @@ describe("unitFocus", () => {
     const before = unitFocus("p1", "party", s, -12, true);
     expect(glyphs(before.icons)).toEqual([FOCUS_GLYPH.shield]);
     expect(before.marker?.glyph).toBe("-12");
-    const beat = unitFocus("p1", "party", s, -12, true, undefined, 1);
+    const beat = unitFocus("p1", "party", s, -12, true, 1);
     expect(beat).toEqual({ dim: false, icons: [{ glyph: FOCUS_GLYPH.fear, color: FOCUS_COLOR.party }], marker: { glyph: "+1", color: MARKER_COLOR.fearUp } });
   });
 
@@ -62,8 +62,8 @@ describe("unitFocus", () => {
 
   test("a fear drop reads as a green minus, a decimal gain keeps its decimal", () => {
     const s = session({ actorId: "p2", healedIds: ["p1"], fearChangedIds: ["p1"] });
-    expect(unitFocus("p1", "party", s, 20, true, undefined, -15).marker).toEqual({ glyph: "-15", color: MARKER_COLOR.fearDown });
-    expect(unitFocus("p1", "party", s, 20, true, undefined, 2.1).marker).toEqual({ glyph: "+2.1", color: MARKER_COLOR.fearUp });
+    expect(unitFocus("p1", "party", s, 20, true, -15).marker).toEqual({ glyph: "-15", color: MARKER_COLOR.fearDown });
+    expect(unitFocus("p1", "party", s, 20, true, 2.1).marker).toEqual({ glyph: "+2.1", color: MARKER_COLOR.fearUp });
   });
 
   test("fearDeltas shows no change for a character fallen by the session's end", () => {
@@ -203,27 +203,10 @@ describe("unitFocus", () => {
   });
 });
 
-describe("a summon's HP change beside its owner", () => {
-  const hit = session({ actorId: "m", attackedIds: ["a"], summonIds: ["a"] });
-
-  test("alone, it reads like the owner's own number", () => {
-    expect(unitFocus("a", "party", hit, 0, true, { delta: -12, beat: false }).marker).toEqual({ glyph: "-12", color: MARKER_COLOR.damage.party });
-    expect(unitFocus("a", "party", hit, 0, true, { delta: 7, beat: true }).marker).toEqual({ glyph: "+7", color: MARKER_COLOR.heal.party });
-  });
-
-  test("with the owner's own change it comes a beat later, led by the summon icon, in place of the owner's number", () => {
-    expect(unitFocus("a", "party", hit, -5, true, { delta: -12, beat: false }).marker).toEqual({ glyph: "-5", color: MARKER_COLOR.damage.party });
-    expect(unitFocus("a", "party", hit, -5, true, { delta: -12, beat: true }).marker).toEqual({ glyph: `${FOCUS_GLYPH.summon}-12`, color: MARKER_COLOR.damage.party });
-  });
-
-  test("nothing shows before the impact, and the owner's number stays when its summon did not change", () => {
-    expect(unitFocus("a", "party", hit, -5, false, { delta: -12, beat: true }).marker).toBeNull();
-    expect(unitFocus("a", "party", hit, -5, true, { delta: 0, beat: true }).marker).toEqual({ glyph: "-5", color: MARKER_COLOR.damage.party });
-  });
-
-  test("a miss still reads as a miss when neither the owner nor its summon lost HP", () => {
+describe("a summon's part on its owner's unit", () => {
+  test("a miss still reads as a miss when the owner lost no HP", () => {
     const missed = session({ actorId: "m", attackedIds: ["a"], missedIds: ["a"], summonIds: ["a"] });
-    expect(unitFocus("a", "party", missed, 0, true, { delta: 0, beat: true }).marker?.glyph).toBe(t("ui.focusMiss"));
+    expect(unitFocus("a", "party", missed, 0, true).marker?.glyph).toBe(t("ui.focusMiss"));
   });
 });
 
@@ -493,17 +476,10 @@ describe("markerReading", () => {
 
   test("each reading is its own marker, with a ! only on a crit", () => {
     const s = session({ actorId: "a", attackedIds: ["m1"] });
-    const glyph = (reading: { amount: number; crit: boolean }) => unitFocus("m1", "monster", s, reading.amount, true, undefined, 0, reading.crit).marker?.glyph;
+    const glyph = (reading: { amount: number; crit: boolean }) => unitFocus("m1", "monster", s, reading.amount, true, 0, reading.crit).marker?.glyph;
     expect(glyph(markerReading([hit(53), hit(80, true)], -133, 0))).toBe("-53");
     expect(glyph(markerReading([hit(53), hit(80, true)], -133, 1))).toBe("-80!");
     expect(glyph(markerReading(undefined, 30, 0, true))).toBe("+30!");
     expect(glyph(markerReading(undefined, 30, 0))).toBe("+30");
-  });
-
-  test("a summon's number carries its own !, and the owner's does not borrow it", () => {
-    const s = session({ actorId: "m1", attackedIds: ["a"] });
-    expect(unitFocus("a", "party", s, -5, true, { delta: -12, crit: true, beat: false }).marker?.glyph).toBe("-5");
-    expect(unitFocus("a", "party", s, -5, true, { delta: -12, crit: true, beat: true }).marker?.glyph).toBe(`${FOCUS_GLYPH.summon}-12!`);
-    expect(unitFocus("a", "party", s, 0, true, { delta: -12, crit: true, beat: false }).marker?.glyph).toBe("-12!");
   });
 });

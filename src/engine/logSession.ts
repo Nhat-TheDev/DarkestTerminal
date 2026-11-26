@@ -1,8 +1,8 @@
-import type { CombatState, CombatantSnapshot, Id, LogSession, SkillEffect } from "../types";
+import type { CombatState, CombatantSnapshot, Id, LogEntry, LogSession, SkillEffect } from "../types";
 import { getStatusEffect } from "../data/statusEffects";
 import { isPlayerSide, isSummon, statDirection, statusRole, type Actor } from "./resolver";
 
-/** A summon has no sprite of its own, so it is drawn as its owner. */
+/** Session roles use the owner's id for a summon. */
 export function unitId(actor: Actor): Id {
   return isSummon(actor) ? actor.ownerId : actor.id;
 }
@@ -11,8 +11,23 @@ function addUnique(list: Id[], id: Id): void {
   if (!list.includes(id)) list.push(id);
 }
 
-function noteSummon(session: LogSession, actor: Actor): void {
-  if (isSummon(actor)) addUnique(session.summonIds, actor.ownerId);
+function noteSummonParticipant(session: LogSession, summonId: Id): void {
+  addUnique(session.summonParticipantIds ??= [], summonId);
+  const run = openRuns.get(session);
+  if (run) addUnique(run.summonParticipantIds ??= [], summonId);
+}
+
+function noteSummon(session: LogSession, actor: Actor, includeInstance = true): void {
+  if (!isSummon(actor)) return;
+  addUnique(session.summonIds, actor.ownerId);
+  if (includeInstance) noteSummonParticipant(session, actor.id);
+}
+
+export function noteSummonActor(combat: CombatState, summonId: Id): void {
+  const session = combat.activeSession;
+  if (!session) return;
+  session.summonActorId = summonId;
+  noteSummonParticipant(session, summonId);
 }
 
 /** `null` when the effect is a cost or drawback rather than help. */
@@ -51,7 +66,10 @@ export function noteSkillTarget(combat: CombatState, source: Actor, target: Acto
   if (!session) return;
   const id = unitId(target);
   noteSummon(session, source);
-  noteSummon(session, target);
+  if (isSummon(target)) {
+    const eligible = effects.some((effect) => !effect.excludesSummonTargets && !(effect.excludesCaster && target === source));
+    noteSummon(session, target, eligible);
+  }
   if (isPlayerSide(source) !== isPlayerSide(target)) {
     if (skillDealsDamage && effects.length > 0) addUnique(session.attackedIds, id);
     else if (effects.some(isStatDebuff)) addUnique(session.debuffedIds, id);
@@ -93,7 +111,7 @@ export function noteResisted(combat: CombatState, target: Actor): void {
   const session = combat.activeSession;
   if (!session) return;
   const id = unitId(target);
-  // A summon is drawn as its owner: a debuff that landed on the summon must keep the owner's icon.
+  // The summon and its owner share a role id, so a debuff logged for the summon keeps the owner's icon.
   if (!session.summonIds.includes(id)) session.debuffedIds = session.debuffedIds.filter((d) => d !== id);
   addUnique(session.affectedIds, id);
   noteMiss(combat, target);
@@ -130,6 +148,7 @@ export interface SessionOptions {
   affectedIds?: Id[];
   cause?: LogSession["cause"];
   bySummon?: boolean;
+  summonActorId?: Id;
   /** Taken when each run of the session's entries ends. */
   snapshot?: () => CombatantSnapshot[];
 }
@@ -139,6 +158,9 @@ interface Run {
   session: LogSession;
   from: number;
   snapshot?: () => CombatantSnapshot[];
+  interrupted?: true;
+  firstEntry?: LogEntry;
+  summonParticipantIds?: Id[];
 }
 
 const openRuns = new WeakMap<LogSession, Run>();
@@ -147,7 +169,13 @@ function closeRun(combat: CombatState, run: Run): void {
   let snapshot: CombatantSnapshot[] | undefined;
   for (let i = run.from; i < combat.log.length; i++) {
     const entry = combat.log[i];
-    if (!entry || entry.session) continue;
+    if (!entry) continue;
+    if (entry.session) {
+      // A nested session with entries separates the outer session's two runs.
+      run.firstEntry = undefined;
+      continue;
+    }
+    run.firstEntry ??= entry;
     if (run.session.id < 0) run.session.id = i;
     entry.session = run.session;
     if (entry.buffLostOf) {
@@ -158,6 +186,11 @@ function closeRun(combat: CombatState, run: Run): void {
     if (entry.statusImmuneOf) addUnique(run.session.immuneIds, entry.statusImmuneOf);
     if (run.snapshot) entry.snapshot = snapshot ??= run.snapshot();
   }
+  if (run.interrupted && run.firstEntry) {
+    const participants = run.firstEntry.summonParticipantIds ??= [];
+    for (const id of run.summonParticipantIds ?? []) addUnique(participants, id);
+  }
+  run.summonParticipantIds = undefined;
   run.from = combat.log.length;
 }
 
@@ -169,7 +202,10 @@ function closeRun(combat: CombatState, run: Run): void {
 export function runInSession<T>(combat: CombatState, actorId: Id | null, body: () => T, options: SessionOptions = {}): T {
   const outer = combat.activeSession;
   const outerRun = outer ? openRuns.get(outer) : undefined;
-  if (outerRun) closeRun(combat, outerRun);
+  if (outerRun) {
+    outerRun.interrupted = true;
+    closeRun(combat, outerRun);
+  }
   const session: LogSession = {
     id: -1,
     actorId,
@@ -195,6 +231,7 @@ export function runInSession<T>(combat: CombatState, actorId: Id | null, body: (
   combat.activeSession = session;
   let result: T;
   try {
+    if (options.summonActorId !== undefined) noteSummonActor(combat, options.summonActorId);
     result = body();
   } finally {
     combat.activeSession = outer;

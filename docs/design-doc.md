@@ -21,6 +21,7 @@ with the description of existing gameplay.
 ### 1.2 Combat
 - Turn-based by round, each round has 2 phases: **command** (the player picks an action + target for every party member up front, without seeing what the monsters will do) then **execution** (characters and monsters act in turn order by **speed**, highest first)
 - **True permadeath** — a dead character is gone for good, no revival
+- Secondary damage, reflection, counters, automatic damage and successful summons have separate visual cues without changing combat resolution or random draws. Same-target cues keep their logged order; visuals follow the actual participant when a summon shares its owner's slot. The coverage, data contract and acceptance criteria are in [technical-decisions.md §6](./technical-decisions.md#6-secondary-combat-animation-contract).
 - The full 2-phase algorithm (dead-before-turn targeting rule, when MP is deducted, etc.): **[`technical-decisions.md`](./technical-decisions.md)** §2
 - HP/MP/attack/defense/aggro/speed stats + per-level growth formulas: **[`gameplay-decisions/05-character-stats.md`](./gameplay-decisions/05-character-stats.md)** §5
 

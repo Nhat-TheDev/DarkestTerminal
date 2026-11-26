@@ -24,6 +24,7 @@ export type CombatStat = "attack" | "defense" | "aggro" | "speed" | "magicPower"
 
 export interface SkillEffect {
   kind: SkillEffectKind;
+  animation?: string | null;
   amount?: number;
   /** "satiety" is party-wide, so resolving it needs the GameState. */
   stat?: keyof SurvivalStats | "satiety";
@@ -314,10 +315,12 @@ export interface PassiveSkillDefinition {
   ranks: PassiveRankDefinition[]; // exactly 3
   requiresTargetStatusId?: Id; // also matches a rankOf variant of this status
   bonusDamageType?: DamageType;
+  bonusDamageAnimation?: string | null;
   selfDamagePerHitMaxHPPercent?: number;
   maxClones?: number;
   cloneSummonCastId?: Id; // the cast the second-clone proc spawns; maxClones counts its archetype
   secondCloneName?: string;
+  secondCloneAnimation?: string | null;
   debuffPool?: Id[];
   procRolls?: number; // times per hit `procChancePercent` is rolled for a debuff from `debuffPool`; 1 if absent
   ignoresFearEffects?: boolean; // fear still builds, but none of its combat penalties apply
@@ -418,7 +421,7 @@ export interface StatusEffectDefinition {
   description: string;
   perTurnEffects: SkillEffect[];
   onHitStatusEffectId?: Id;
-  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number; damageType?: DamageType };
+  onHitAoeDamage?: { animation?: string | null; amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number; damageType?: DamageType };
   accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
@@ -450,7 +453,7 @@ export interface StatusEffectDefinition {
    * When a monster's direct hit lands on the bearer, the bearer strikes back; after `maxCounters` counters the status ends.
    * `"attacker"` answers only the monster whose hit triggered it; absent or `"allEnemies"` answers every targetable enemy.
    */
-  counterAttack?: { maxCounters: number; amount: number; offenseMultiplierPercent: number; target?: "allEnemies" | "attacker" };
+  counterAttack?: { animation?: string | null; maxCounters: number; amount: number; offenseMultiplierPercent: number; target?: "allEnemies" | "attacker" };
   /** For a stackable status: the moment it reaches `maxStacks`, every stack goes and the bearer gets this status instead. */
   onMaxStacks?: { statusEffectId: Id; durationTurns: number };
   /** While the bearer carries this status, its basic attack (slot 0) becomes this strike instead. */
@@ -483,7 +486,7 @@ export interface StatusEffectDefinition {
    * Each direct hit the bearer survives deals `amount` + a percent of its max HP more, of `damageType`, blunted by a monster's tier share of its defense.
    * The percent climbs from `minMaxHpPercent` at full HP to `maxMaxHpPercent` once the bearer is at `fullAtHpPercent` HP or below.
    */
-  woundOnHit?: { amount: number; minMaxHpPercent: number; maxMaxHpPercent: number; fullAtHpPercent: number; damageType: DamageType };
+  woundOnHit?: { animation?: string | null; amount: number; minMaxHpPercent: number; maxMaxHpPercent: number; fullAtHpPercent: number; damageType: DamageType };
   /** When a character other than the one who applied it lands a damaging hit on the bearer, that character has `chance` (0–1) to get `statusEffectId`. */
   buffsAttackerOnHit?: { statusEffectId: Id; chance: number; durationTurns: number };
   /** Should the bearer fall while it lasts, it gets back up at this percent of its max HP, and the status is spent. */
@@ -533,7 +536,7 @@ export type ArtifactEffect =
   /** `minPercent` floors the heal at `baseMaxHp * minPercent / 100` (class-plus-level max HP, not the live one). */
   | { kind: "healOnKill"; amount: number; minPercent?: number }
   /** With `offenseMultiplierPercent`, a mitigated hit scaling off the bearer's base attack/magicPower; absent = fixed, unmitigated `amount`. */
-  | { kind: "autoDamage"; amount: number; offenseMultiplierPercent?: number; isMagic?: boolean }
+  | { kind: "autoDamage"; animation?: string | null; amount: number; offenseMultiplierPercent?: number; isMagic?: boolean }
   | { kind: "expBoost"; percent: number }
   | { kind: "fearResist"; percent: number }
   | { kind: "cooldownReduction"; turns: number }
@@ -1091,6 +1094,8 @@ export interface Summon {
 export interface SummonArchetype {
   id: Id;
   name: string;
+  /** The battlefield label while the summon holds its owner's slot. */
+  abbr: string;
   /** Independent of the owner's speed; its first action, right after the cast, ignores speed. */
   speed: number;
   /** Whether a monster sees it as a melee or a ranged fighter (the `range` targeting factor). */
@@ -1154,7 +1159,7 @@ export interface PartyStateSnapshot {
 
 /**
  * One actor's action (or one actor-less tick block); every `LogEntry` it produces shares this object.
- * Ids are battlefield unit ids, so a summon is recorded as its owner.
+ * The actor and role ids represent a summon by its owner.
  */
 export interface LogSession {
   /** Index in `CombatState.log` of its first entry; stable across a save round trip. */
@@ -1177,6 +1182,10 @@ export interface LogSession {
   lostTurnIds: Id[];
   /** Owners whose summon took part; not set for the session that summons it. */
   summonIds: Id[];
+  /** The acting summon's instance id. */
+  summonActorId?: Id;
+  /** Instance ids of summons that took part in the session. */
+  summonParticipantIds?: Id[];
   /** Lit without a role: DoT ticks, dying damage, an artifact's bearer, an expiring summon's owner. */
   affectedIds: Id[];
   /** Shown a beat after the character's other changes. */
@@ -1187,6 +1196,15 @@ export interface LogSession {
   immuneIds: Id[];
   /** What an actor-less session was, so its lit units get the matching icon. */
   cause?: "dot" | "dying" | "artifact" | "fear";
+}
+
+export type PhysicalAttackVisual = "thrust" | "slash" | "blunt";
+
+export interface CombatEffectCue {
+  damage?: number;
+  targetId: Id;
+  sourceId?: Id;
+  visual: string;
 }
 
 export interface HitMark {
@@ -1202,10 +1220,13 @@ export interface LogEntry {
   snapshot?: CombatantSnapshot[];
   partySnapshot?: PartyStateSnapshot;
   session?: LogSession;
+  /** On the first entry of each interrupted run, the summon participants in that run. */
+  summonParticipantIds?: Id[];
   /** Carries a session that has no line to show; never rendered. */
   hidden?: true;
   /** Direct hits only, not damage-over-time ticks. */
-  hit?: HitMark & { targetId: Id };
+  hit?: HitMark & { targetId: Id; sourceId?: Id; visual?: string };
+  effect?: CombatEffectCue;
   healCritOf?: Id;
   /** Unit (a summon's owner) that lost a status whose `statusRole` is "buff". */
   buffLostOf?: Id;

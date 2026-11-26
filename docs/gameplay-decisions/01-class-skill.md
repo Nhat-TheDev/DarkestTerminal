@@ -335,7 +335,7 @@ Basic attack (slot 0): **Vial Toss** (`vial-toss`), `isMagic: true` (see the foo
 | 3 | `blinding-vial` | Blinding Vial | singleEnemy | 2 | 7 / 8 / 9 | 10 / 25 / 45 | damage 10 / 13 / 18 + 80 / 85 / 90% MAG; status blinded / blinded-ii / blinded-iii (2 turns, 80 / 85 / 90% chance) | magic |
 | 4 | `spreading-toxic-fog` | Spreading Toxic Fog | allEnemies | 3 | 12 / 13 / 14 | 15 / 40 / 65 | damage 15 / 25 / 40 + 50 / 60 / 70% MAG (poison); status poisoned (3 turns, 85% chance, level I/II/III odds 70/25/5 / 40/40/20 / 15/40/45%); status weakened (2 turns, 70% chance, level I/II odds 80/20 / 55/45 / 30/70%) | magic |
 | 5 | `volatile-flask` | Volatile Flask | allEnemies | 4 | 14 / 15 / 16 | 25 / 50 / 75 | damage 3 / 4 / 5 + 20 / 23 / 26% MAG (fire, 2–6 hits, +10% per debuff on the target / +12% per debuff on the target / +15% per debuff on the target) | magic |
-| 6 | `total-plague` | Total Plague | allAlliesAndEnemies | 5 | 22 / 23 / 24 | 35 / 70 / 100 | heal 20 / 25 / 31 + 60 / 65 / 70% MAG (on allies); remove one harmful status (on allies); damage 10 / 13 / 16 + 70 / 75 / 85% MAG (on enemies); status poisoned (3 turns, on enemies, 80 / 85 / 90% chance); status burning (2 turns, on enemies, 80 / 85 / 90% chance) | ultimate · magic |
+| 6 | `total-plague` | Total Plague | allAlliesAndEnemies | 5 | 22 / 23 / 24 | 35 / 70 / 100 | damage 10 / 13 / 16 + 70 / 75 / 85% MAG (on enemies); status poisoned (3 turns, on enemies, 80 / 85 / 90% chance); status burning (2 turns, on enemies, 80 / 85 / 90% chance); heal 20 / 25 / 31 + 60 / 65 / 70% MAG (on allies); remove one harmful status (on allies) | ultimate · magic |
 <!-- docs:end -->
 
 How each skill works:
@@ -918,7 +918,7 @@ The statuses used by the character skill kits in sections 1.3.1-1.3.6 (English i
 | `interposed` | Interposed | tickCategory special; interceptsForSource |
 | `breached` | Breached | tickCategory statMod; harmful; damageTakenPercent 8; buffsAttackerOnHit statusEffectId through-the-breach, chance 0.3, durationTurns 2 |
 | `through-the-breach` | Through the Breach | attack +8 (min 15%); magicPower +8 (min 15%) |
-| `engaged` | Engaged | tickCategory statMod; counterAttack maxCounters 2, amount 10, offenseMultiplierPercent 60, target attacker |
+| `engaged` | Engaged | tickCategory statMod; counterAttack maxCounters 2, amount 10, offenseMultiplierPercent 60, target attacker, animation counter |
 | `guard` | Guard | defense +6 (min 10%) |
 | `taunt` | Taunt | aggro +40; targetPull 0.2 |
 | `challenge` | Challenge | aggro +60; targetPull 0.4 |
@@ -928,8 +928,8 @@ The statuses used by the character skill kits in sections 1.3.1-1.3.6 (English i
 | `burning` | Burning | damage 6 or 3% max HP per turn |
 | `stunned` | Stunned | stuns |
 | `weakened` | Weakened | defense -6 (min -10%) |
-| `deep-wound` | Deep Wound | harmful; woundOnHit amount 4, minMaxHpPercent 2, maxMaxHpPercent 3, fullAtHpPercent 20, damageType bleed |
-| `storm-empowered` | Storm-Empowered | onHitAoeDamage amount 6, isMagic true, offenseMultiplierPercent 80, ignoreDefensePercent 30, damageType lightning |
+| `deep-wound` | Deep Wound | harmful; woundOnHit amount 4, minMaxHpPercent 2, maxMaxHpPercent 3, fullAtHpPercent 20, damageType bleed, animation deep-wound |
+| `storm-empowered` | Storm-Empowered | onHitAoeDamage amount 6, isMagic true, offenseMultiplierPercent 80, ignoreDefensePercent 30, damageType lightning, animation storm |
 | `blinded` | Blinded | accuracyPenaltyPercent 60 |
 <!-- docs:end -->
 
