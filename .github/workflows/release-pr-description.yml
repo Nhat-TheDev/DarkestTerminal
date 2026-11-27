@@ -1,8 +1,7 @@
 name: Release PR Description
 
 on:
-  pull_request_target:
-    types: [closed]
+  push:
     branches: ["release/**"]
 
 permissions:
@@ -10,12 +9,12 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: release-pr-description-${{ github.event.pull_request.base.ref }}
+  group: release-pr-description-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   update:
-    if: github.event.pull_request.merged == true
+    if: github.event.deleted == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -24,7 +23,7 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
-            const branch = context.payload.pull_request.base.ref;
+            const branch = context.ref.slice('refs/heads/'.length);
             const targets = await github.paginate(github.rest.pulls.list, {
               owner, repo, state: 'open', base: 'main',
               head: `${owner}:${branch}`, per_page: 100,
