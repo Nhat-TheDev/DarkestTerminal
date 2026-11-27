@@ -716,6 +716,48 @@ describe("random-play evidence", () => {
     ]);
   });
 
+  test("shared screens keep a stable plain representative at both sizes despite different data", () => {
+    for (const kind of ["artifactDecision", "artifactDecisionPickCharacter", "floorMap", "characterInfo", "saveMenu"]) {
+      const gallery = ["180x70", "150x45"].flatMap((size) => [
+        shot(kind, "merchant", null, "Other data\nMore lines\n[1-4] Choose", { size }),
+        shot(kind, null, null, "Plain data\n[1-4] Choose", { size }),
+      ]);
+      expect(pickEvidence(gallery).map((s) => [s.event, s.size])).toEqual([[null, "180x70"], [null, "150x45"]]);
+      expect(pickEvidence([...gallery].reverse()).map((s) => [s.event, s.size])).toEqual([[null, "150x45"], [null, "180x70"]]);
+    }
+  });
+
+  test("shared screens retain different footers even when only the smaller size differs", () => {
+    const gallery = [
+      shot("saveMenu", null, null, "Paused\n[1-3] Choose"),
+      shot("saveMenu", null, null, "Paused\n[1-3] Choose [j] Journal", { size: "150x45" }),
+      shot("saveMenu", null, "boss", "Paused\n[1-3] Choose"),
+      shot("saveMenu", null, "boss", "Paused\n[1-3] Choose", { size: "150x45" }),
+    ];
+    expect(pickEvidence(gallery)).toHaveLength(4);
+    expect(pickEvidence(gallery.slice(0, 3))).toHaveLength(3);
+  });
+
+  test("artifact sampling retains cursed and forced-equip variants", () => {
+    const gallery = [
+      shot("artifactDecision", null, null, "Ordinary artifact\n[1-2] Choose"),
+      shot("artifactDecision", "merchant", null, "Another artifact\n[1-2] Choose"),
+      shot("artifactDecision", "cursed-shrine", null, "Artifact ⚠ CURSED\n[1-2] Choose"),
+      shot("artifactDecision", "twin-altars", null, "Must equip\n[1] Equip"),
+    ];
+    expect(pickEvidence(gallery).map((s) => s.event)).toEqual([null, "cursed-shrine", "twin-altars"]);
+  });
+
+  test("sampling leaves distinct room, event, narration, journal and combat content intact", () => {
+    for (const kind of ["room", "eventExit", "eventInstantReward", "choiceNarration", "journalDeduction", "pickAction"]) {
+      const gallery = [
+        shot(kind, "merchant", "normal", "First scene\n[1] Continue"),
+        shot(kind, "guardian-fight", "elite", "Second scene\n[1] Continue"),
+      ];
+      expect(pickEvidence(gallery)).toEqual(gallery);
+    }
+  });
+
   test("the run log is kept once, from a cleared room, with the most lines", () => {
     expect(
       picked([
@@ -746,7 +788,7 @@ describe("random-play evidence", () => {
     expect(changes.changed.map((s) => s.label)).toEqual(["b"]);
   });
 
-  test("the comment starts with its marker, shows changed screens inline up to the cap and links the rest", () => {
+  test("the comment collapses changed screens by default, shows images up to the cap and links the rest", () => {
     const changed = Array.from({ length: MAX_INLINE_IMAGES + 2 }, (_, i) => `s${i}`);
     const text = evidenceComment({
       head: manifest(...changed.map((l) => entry(l, "new"))),
@@ -760,11 +802,34 @@ describe("random-play evidence", () => {
     expect(text.match(/!\[/g)).toHaveLength(MAX_INLINE_IMAGES);
     expect(text).toContain("2 more: [s30 @ 180x70](https://img/screens/s30@180x70.png)");
     expect(text).toContain("[full gallery](https://gallery)");
+    const details = text.match(/<details>\n<summary>Show changed screens \(32\)<\/summary>\n\n([\s\S]*?)\n<\/details>/)?.[1];
+    expect(details).toBeDefined();
+    expect(details!.match(/!\[/g)).toHaveLength(MAX_INLINE_IMAGES);
+    expect(details).toContain("2 more: [s30 @ 180x70](https://img/screens/s30@180x70.png)");
+    expect(text).not.toContain("<details open");
+    expect(text.indexOf("0 new · 0 gone · 32 changed")).toBeLessThan(text.indexOf("<details>"));
+  });
+
+  test("unchanged screens do not produce an empty collapse section", () => {
+    const text = evidenceComment({ head: manifest(entry("room", "1")), base: manifest(entry("room", "1")), baseLabel: "base", imageBase: "https://img", galleryUrl: "https://gallery" });
+    expect(text).toContain("0 new · 0 gone · 0 changed");
+    expect(text).not.toContain("<details");
+    expect(text).not.toContain("Base capture reported");
+  });
+
+  test("the comment distinguishes head failures from an unreliable base capture", () => {
+    const text = evidenceComment({ head: { ...manifest(entry("room", "new")), failures: 2 }, base: { ...manifest(entry("room", "old")), failures: 7 }, baseLabel: "base", imageBase: "https://img", galleryUrl: "https://gallery" });
+    expect(text).toContain("2 head failures");
+    expect(text).toContain("Base capture reported 7 failures; the comparison may be incomplete.");
+    expect(text).toContain("0 new · 0 gone · 1 changed");
   });
 
   test("without a base, the comment says so and names the room events that got no screen", () => {
     const text = evidenceComment({ head: manifest(entry("room", "1")), base: null, baseLabel: "", imageBase: "", galleryUrl: "" });
     expect(text).toContain("nothing to compare against");
+    expect(text).toContain("No base screen evidence is available");
+    expect(text).not.toContain("The base branch has no");
+    expect(text).not.toContain("<details");
     expect(text).toContain(`Room events with no screen: ${ROOM_EVENT_IDS.join(", ")}.`);
   });
 });

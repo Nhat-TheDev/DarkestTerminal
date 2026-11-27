@@ -126,10 +126,11 @@ const galleryLabel = (g: GalleryEntry) => screenLabel({ kind: g.uiKind, event: g
 /** Lower is plainer: outside an event room first, then a normal fight or no case at all. */
 const plainness = (g: GalleryEntry) => (g.event === null ? 0 : 2) + (g.screenCase === null || g.screenCase === "normal" ? 0 : 1);
 const textLines = (g: GalleryEntry) => g.content.split("\n").filter((line) => /[^\s│─┌┐└┘]/.test(line)).length;
+const REPRESENTATIVE_KINDS = new Set(["artifactDecision", "artifactDecisionPickCharacter", "floorMap", "characterInfo", "saveMenu"]);
 
 /**
- * One screen per distinct content: screens of a kind whose main panel and footer read the same at every
- * size keep only their plainest one. The run log is kept once, from a cleared room, with the most lines.
+ * Shared menus keep a plain representative per footer and artifact variant at every size; other screens
+ * match by content. The run log is kept once, from a cleared room, with the most lines.
  */
 export function pickEvidence(gallery: GalleryEntry[]): GalleryEntry[] {
   const byLabel = new Map<string, GalleryEntry[]>();
@@ -138,14 +139,22 @@ export function pickEvidence(gallery: GalleryEntry[]): GalleryEntry[] {
   for (const shots of byLabel.values()) {
     const first = shots[0]!;
     if (first.uiKind === "fullLog" && !shots.every((s) => s.roomCleared && !s.content.includes(t("ui.fullLogEmpty")))) continue;
-    const signature = first.uiKind === "fullLog" ? "fullLog" : JSON.stringify([first.uiKind, ...shots.map((s) => [s.size, s.content]).sort()]);
+    const shared = REPRESENTATIVE_KINDS.has(first.uiKind);
+    const content = shots.map((s) => [
+      s.size,
+      shared ? [s.content.trimEnd().split("\n").at(-1), first.uiKind === "artifactDecision" && s.content.includes(t("ui.cursedTag"))] : s.content,
+    ]).sort();
+    const signature = first.uiKind === "fullLog" ? "fullLog" : JSON.stringify([first.uiKind, ...content]);
     groups.set(signature, [...(groups.get(signature) ?? []), shots]);
   }
   const lines = (shots: GalleryEntry[]) => shots.reduce((sum, s) => sum + textLines(s), 0);
   const kept = new Set(
     [...groups.values()].map(
       (labels) =>
-        labels.sort((a, b) => lines(b) - lines(a) || plainness(a[0]!) - plainness(b[0]!) || galleryLabel(a[0]!).localeCompare(galleryLabel(b[0]!)))[0]!
+        labels.sort((a, b) =>
+          (REPRESENTATIVE_KINDS.has(a[0]!.uiKind) ? 0 : lines(b) - lines(a)) ||
+          plainness(a[0]!) - plainness(b[0]!) || galleryLabel(a[0]!).localeCompare(galleryLabel(b[0]!))
+        )[0]!
     )
   );
   return gallery.filter((g) => kept.has(byLabel.get(galleryLabel(g))!));
@@ -222,24 +231,26 @@ export function evidenceComment(input: CommentInput): string {
     EVIDENCE_MARKER,
     "## Screen evidence",
     "",
-    `**${head.screens.length} screens** (${keys.size} screens × the sizes each was captured at) · ${head.failures} failures · [full gallery](${galleryUrl})`,
+    `**${head.screens.length} screens** (${keys.size} screens × the sizes each was captured at) · ${head.failures} head failures · [full gallery](${galleryUrl})`,
     "",
     uncovered.length === 0 ? "Every room event has a screen." : `Room events with no screen: ${uncovered.join(", ")}.`,
   ];
   if (!base) {
-    out.push("", "The base branch has no `random-play --evidence`, so there is nothing to compare against.");
+    out.push("", "No base screen evidence is available, so there is nothing to compare against.");
     return `${out.join("\n")}\n`;
   }
   const { added, removed, changed } = compareManifests(head, base);
   out.push("", `### Against base ${input.baseLabel}`, "", `${added.length} new · ${removed.length} gone · ${changed.length} changed`);
+  if (base.failures > 0) out.push("", `Base capture reported ${base.failures} failures; the comparison may be incomplete.`);
   if (added.length > 0) out.push("", `**New:** ${added.map(link).join(", ")}`);
   if (removed.length > 0) out.push("", `**Gone:** ${removed.map((s) => `${s.label} @ ${s.size}`).join(", ")}`);
   if (changed.length > 0) {
-    out.push("", "**Changed:**");
+    out.push("", "<details>", `<summary>Show changed screens (${changed.length})</summary>`, "");
     for (const s of changed.slice(0, MAX_INLINE_IMAGES)) out.push("", `${s.label} @ ${s.size}`, "", `![${s.label} @ ${s.size}](${imageBase}/${s.file})`);
     const rest = changed.slice(MAX_INLINE_IMAGES);
     if (rest.length > 0) out.push("", `${rest.length} more: ${rest.map(link).join(", ")}`);
     out.push("", "A change that sends the bot down another path changes the screens after it too, so read the first ones first.");
+    out.push("", "</details>");
   }
   return `${out.join("\n")}\n`;
 }

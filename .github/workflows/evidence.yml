@@ -2,7 +2,7 @@ name: Screen Evidence
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened, labeled, unlabeled, closed]
 
 permissions:
   contents: read
@@ -12,9 +12,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  evidence:
+  changes:
     # A fork's token cannot push the evidence branch or comment.
-    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository && !contains(github.event.pull_request.labels.*.name, 'skip-random-play')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      gameplay: ${{ steps.diff.outputs.gameplay }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed_files=$(git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA" -- src/ data/)
+          if [ -n "$changed_files" ]; then
+            echo "gameplay=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "gameplay=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+  evidence:
+    needs: changes
+    if: needs.changes.outputs.gameplay == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

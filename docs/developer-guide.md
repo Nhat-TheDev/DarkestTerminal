@@ -77,8 +77,21 @@ one) at the size it was reached at, and again at 150×45. Narration uses the sav
 when it finds a failure, and prints each kind of failure with the screens it hit and a command that
 replays its first occurrence; `--report none` skips `report.html` and `failures.json`, so that list
 and the exit code are the whole result. `report.html` also tabulates how each team played and the
-guards it met, for a look only: balance is measured by `bun run curve`, below. Every pull request
-runs 5 fixed seeds per team this way (`.github/workflows/random-play.yml`).
+guards it met, for a look only: balance is measured by `bun run curve`, below. Eligible pull requests
+run fixed seeds per team this way (`.github/workflows/random-play.yml`).
+
+Random Play, Curve and Screen Evidence run on PRs only when the full PR diff changes files under
+`src/` or `data/`. A small job compares the PR head with its merge base, including additions,
+modifications, deletions and moves into or out of these directories. Changes only to docs, tools,
+tests, dependencies or workflows skip these jobs. A failed diff check fails the detection job rather
+than reporting no changes.
+
+Maintainers can also add the `skip-random-play` PR label to skip these jobs even when `src/` or
+`data/` changes. Adding or removing the label triggers both workflows again: adding it cancels any
+previous in-progress run and skips the jobs; removing it checks the PR paths again. Further pushes
+keep skipping while the label remains. Unit tests, typechecking and build checks remain enabled.
+Curve captures on pushes to `main` and `release/**`, and evidence-branch cleanup when a PR closes,
+are unaffected.
 
 `bun run random-play --evidence` plays fixed scenarios instead, to capture every screen rather than
 find crashes: a fresh run with its opening scenes, a rest room, every room event (each forced into an
@@ -89,14 +102,27 @@ leaves every other scenario's screens as they were, and a scenario plays at
 screens. It still reports failures as above. Into `--out` it writes `screens/*.png` (each screen at
 180×70 and 150×45, drawn from the captured cells by `@resvg/resvg-js`, block glyphs as rectangles),
 `manifest.json` (each screen's key, size, file and a hash of its cells, plus the failure count) and
-a gallery `README.md` (`tools/random-play/evidence.ts`). On a pull request,
+a gallery `README.md` (`tools/random-play/evidence.ts`). Shared screens (`artifactDecision`,
+`artifactDecisionPickCharacter`, `floorMap`, `characterInfo`, `saveMenu`) keep one representative per
+footer variant across all captured sizes; different artifact names, party stats and map contents
+alone do not produce extra evidence. Cursed artifacts and the forced-equip footer remain separate.
+Representatives prefer no event, then a plain case, then alphabetical label, so changing data length
+does not switch the selected screen. Other screens still compare main-panel and footer text at every
+size, preserving distinct room, event, narration, journal and combat content. The full run log keeps
+the cleared-room capture with the most text. Evidence is a selection of reached screens, not a
+catalog of every artifact, character or generated map.
+On a pull request,
 `.github/workflows/evidence.yml` runs it on the branch and, when the base has it too, on the base
 (a pull request from a fork skips it, since its token can neither push nor comment);
 publishes the branch's screens as a single orphan commit on `evidence/pr-<number>`, replaced on every
 push and deleted when the pull request closes; and keeps one comment on the pull request: the screen
 count, the room events with no screen, the screens new, gone or changed against the base (the first
-30 changed ones as images, linked by the evidence commit so an edit never shows a cached image), and
-a link to the gallery. A change that sends the bot down another path also changes the screens after
+30 changed ones as images inside a collapsed-by-default “Show changed screens” section, with links
+to the rest, all linked by the evidence commit so an edit never shows a cached image), and
+a link to the gallery. The comment labels the head failure count and warns when the base capture
+reported failures, since the comparison may be incomplete. When no base manifest is available,
+it reports that there is nothing to compare against without assuming why the capture is missing.
+A change that sends the bot down another path also changes the screens after
 it. The curve comment and this one each start with a marker that
 `.github/scripts/upsert-comment.sh` finds to edit them in place.
 
@@ -123,7 +149,7 @@ artifacts are not modelled yet.
 guard, or a boss taking more than `BOSS_HP_LOST_TOLERANCE` less of the party's HP than its elite on
 the floors just before it. A move from the base branch is reported, not failed: whether it is
 intended is the reviewer's call. The `curve` job of `.github/workflows/random-play.yml` runs the check
-on every pull request and on every push to `main` or a `release/**` branch, and keeps `curve.json`
+on eligible pull requests and on every push to `main` or a `release/**` branch, and keeps `curve.json`
 and `report.html` as the `guard-curve` artifact for 90 days. On a pull request it takes the base
 commit's own `guard-curve` artifact from that push run, or, when there is none (the run is missing,
 still going or expired), checks out the base and measures it with its own code. It then posts one
