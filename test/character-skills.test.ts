@@ -1,3 +1,4 @@
+import type { SkillEffect } from "../src/types";
 import { describe, test, expect, afterAll } from "bun:test";
 import { CLASSES, getClass, getSkill, getEffectiveSkill, getUnlockedPassiveRank, SKILLS_PER_CLASS } from "../src/data/classes";
 import { GROWTH_WEIGHTS } from "../src/data/growthWeights";
@@ -18,6 +19,8 @@ afterAll(() => {
   STATUS_EFFECTS.length = initialStatusEffectsCount;
   CLASSES[0]!.skills.length = initialKnightSkillsCount;
 });
+
+const gameplayEffects = (effects: SkillEffect[] | undefined) => effects?.map(({ animation, ...effect }) => effect);
 
 describe("new skill mechanics", () => {
   test("Interpose marks the ally and records the Knight as its source", () => {
@@ -378,20 +381,20 @@ describe("skill rank resolution", () => {
   test("below rank-2 threshold resolves to rank-1 numbers", () => {
     const effective = getEffectiveSkill(mockSkill, 6);
     expect(effective.mpCost).toBe(5);
-    expect(effective.effects).toEqual([{ kind: "damage", amount: 10 }]);
+    expect(gameplayEffects(effective.effects)).toEqual([{ kind: "damage", amount: 10 }]);
   });
 
   test("at/above rank-2 threshold but below rank-3 resolves to rank-2 numbers", () => {
     const effective = getEffectiveSkill(mockSkill, 7);
     expect(effective.mpCost).toBe(6);
-    expect(effective.effects).toEqual([{ kind: "damage", amount: 13 }]);
+    expect(gameplayEffects(effective.effects)).toEqual([{ kind: "damage", amount: 13 }]);
     expect(getEffectiveSkill(mockSkill, 14).mpCost).toBe(6);
   });
 
   test("at/above rank-3 threshold resolves to rank-3 numbers", () => {
     const effective = getEffectiveSkill(mockSkill, 15);
     expect(effective.mpCost).toBe(7);
-    expect(effective.effects).toEqual([{ kind: "damage", amount: 16 }]);
+    expect(gameplayEffects(effective.effects)).toEqual([{ kind: "damage", amount: 16 }]);
     expect(getEffectiveSkill(mockSkill, 100).mpCost).toBe(7);
   });
 
@@ -416,7 +419,7 @@ describe("skill rank resolution", () => {
       ],
     };
     const rank2 = getEffectiveSkill(mixedSkill, 7);
-    expect(rank2.effects).toEqual([{ kind: "damage", amount: 13 }]);
+    expect(gameplayEffects(rank2.effects)).toEqual([{ kind: "damage", amount: 13 }]);
   });
 });
 
@@ -725,15 +728,15 @@ describe("Knight skill ranks", () => {
     const skill = getSkill("interpose");
     for (const [level, mp, turns] of [[1, 6, 2], [7, 7, 3], [15, 8, 4]] as const) {
       expect(getEffectiveSkill(skill, level).mpCost).toBe(mp);
-      expect(getEffectiveSkill(skill, level).effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "interposed", durationTurns: turns }]);
+      expect(gameplayEffects(getEffectiveSkill(skill, level).effects)).toEqual([{ kind: "applyStatusEffect", statusEffectId: "interposed", durationTurns: turns }]);
     }
   });
 
   test("Sword Judgment ranks resolve to dmg 30/40/50 + weakened-ii at lv35/70/100", () => {
     const skill = getSkill("sword-judgment");
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 95 }, { kind: "applyStatusEffect", statusEffectId: "weakened-ii", chance: 0.4, durationTurns: 2 }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 105 }, { kind: "applyStatusEffect", statusEffectId: "weakened-ii", chance: 0.6, durationTurns: 2 }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 120 }, { kind: "applyStatusEffect", statusEffectId: "weakened-ii", chance: 0.8, durationTurns: 2 }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 35).effects)).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 95 }, { kind: "applyStatusEffect", statusEffectId: "weakened-ii", chance: 0.4, durationTurns: 2 }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 70).effects)).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 105 }, { kind: "applyStatusEffect", statusEffectId: "weakened-ii", chance: 0.6, durationTurns: 2 }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 100).effects)).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 120 }, { kind: "applyStatusEffect", statusEffectId: "weakened-ii", chance: 0.8, durationTurns: 2 }]);
   });
 });
 
@@ -767,9 +770,9 @@ describe("Mage skill ranks", () => {
   test("Ice Age ranks resolve dmg 20/25/35 at lv35/70/100, each chilling every target", () => {
     const skill = getSkill("ice-age");
     const chill = { kind: "applyStatusEffect" as const, statusEffectId: "chilled", durationTurns: 2 };
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }, chill]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }, chill]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }, chill]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 35).effects)).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 110, damageType: "ice" }, chill]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 70).effects)).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 120, damageType: "ice" }, chill]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 100).effects)).toEqual([{ kind: "damage", amount: 35, offenseMultiplierPercent: 130, damageType: "ice" }, chill]);
   });
 });
 
@@ -808,15 +811,15 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
 
   test("Fire Vial ranks resolve dmg/burn% at lv1/7/15", () => {
     const skill = getSkill("fire-vial");
-    expect(getEffectiveSkill(skill, 1).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 1).effects)).toEqual([
       { kind: "damage", amount: 10, offenseMultiplierPercent: 90, damageType: "fire" },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.6, durationTurns: 2 },
     ]);
-    expect(getEffectiveSkill(skill, 7).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 7).effects)).toEqual([
       { kind: "damage", amount: 12, offenseMultiplierPercent: 95, damageType: "fire" },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.7, durationTurns: 2 },
     ]);
-    expect(getEffectiveSkill(skill, 15).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 15).effects)).toEqual([
       { kind: "damage", amount: 16, offenseMultiplierPercent: 105, damageType: "fire" },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.8, durationTurns: 2 },
     ]);
@@ -824,19 +827,19 @@ describe("Rogue rebalance + Plague Doctor class base", () => {
 
   test("Total Plague ranks resolve ally/enemy effects (via appliesToRelation) at lv35/100", () => {
     const skill = getSkill("total-plague");
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([
-      { kind: "heal", amount: 20, offenseMultiplierPercent: 60, appliesToRelation: "ally" },
-      { kind: "removeStatusEffect", appliesToRelation: "ally" },
+    expect(gameplayEffects(getEffectiveSkill(skill, 35).effects)).toEqual([
       { kind: "damage", amount: 10, offenseMultiplierPercent: 70, appliesToRelation: "enemy" },
       { kind: "applyStatusEffect", statusEffectId: "poisoned", chance: 0.8, durationTurns: 3, appliesToRelation: "enemy" },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.8, durationTurns: 2, appliesToRelation: "enemy" },
-    ]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([
-      { kind: "heal", amount: 31, offenseMultiplierPercent: 70, appliesToRelation: "ally" },
+      { kind: "heal", amount: 20, offenseMultiplierPercent: 60, appliesToRelation: "ally" },
       { kind: "removeStatusEffect", appliesToRelation: "ally" },
+    ]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 100).effects)).toEqual([
       { kind: "damage", amount: 16, offenseMultiplierPercent: 85, appliesToRelation: "enemy" },
       { kind: "applyStatusEffect", statusEffectId: "poisoned", chance: 0.9, durationTurns: 3, appliesToRelation: "enemy" },
       { kind: "applyStatusEffect", statusEffectId: "burning", chance: 0.9, durationTurns: 2, appliesToRelation: "enemy" },
+      { kind: "heal", amount: 31, offenseMultiplierPercent: 70, appliesToRelation: "ally" },
+      { kind: "removeStatusEffect", appliesToRelation: "ally" },
     ]);
   });
 
@@ -907,7 +910,7 @@ describe("Viking class", () => {
 
   test("Lightning Axe applies storm-empowered + storm-recoil at rank 1", () => {
     const skill = getSkill("lightning-axe");
-    expect(getEffectiveSkill(skill, 1).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 1).effects)).toEqual([
       { kind: "applyStatusEffect", statusEffectId: "storm-empowered", durationTurns: 3 },
       { kind: "applyStatusEffect", statusEffectId: "storm-recoil", durationTurns: 1 },
     ]);
@@ -915,11 +918,11 @@ describe("Viking class", () => {
 
   test("Lightning Axe ranks reference storm-empowered-ii/iii, storm-recoil unchanged", () => {
     const skill = getSkill("lightning-axe");
-    expect(getEffectiveSkill(skill, 7).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 7).effects)).toEqual([
       { kind: "applyStatusEffect", statusEffectId: "storm-empowered-ii", durationTurns: 3 },
       { kind: "applyStatusEffect", statusEffectId: "storm-recoil", durationTurns: 1 },
     ]);
-    expect(getEffectiveSkill(skill, 15).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 15).effects)).toEqual([
       { kind: "applyStatusEffect", statusEffectId: "storm-empowered-iii", durationTurns: 3 },
       { kind: "applyStatusEffect", statusEffectId: "storm-recoil", durationTurns: 1 },
     ]);
@@ -928,45 +931,45 @@ describe("Viking class", () => {
   test("Thunder God's Fury has consumesStatus conditionalBonus and ranks resolve dmg 30/40/50", () => {
     const skill = getSkill("thunder-gods-fury");
     expect(skill.conditionalBonus).toEqual({ requiresStatusId: "storm-empowered", ignoreDefensePercentBonus: 60, consumesStatus: true });
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 80, damageType: "lightning" }]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 100, damageType: "lightning" }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 120, damageType: "lightning" }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 35).effects)).toEqual([{ kind: "damage", amount: 30, offenseMultiplierPercent: 80, damageType: "lightning" }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 70).effects)).toEqual([{ kind: "damage", amount: 40, offenseMultiplierPercent: 100, damageType: "lightning" }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 100).effects)).toEqual([{ kind: "damage", amount: 50, offenseMultiplierPercent: 120, damageType: "lightning" }]);
   });
 
   test("Frenzied Slash/Throw Axe/Spinning Axe ranks resolve dmg+deep-wound%", () => {
     const slash = getSkill("frenzied-slash");
-    expect(getEffectiveSkill(slash, 7).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(slash, 7).effects)).toEqual([
       { kind: "damage", amount: 14, offenseMultiplierPercent: 100 },
       { kind: "applyStatusEffect", statusEffectId: "deep-wound", chance: 0.85, durationTurns: 3 },
     ]);
-    expect(getEffectiveSkill(slash, 15).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(slash, 15).effects)).toEqual([
       { kind: "damage", amount: 17, offenseMultiplierPercent: 105 },
       { kind: "applyStatusEffect", statusEffectId: "deep-wound", chance: 1, durationTurns: 3 },
     ]);
 
     const throwAxe = getSkill("throw-axe");
-    expect(getEffectiveSkill(throwAxe, 25).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 107 }]);
-    expect(getEffectiveSkill(throwAxe, 45).effects).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 115 }]);
+    expect(gameplayEffects(getEffectiveSkill(throwAxe, 25).effects)).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 107 }]);
+    expect(gameplayEffects(getEffectiveSkill(throwAxe, 45).effects)).toEqual([{ kind: "damage", amount: 25, offenseMultiplierPercent: 115 }]);
 
     const spinAxe = getSkill("spinning-axe");
-    expect(getEffectiveSkill(spinAxe, 50).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(spinAxe, 50).effects)).toEqual([
       { kind: "damage", amount: 20, offenseMultiplierPercent: 77 },
       { kind: "applyStatusEffect", statusEffectId: "deep-wound", chance: 0.55, durationTurns: 3 },
     ]);
-    expect(getEffectiveSkill(spinAxe, 75).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(spinAxe, 75).effects)).toEqual([
       { kind: "damage", amount: 30, offenseMultiplierPercent: 85 },
       { kind: "applyStatusEffect", statusEffectId: "deep-wound", chance: 0.7, durationTurns: 3 },
     ]);
   });
 
   test("storm-empowered-ii/iii, bleeding and deep-wound statuses exist with the documented fields", () => {
-    expect(getStatusEffect("storm-empowered-ii").onHitAoeDamage).toEqual({ amount: 8, isMagic: true, offenseMultiplierPercent: 90, ignoreDefensePercent: 30, damageType: "lightning" });
-    expect(getStatusEffect("storm-empowered-iii").onHitAoeDamage).toEqual({ amount: 10, isMagic: true, offenseMultiplierPercent: 100, ignoreDefensePercent: 30, damageType: "lightning" });
-    expect(getStatusEffect("bleeding").perTurnEffects).toEqual([{ kind: "damage", amount: 6, maxHpPercent: 2, damageType: "bleed" }]);
+    expect(getStatusEffect("storm-empowered-ii").onHitAoeDamage).toEqual({ amount: 8, isMagic: true, offenseMultiplierPercent: 90, ignoreDefensePercent: 30, damageType: "lightning", animation: "storm" });
+    expect(getStatusEffect("storm-empowered-iii").onHitAoeDamage).toEqual({ amount: 10, isMagic: true, offenseMultiplierPercent: 100, ignoreDefensePercent: 30, damageType: "lightning", animation: "storm" });
+    expect(getStatusEffect("bleeding").perTurnEffects).toEqual([{ kind: "damage", amount: 6, maxHpPercent: 2, damageType: "bleed", animation: "bleed" }]);
     expect(getStatusEffect("bleeding").stackable).toBe(true);
     expect(getStatusEffect("bleeding").maxStacks).toBe(5);
     expect(getStatusEffect("bleeding").perStackBonusPercent).toBe(100);
-    expect(getStatusEffect("deep-wound").woundOnHit).toEqual({ amount: 4, minMaxHpPercent: 2, maxMaxHpPercent: 3, fullAtHpPercent: 20, damageType: "bleed" });
+    expect(getStatusEffect("deep-wound").woundOnHit).toEqual({ amount: 4, minMaxHpPercent: 2, maxMaxHpPercent: 3, fullAtHpPercent: 20, damageType: "bleed", animation: "deep-wound" });
     expect(getStatusEffect("deep-wound").stackable).toBeUndefined();
   });
 
@@ -1044,7 +1047,7 @@ describe("Viking class", () => {
   test("rank-resolution picks up Viking's rank-2/3 numbers at the correct character level", () => {
     const skill = getSkill("throw-axe");
     const character = createCharacter("vk-test", "Viking Test", getClass("viking"), 25);
-    expect(getEffectiveSkill(skill, character.level).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 107 }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, character.level).effects)).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 107 }]);
   });
 
   test("conditionalBonus still triggers on the rank-2 buff variant", () => {
@@ -1105,15 +1108,15 @@ describe("Viking class", () => {
 describe("Rogue skill ranks + poison exclusivity", () => {
   test("Poison Bomb ranks deal upfront damage and apply poisoned-ii/iii, exclusive to this skill", () => {
     const bomb = getSkill("poison-bomb");
-    expect(getEffectiveSkill(bomb, 20).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(bomb, 20).effects)).toEqual([
       { kind: "damage", amount: 10, offenseMultiplierPercent: 50 },
       { kind: "applyStatusEffect", statusEffectId: "poisoned", durationTurns: 3 },
     ]);
-    expect(getEffectiveSkill(bomb, 50).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(bomb, 50).effects)).toEqual([
       { kind: "damage", amount: 20, offenseMultiplierPercent: 55 },
       { kind: "applyStatusEffect", statusEffectId: "poisoned-ii", durationTurns: 3 },
     ]);
-    expect(getEffectiveSkill(bomb, 75).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(bomb, 75).effects)).toEqual([
       { kind: "damage", amount: 30, offenseMultiplierPercent: 60 },
       { kind: "applyStatusEffect", statusEffectId: "poisoned-iii", durationTurns: 3 },
     ]);
@@ -1149,27 +1152,27 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
   test("Heal ranks resolve heal 16/22/30 at lv1/7/15", () => {
     const skill = getSkill("heal");
     const consoled = { kind: "applyStatusEffect" as const, statusEffectId: "consoled", durationTurns: 2, excludesSummonTargets: true };
-    expect(getEffectiveSkill(skill, 1).effects).toEqual([{ kind: "heal", amount: 16, offenseMultiplierPercent: 90, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 } }, consoled]);
-    expect(getEffectiveSkill(skill, 7).effects).toEqual([{ kind: "heal", amount: 22, offenseMultiplierPercent: 100, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 } }, consoled]);
-    expect(getEffectiveSkill(skill, 15).effects).toEqual([{ kind: "heal", amount: 30, offenseMultiplierPercent: 110, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 } }, consoled]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 1).effects)).toEqual([{ kind: "heal", amount: 16, offenseMultiplierPercent: 90, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 } }, consoled]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 7).effects)).toEqual([{ kind: "heal", amount: 22, offenseMultiplierPercent: 100, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 } }, consoled]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 15).effects)).toEqual([{ kind: "heal", amount: 30, offenseMultiplierPercent: 110, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 } }, consoled]);
   });
 
   test("Divine Descent ranks resolve ally (heal+fear) / enemy (dmg) effects at lv35/70/100", () => {
     const skill = getSkill("divine-descent");
     const consoled = { kind: "applyStatusEffect" as const, statusEffectId: "consoled", durationTurns: 2, appliesToRelation: "ally" as const, excludesSummonTargets: true };
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 35).effects)).toEqual([
       { kind: "heal", amount: 25, offenseMultiplierPercent: 75, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -15, appliesToRelation: "ally" },
       consoled,
       { kind: "damage", amount: 20, offenseMultiplierPercent: 80, appliesToRelation: "enemy", damageType: "holy" },
     ]);
-    expect(getEffectiveSkill(skill, 70).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 70).effects)).toEqual([
       { kind: "heal", amount: 30, offenseMultiplierPercent: 85, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -20, appliesToRelation: "ally" },
       consoled,
       { kind: "damage", amount: 25, offenseMultiplierPercent: 90, appliesToRelation: "enemy", damageType: "holy" },
     ]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 100).effects)).toEqual([
       { kind: "heal", amount: 40, offenseMultiplierPercent: 95, highFearHealBonus: { maxBonusPercent: 40, fullBonusAtFear: 70 }, appliesToRelation: "ally" },
       { kind: "modifyStat", stat: "fear", amount: -25, appliesToRelation: "ally" },
       consoled,
@@ -1180,12 +1183,12 @@ describe("Acolyte skill ranks incl. appliesToRelation", () => {
   test("Purify ranks resolve the enemy-side damage only, ally side always removeStatusEffect", () => {
     const skill = getSkill("purify");
     const absolved = (statusEffectId: string) => ({ kind: "applyStatusEffect" as const, statusEffectId, durationTurns: 2, appliesToRelation: "ally" as const, excludesSummonTargets: true });
-    expect(getEffectiveSkill(skill, 10).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 10).effects)).toEqual([
       { kind: "removeStatusEffect", appliesToRelation: "ally" },
       absolved("absolved"),
       { kind: "damage", amount: 15, offenseMultiplierPercent: 100, appliesToRelation: "enemy", damageType: "holy" },
     ]);
-    expect(getEffectiveSkill(skill, 45).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 45).effects)).toEqual([
       { kind: "removeStatusEffect", appliesToRelation: "ally" },
       absolved("absolved-iii"),
       { kind: "damage", amount: 27, offenseMultiplierPercent: 120, appliesToRelation: "enemy", damageType: "holy" },
@@ -1288,28 +1291,28 @@ describe("Archer class", () => {
     const basic = archer.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("quick-shot");
     expect(basic.mpCost).toBe(0);
-    expect(basic.effects).toEqual([{ kind: "damage", amount: 0, offenseMultiplierPercent: 85 }]);
+    expect(gameplayEffects(basic.effects)).toEqual([{ kind: "damage", amount: 0, offenseMultiplierPercent: 85 }]);
   });
 
   test("Aimed Shot ranks resolve dmg/critChance at lv1/7/15", () => {
     const skill = getSkill("aimed-shot");
-    expect(getEffectiveSkill(skill, 1).effects).toEqual([{ kind: "damage", amount: 16, offenseMultiplierPercent: 90, critChance: 0.3 }]);
-    expect(getEffectiveSkill(skill, 7).effects).toEqual([{ kind: "damage", amount: 21, offenseMultiplierPercent: 95, critChance: 0.35 }]);
-    expect(getEffectiveSkill(skill, 15).effects).toEqual([{ kind: "damage", amount: 26, offenseMultiplierPercent: 105, critChance: 0.4 }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 1).effects)).toEqual([{ kind: "damage", amount: 16, offenseMultiplierPercent: 90, critChance: 0.3 }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 7).effects)).toEqual([{ kind: "damage", amount: 21, offenseMultiplierPercent: 95, critChance: 0.35 }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 15).effects)).toEqual([{ kind: "damage", amount: 26, offenseMultiplierPercent: 105, critChance: 0.4 }]);
   });
 
   test("Volley Shot's offense multiplier rises with rank", () => {
     const skill = getSkill("volley-shot");
     for (const [level, amount, offenseMultiplierPercent] of [[10, 10, 60], [25, 14, 66], [45, 19, 75]] as const) {
-      expect(getEffectiveSkill(skill, level).effects).toEqual([{ kind: "damage", amount, offenseMultiplierPercent }]);
+      expect(gameplayEffects(getEffectiveSkill(skill, level).effects)).toEqual([{ kind: "damage", amount, offenseMultiplierPercent }]);
     }
   });
 
   test("Deadeye Shot is an ultimate with guaranteed crit (critChance 1) at every rank", () => {
     const skill = getSkill("deadeye-shot");
     expect(skill.isUltimate).toBe(true);
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 90, critChance: 1 }]);
-    expect(getEffectiveSkill(skill, 100).effects).toEqual([{ kind: "damage", amount: 34, offenseMultiplierPercent: 110, critChance: 1 }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 35).effects)).toEqual([{ kind: "damage", amount: 20, offenseMultiplierPercent: 90, critChance: 1 }]);
+    expect(gameplayEffects(getEffectiveSkill(skill, 100).effects)).toEqual([{ kind: "damage", amount: 34, offenseMultiplierPercent: 110, critChance: 1 }]);
   });
 
   test("overwatched/-ii/-iii trigger Overwatch with a rank-scaled shot and interrupt chance, expiring like a stat-mod buff", () => {
@@ -1352,16 +1355,16 @@ describe("Ninja class", () => {
     const basic = ninja.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("kunai-strike");
     expect(basic.mpCost).toBe(0);
-    expect(basic.effects).toEqual([{ kind: "damage", amount: 0, offenseMultiplierPercent: 80 }]);
+    expect(gameplayEffects(basic.effects)).toEqual([{ kind: "damage", amount: 0, offenseMultiplierPercent: 80 }]);
   });
 
   test("Throwing Knives ranks resolve dmg/offense%/extraHitChance/bleed% at lv10/25/45", () => {
     const skill = getSkill("throwing-knives");
-    expect(getEffectiveSkill(skill, 10).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 10).effects)).toEqual([
       { kind: "damage", amount: 10, offenseMultiplierPercent: 80, extraHitChance: 0.4 },
       { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.6, durationTurns: 3 },
     ]);
-    expect(getEffectiveSkill(skill, 45).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 45).effects)).toEqual([
       { kind: "damage", amount: 18, offenseMultiplierPercent: 90, extraHitChance: 0.5 },
       { kind: "applyStatusEffect", statusEffectId: "bleeding", chance: 0.8, durationTurns: 3 },
     ]);
@@ -1379,7 +1382,7 @@ describe("Ninja class", () => {
     const skill = getSkill("death-mark");
     expect(skill.isUltimate).toBe(true);
     expect(skill.executeBonus).toEqual({ hpPercentThreshold: 30, bonusDamageFlat: 30 });
-    expect(getEffectiveSkill(skill, 35).effects).toEqual([
+    expect(gameplayEffects(getEffectiveSkill(skill, 35).effects)).toEqual([
       { kind: "damage", amount: 14, offenseMultiplierPercent: 100, scalesWithStatusStacks: { statusEffectId: "bleeding", percentPerStack: 5 } },
       { kind: "applyStatusEffect", statusEffectId: "bleeding", durationTurns: 3 },
     ]);
@@ -1423,7 +1426,7 @@ describe("Summoner class", () => {
     const basic = summoner.skills.find((s) => s.slot === 0)!;
     expect(basic.id).toBe("hollow-pulse");
     expect(basic.mpCost).toBe(0);
-    expect(basic.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 70 }]);
+    expect(gameplayEffects(basic.effects)).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 70 }]);
   });
 
   test("every summon cast names a skill that actually summons it", () => {
@@ -1601,12 +1604,12 @@ describe("damageType tagging", () => {
     const smite = getClass("acolyte").skills.find((s) => s.id === "smite")!;
     expect(smite.name).toBe("Smite");
     expect(smite.isMagic).toBe(true);
-    expect(smite.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 60 }]);
+    expect(gameplayEffects(smite.effects)).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 60 }]);
 
     const pulse = getClass("summoner").skills.find((s) => s.id === "hollow-pulse")!;
     expect(pulse.name).toBe("Hollow Pulse");
     expect(pulse.isMagic).toBe(true);
-    expect(pulse.effects).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 70 }]);
+    expect(gameplayEffects(pulse.effects)).toEqual([{ kind: "damage", amount: 0, damageType: "magic", offenseMultiplierPercent: 70 }]);
   });
 
   test("Viking's Thunder God's Fury is lightning, other Viking damage skills are untagged (physical)", () => {

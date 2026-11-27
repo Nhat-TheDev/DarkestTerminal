@@ -33,6 +33,9 @@ export function assertSummonDataConsistent(archetypes: SummonArchetype[], casts:
     if (typeof archetype.speed !== "number") {
       throw new Error(`data/summons.json: archetype "${archetype.id}" is missing a numeric "speed"`);
     }
+    if (!/^[A-Z]{3}$/.test(archetype.abbr ?? "")) {
+      throw new Error(`data/summons.json: archetype "${archetype.id}" needs a 3-letter uppercase "abbr"`);
+    }
     if (!ATTACK_RANGES.includes(archetype.attackRange)) {
       throw new Error(`data/summons.json: archetype "${archetype.id}" needs an "attackRange" of ${ATTACK_RANGES.join(" or ")}`);
     }

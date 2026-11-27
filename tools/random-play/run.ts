@@ -24,13 +24,14 @@ const runsPerTeam = single ? 1 : Number(args.runs ?? 5);
 const named = args.team === undefined ? null : TEAMS.find((t) => t.name.toLowerCase() === args.team!.toLowerCase());
 if (named === undefined) throw new Error(`--team must be one of ${TEAMS.map((t) => t.name).join(", ")}, not "${args.team}"`);
 const teams = named ? [named] : single ? TEAMS.slice(0, 1) : TEAMS;
-// Evidence runs start where each screen is reached: every room event, a rest room, both guard tiers,
+// Evidence runs start where each screen is reached: every room event (each ends on its exit scene), a rest room, a temple, both guard tiers,
 // a defeat and a fresh run with its opening scenes.
 const EVENT_FLOOR = 12;
 const levelOn = (depth: number) => Math.round(levelAt(depth));
 const SCENARIOS: Scenario[] = [
   { name: "fresh run", depth: 1, level: 1, roomArg: "entry", fresh: true },
   { name: "rest room", depth: EVENT_FLOOR, level: levelOn(EVENT_FLOOR), roomArg: "rest", stopOnLeavingRoom: true },
+  { name: "temple", depth: EVENT_FLOOR, level: levelOn(EVENT_FLOOR), roomArg: "temple", stopOnLeavingRoom: true },
   ...ROOM_EVENT_IDS.map((id) => ({ name: `event ${id}`, depth: EVENT_FLOOR, level: levelOn(EVENT_FLOOR), roomArg: "event", forceEventId: id, stopOnLeavingRoom: true })),
   { name: "elite guard", depth: 11, level: levelOn(11), roomArg: "boss" },
   { name: "boss guard", depth: 15, level: levelOn(15), roomArg: "boss" },

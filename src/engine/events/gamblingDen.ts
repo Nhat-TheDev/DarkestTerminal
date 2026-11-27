@@ -8,6 +8,10 @@ import { activeEventOfKind, closeEvent } from "./shared";
 
 const ROUNDS = BALANCE.events.gamblingDenRounds;
 
+export function gamblingJackpot() {
+  return { count: 2, rarity: ROUNDS.at(-1)!.jackpotRarity ?? "epic" } as const;
+}
+
 function activeGambleOrError(state: GameState): PartyActionError | NonNullable<GameState["activeEvent"]> {
   const active = activeEventOfKind(state, "coinGamble");
   if (!active) return { reason: t("errors.noActiveChoice") };
@@ -30,7 +34,7 @@ function rollRound(state: GameState, ctx: EngineContext, roundIndex: number, pot
     state.message = t("game.gamblingDenJackpot");
     state.lastGamblingDenOutcome = "won";
     if (state.activeEvent) state.activeEvent.gambleState = undefined;
-    const rarity = cfg.jackpotRarity ?? "epic";
+    const { rarity } = gamblingJackpot();
     const [first, second] = [pickArtifactOfRarity(rarity, ctx.rng), pickArtifactOfRarity(rarity, ctx.rng)];
     state.secondJackpotArtifactId = second;
     grantArtifact(state, first);

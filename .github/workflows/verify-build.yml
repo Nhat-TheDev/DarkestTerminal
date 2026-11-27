@@ -53,7 +53,7 @@ jobs:
           - os: macos-latest
             platform: darwin-arm64
             outfile: npm/darwin-arm64/darkest-terminal
-          - os: macos-15-intel
+          - os: macos-26-intel
             platform: darwin-x64
             outfile: npm/darwin-x64/darkest-terminal
           - os: windows-latest
@@ -84,7 +84,7 @@ jobs:
 
       - name: Build standalone binary
         shell: bash
-        run: bun build ./src/main.ts --compile --define __DEV__=false --outfile "${{ matrix.outfile }}"
+        run: bun build ./src/main.ts --compile --minify --define __DEV__=false --outfile "${{ matrix.outfile }}"
 
       - name: Smoke test binary (macOS/Linux)
         if: runner.os != 'Windows'

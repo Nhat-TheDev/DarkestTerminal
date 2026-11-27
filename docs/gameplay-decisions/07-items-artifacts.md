@@ -108,7 +108,7 @@ Character.equippedArtifactIds: Id[]   // capped per data/balance-config.json fie
 GameState.pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean } | null
 ```
 
-There is **no shared "unequipped pool"** — an Artifact either ends up equipped on a character, or it never existed (a discarded one leaves no trace). `pendingArtifactDecision` is the only transient state: "an Artifact was just rolled/revealed and is awaiting the player's answer," cleared the moment they answer. It's singular, never a queue — even when a source grants more than 1 Artifact at once (Gambling Den's round-4 jackpot, §8.19, 2 Epics), decisions resolve **sequentially**: the 2nd artifact isn't even rolled/revealed until the 1st is fully resolved.
+There is **no shared "unequipped pool"** — an Artifact either ends up equipped on a character, or it never existed (a discarded one leaves no trace). `pendingArtifactDecision` holds the current decision: "an Artifact was just rolled/revealed and is awaiting the player's answer," cleared the moment they answer. It's singular, never a queue — even when a source grants more than 1 Artifact at once (Gambling Den's round-4 jackpot, §8.19, 2 Epics), decisions resolve **sequentially**. The jackpot rolls both artifacts when the final round resolves, stores the second in `secondJackpotArtifactId`, and names both offers in its choice narration (`08-events.md` §8.26). The second equip/discard decision opens only after the first is fully resolved; narration offers neither artifact as already equipped.
 
 **The decision flow**, every time an Artifact is granted:
 

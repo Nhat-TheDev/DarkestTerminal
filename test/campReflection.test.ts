@@ -5,6 +5,7 @@ import { EVENTS } from "../src/data/events";
 import { BALANCE } from "../src/data/balanceConfig";
 import { campReflectionContent, campReflectionTier, highestAnsweredCampReflectionTier, LORE_EXPOSURE_EVENT_IDS } from "../src/data/loreExposure";
 import { migrateGameState } from "../src/engine/migration";
+import { shownOptions } from "../src/engine/reflection";
 
 function forceEventRoom(game: Game, eventId: string) {
   const room = getRoom(game.state.floor, game.state.currentRoomId);
@@ -55,12 +56,13 @@ describe("campReflectionTier (03-survival-stats.md)", () => {
 });
 
 describe("campReflectionContent (text in data/strings.json)", () => {
-  test("every tier has a prompt and 3 distinct, non-empty options", () => {
+  test("every tier has a prompt and distinct, non-empty options (tier 3 adds a fourth)", () => {
     for (const tier of [1, 2, 3, 4] as const) {
       const { prompt, options } = campReflectionContent(tier);
+      const texts = options.map((o) => o.text);
       expect(prompt.trim()).not.toBe("");
-      expect(options.every((o) => o.trim() !== "")).toBe(true);
-      expect(new Set(options).size).toBe(3);
+      expect(texts.every((o) => o.trim() !== "")).toBe(true);
+      expect(new Set(texts).size).toBe(tier === 3 ? 4 : 3);
     }
   });
 });
@@ -134,7 +136,7 @@ describe("rest-room entry sets pendingCampReflectionTier", () => {
   test("skipped entirely if an event reflection is already pending", () => {
     const game = new Game(307);
     game.state.loreExposureCount = BALANCE.survival.campReflectionTier1Threshold;
-    game.state.pendingReflection = { eventId: "merchant" };
+    game.state.pendingEventExit = { eventId: "merchant", withReflection: true };
     const { target } = forceRestRoom(game);
     moveToRoom(game.state, target.id, game.ctx);
     expect(game.state.pendingCampReflectionTier).toBeNull();
@@ -174,6 +176,60 @@ describe("Game.pickCampReflectionChoice", () => {
     expect(game.state.pendingCampReflectionTier).toBe(4);
     game.pickCampReflectionChoice(0);
     expect(game.state.eventOutcomes["camp-reflection"]).toBe("unaware");
+  });
+});
+
+describe("camp answers carry effects", () => {
+  const PLAIN = ["knight", "acolyte", "viking", "rogue"];
+
+  function atTier(tier: 1 | 2 | 3 | 4, party: string[]) {
+    const game = new Game(320 + tier, party);
+    game.state.pendingCampReflectionTier = tier;
+    return game;
+  }
+
+  test("camp tier 3 shows the conditional answer only with a Plague and Healing member, and picking it heals and costs MP", () => {
+    expect(shownOptions(atTier(3, PLAIN).state, campReflectionContent(3).options)).toHaveLength(3);
+
+    const game = atTier(3, ["plague-doctor", "knight", "mage", "viking"]);
+    const [healer, knight, mage] = game.state.party;
+    expect(shownOptions(game.state, campReflectionContent(3).options)).toHaveLength(4);
+    knight!.hp = Math.floor(knight!.maxHp / 2);
+    healer!.mp = healer!.maxMp;
+    knight!.mp = knight!.maxMp;
+    mage!.mp = mage!.maxMp;
+    const hpBefore = knight!.hp;
+    game.pickCampReflectionChoice(3);
+    expect(knight!.hp).toBe(hpBefore + Math.round(BALANCE.reflection.effectSizes.hp.large * knight!.maxHp));
+    expect(healer!.mp).toBe(healer!.maxMp - Math.round(BALANCE.reflection.effectSizes.mp.medium * healer!.maxMp));
+    expect(knight!.mp).toBe(knight!.maxMp);
+    expect(mage!.mp).toBe(mage!.maxMp);
+    expect(game.state.campReflectionChoices).toEqual({ 3: 3 });
+    expect(game.state.pendingCampReflectionTier).toBeNull();
+  });
+
+  test("an index past the shown answers does nothing", () => {
+    const game = atTier(3, PLAIN);
+    expect(game.pickCampReflectionChoice(3)).toBeNull();
+    expect(game.state.pendingCampReflectionTier).toBe(3);
+    expect(game.state.campReflectionChoices).toEqual({});
+  });
+
+  test("an answer applies its effects: tier 2's first answer calms the party and costs Faith", () => {
+    const game = atTier(2, PLAIN);
+    game.state.faith = 50;
+    game.state.party.forEach((c) => (c.survival.fear = 30));
+    game.pickCampReflectionChoice(0);
+    expect(game.state.faith).toBe(50 - BALANCE.reflection.effectSizes.faith.medium);
+    game.state.party.forEach((c) => expect(c.survival.fear).toBe(30 - BALANCE.reflection.effectSizes.fear.medium));
+  });
+
+  test("camp tier 4 still writes unaware, whichever answer is picked", () => {
+    for (const index of [0, 1, 2]) {
+      const game = atTier(4, PLAIN);
+      game.pickCampReflectionChoice(index);
+      expect(game.state.eventOutcomes["camp-reflection"]).toBe("unaware");
+    }
   });
 });
 

@@ -32,9 +32,9 @@ const GLYPH: Record<number, string> = {
 
 const CURRENT_ICON = "■";
 const UNKNOWN_ICON = "?";
-const ROOM_ICON: Record<RoomType, string> = { combat: "·", event: "○", rest: "△", boss: "☠" };
+const ROOM_ICON: Record<RoomType, string> = { combat: "·", event: "○", rest: "△", boss: "☠", temple: "†" };
 const UNKNOWN_COLOR = PALETTE.hpMid;
-const ROOM_COLOR: Record<RoomType, string> = { combat: PALETTE.text, event: PALETTE.passive, rest: PALETTE.hpHigh, boss: PALETTE.hpLow };
+const ROOM_COLOR: Record<RoomType, string> = { combat: PALETTE.text, event: PALETTE.passive, rest: PALETTE.hpHigh, boss: PALETTE.hpLow, temple: PALETTE.title };
 const LINE_COLOR = PALETTE.dim;
 const PASSED_COLOR = PALETTE.disabled;
 const LIST_GAP = "    ";
@@ -243,6 +243,7 @@ function legendLine(): TextChunk[] {
     [ROOM_ICON.combat, ROOM_COLOR.combat, "ui.floorMapLegendFight"],
     [ROOM_ICON.event, ROOM_COLOR.event, "ui.floorMapLegendEvent"],
     [ROOM_ICON.rest, ROOM_COLOR.rest, "ui.floorMapLegendRest"],
+    [ROOM_ICON.temple, ROOM_COLOR.temple, "ui.floorMapLegendTemple"],
     [UNKNOWN_ICON, UNKNOWN_COLOR, "ui.floorMapLegendUnknown"],
     [ROOM_ICON.boss, ROOM_COLOR.boss, "ui.floorMapLegendGuard"],
   ];

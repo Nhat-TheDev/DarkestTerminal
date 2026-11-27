@@ -185,7 +185,7 @@ describe("items", () => {
   test("a magic power status raises magicPower, survives a stat recompute and is undone on expiry", () => {
     const { ctx } = makeCtx();
     const mage = ctx.party.find((c) => c.classId === "mage")!;
-    recomputeCharacterStats(mage, 100);
+    recomputeCharacterStats(mage, 100, null);
     const base = mage.magicPower;
     const focus: StatusEffectDefinition = {
       id: "test-focus",
@@ -198,7 +198,7 @@ describe("items", () => {
       const log: never[] = [];
       resolveSkillEffect({ kind: "applyStatusEffect", statusEffectId: focus.id, durationTurns: 2 }, mage, mage, { log });
       expect(mage.magicPower).toBe(base + 7);
-      recomputeCharacterStats(mage, 100);
+      recomputeCharacterStats(mage, 100, null);
       expect(mage.magicPower).toBe(base + 7);
       expireStatusEffect(mage, mage.activeStatusEffects[0]!, { log });
       expect(mage.magicPower).toBe(base);
@@ -336,9 +336,9 @@ describe("status effect mechanics text", () => {
   // `harmful` only decides whether the status reads as a debuff and is cleansable; it carries no number or rule of its own.
   const BOOKKEEPING = ["id", "name", "description", "rankOf", "rankLevel", "levelsStack", "tickCategory", "harmful"];
   const PER_TURN_SHOWN = ["kind", "amount", "combatStat", "minPercent", "maxHpPercent", "offenseMultiplierPercent"];
-  const PER_TURN_BOOKKEEPING = ["damageType"];
+  const PER_TURN_BOOKKEEPING = ["damageType", "animation"];
   const AOE_SHOWN = ["amount", "isMagic", "offenseMultiplierPercent", "ignoreDefensePercent"];
-  const AOE_BOOKKEEPING = ["damageType"];
+  const AOE_BOOKKEEPING = ["damageType", "animation"];
   const BREAK_SHOWN = ["basicAttackGuaranteedCrit", "skillDamageBonusPercent"];
 
   test("every field a status carries is either shown in its text or known to be bookkeeping", () => {

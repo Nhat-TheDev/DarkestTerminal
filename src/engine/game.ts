@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { CombatantRef, CombatState, CommandOrder, DroppedJournal, GameState, SkillTarget, Id, Monster, Summon, ArtifactRarity, SlotJournal } from "../types";
+import type { CombatantRef, CombatState, CommandOrder, DroppedJournal, GameState, SkillTarget, Id, Monster, Summon, ArtifactRarity, SlotJournal, ReflectionOutcome } from "../types";
 import { CLASSES, getClass } from "../data/classes";
 import { createFloor } from "../data/floor";
 import {
@@ -11,7 +11,7 @@ import {
 } from "../data/endings";
 import { FINAL_BOSS_ARCHETYPE, spawnMonster } from "../data/monsters";
 import { createCharacter, applyPartyExp, resolveArtifactEquip, discardPendingArtifact, grantArtifact, recomputeAllPartyStats, type PartyActionError } from "./party";
-import { restEatDrink, restEatDrinkSatiety, restChat, campAction, drainSatiety, addItem, SATIETY_DRAIN_COMBAT } from "./survival";
+import { restEatDrink, restEatDrinkSatiety, restChat, restPray, chatFaith, adjustFaith, campAction, drainSatiety, drainFaithOnFirstEntry, addItem, SATIETY_DRAIN_COMBAT } from "./survival";
 import { Rng, derivedRng } from "./rng";
 import {
   type EngineContext,
@@ -34,6 +34,8 @@ import {
   dismissSummonsAtCombatEnd,
   clearCombatResources,
 } from "./combat";
+import { templeGiveBlood, templeAskBoon, templeLeave } from "./temple";
+import { captureChoiceNarration, resolveChoiceNarration } from "./choiceNarration";
 import { getRoom, moveToRoom, connectedRooms } from "./dungeon";
 import { CAMP_KIT_ITEM_ID, rollItemDrop } from "../data/items";
 import { rollArtifact } from "../data/artifacts";
@@ -60,7 +62,9 @@ import { gamblingDenEnter, gamblingDenContinue, gamblingDenStop, gamblingDenLeav
 import { hermitExchangeFortune, hermitLeave } from "./events/hermit";
 import { guardianFightEnter, guardianFightSkip } from "./events/guardianFight";
 import { collapsedFloorAttempt, collapsedFloorLeave, COLLAPSED_FLOOR_HP_PERCENT } from "./events/collapsedFloor";
-import { maybeTriggerReflection } from "./events/shared";
+import { armEventExit } from "./events/shared";
+import { applyReflectionEffects, resolveOutcome, shownOptions } from "./reflection";
+import { campReflectionContent } from "../data/loreExposure";
 import { applyMergeChoice, buildMergeSteps, drainAtFloorClear, driftDropped, endingEchoes, eventEcho, finishMerge, findOpensScene, grantFragments, type JournalTrigger, lookAtFind, mergedHands, passFind, recordEcho, resolveDeduction, showsBaseText, tearOut } from "./journal";
 
 export { MERCHANT_PRICE_COINS, BLOOD_ALTAR_HP_PERCENT, COLLAPSED_FLOOR_HP_PERCENT };
@@ -144,13 +148,16 @@ export class Game {
       inventory,
       coins: BALANCE.party.startingCoins,
       satiety: BALANCE.survival.initialSatiety,
+      faith: BALANCE.faith.initial,
+      boon: null,
       pendingArtifactDecision: null,
       secondJackpotArtifactId: null,
       activeEvent: null,
       lastRoomDrops: null,
       metNarrativeNpcIds: [],
       narrativeCounters: { guardianFightsSkipped: 0, artifactsSacrificed: 0, altarPaymentsCount: 0, guardianGrudgeFiredCount: 0, freeRewardsTakenCount: 0 },
-      pendingReflection: null,
+      pendingEventExit: null,
+      pendingChoiceNarration: null,
       eventReflectionStances: {},
       eventOutcomes: {},
       firedOnceEventIds: retiredCharacterEventEligible ? [] : [...RETIRED_CHARACTER_EVENT_IDS],
@@ -202,7 +209,7 @@ export class Game {
     return room.rolledEventId ? showsBaseText(this.state, room, getEvent(room.rolledEventId)) : false;
   }
 
-  /** Once an event room is cleared: find its journal fragments, then the reflection, which a find that would open a scene replaces. */
+  /** Once an event room is cleared: find its journal fragments, then the exit scene, whose reflection a find that would open a scene replaces. */
   private afterEventAction(baseTextShown: boolean): void {
     const room = getRoom(this.state.floor, this.state.currentRoomId);
     let journalFind = false;
@@ -210,15 +217,31 @@ export class Game {
       this.state.journalHandledRoomId = room.id;
       journalFind = this.grantJournalFind({ kind: "eventResolved", eventId: room.rolledEventId, outcome: this.state.eventOutcomes[room.rolledEventId], baseTextShown });
     }
-    maybeTriggerReflection(this.state, this.ctx, journalFind);
+    armEventExit(this.state, this.ctx, journalFind);
   }
 
-  /** Runs an event room's action: whether its base text shows is read before it, the journal find and reflection come after. */
-  private eventAction<T>(run: () => T): T {
-    const baseTextShown = this.eventBaseTextShown();
+  private choiceAction<T extends PartyActionError | null | void>(caseKey: string, run: () => T, blocked: T, selection: { characterId?: Id; donorIds?: readonly Id[] } = {}, event = false, source: "event" | "temple" = "event"): T {
+    if (this.state.pendingChoiceNarration || this.state.pendingArtifactDecision) return blocked;
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    const before = room.type === source ? captureChoiceNarration(this.state) : null;
+    const baseTextShown = event ? this.eventBaseTextShown() : false;
     const result = run();
-    this.afterEventAction(baseTextShown);
+    if (event) this.afterEventAction(baseTextShown);
+    if (before?.source === source && !result && Object.keys(before.cases).some((key) => key === caseKey || key.startsWith(`${caseKey}.`))) {
+      this.state.pendingChoiceNarration = resolveChoiceNarration(before, this.state, caseKey, selection);
+    }
     return result;
+  }
+
+  acknowledgeChoiceNarration(): void {
+    if (!this.state.pendingChoiceNarration) return;
+    const narration = this.state.pendingChoiceNarration;
+    this.state.pendingChoiceNarration = null;
+    if (narration.source === "event" && this.state.pendingEventExit?.eventId === narration.sourceId && this.state.pendingEventExit.withReflection === false) this.state.pendingEventExit = null;
+  }
+
+  private choiceError(): PartyActionError {
+    return { reason: t(this.state.pendingChoiceNarration ? "errors.pendingChoiceNarration" : "errors.pendingArtifactDecision") };
   }
 
   /** Holds the trigger's fragments as a find only when looking would open a scene; otherwise copies them straight in. */
@@ -466,22 +489,31 @@ export class Game {
     this.state.abilityDeathResults.push({ characterId, lostAbilityId, outcome });
   }
 
-  restAction(choice: "eat" | "chat" | "skip"): void {
+  restAction(choice: "eat" | "chat" | "pray" | "leave"): void {
     const room = getRoom(this.state.floor, this.state.currentRoomId);
     if (room.type !== "rest" || room.cleared) return;
+    if (choice === "leave") {
+      if (!room.rested) this.state.message = t("game.restSkip");
+      room.cleared = true;
+      this.state.restRunner = null;
+      return;
+    }
+    if (room.rested) return;
     if (choice === "eat") {
       for (const c of this.state.party) restEatDrink(c);
       restEatDrinkSatiety(this.state);
       recomputeAllPartyStats(this.state);
       this.state.message = t("game.restEat");
     } else if (choice === "chat") {
+      const faith = chatFaith(this.state.party);
       for (const c of this.state.party) restChat(c);
+      if (faith > 0) adjustFaith(this.state, faith);
       this.state.message = t("game.restChat");
     } else {
-      this.state.message = t("game.restSkip");
+      restPray(this.state);
+      this.state.message = t("game.restPray");
     }
-    room.cleared = true;
-    this.state.restRunner = null;
+    room.rested = true;
   }
 
   runnerBuy(offerIndex: number): PartyActionError | null {
@@ -504,12 +536,8 @@ export class Game {
     if (this.state.restRunner) this.state.restRunner.noticeShown = true;
   }
 
-  /** Trading uses up the Rest room's rest action. */
+  /** Returns to the rest menu; the rest action and the runner stay available. */
   leaveRunner(): void {
-    const room = getRoom(this.state.floor, this.state.currentRoomId);
-    if (room.type !== "rest" || room.cleared || !this.state.restRunner) return;
-    room.cleared = true;
-    this.state.restRunner = null;
     this.state.message = t("game.leftRunner");
   }
 
@@ -518,6 +546,18 @@ export class Game {
     if (err) return err;
     recomputeAllPartyStats(this.state);
     return null;
+  }
+
+  templeGiveBlood(donorIds: readonly Id[]): PartyActionError | null {
+    return this.choiceAction("giveBlood", () => templeGiveBlood(this.state, donorIds), this.choiceError(), { donorIds }, false, "temple");
+  }
+
+  templeAskBoon(): PartyActionError | null {
+    return this.choiceAction("boon", () => templeAskBoon(this.state), this.choiceError(), {}, false, "temple");
+  }
+
+  templeLeave(): void {
+    this.choiceAction("leave", () => templeLeave(this.state), undefined, {}, false, "temple");
   }
 
   autoTargets(target: SkillTarget, actor: CombatantRef): CombatantRef[] | null {
@@ -581,113 +621,137 @@ export class Game {
   }
 
   openChest(): PartyActionError | null {
-    return this.eventAction(() => {
+    const room = getRoom(this.state.floor, this.state.currentRoomId);
+    const caseKey = room.rolledEventId && getEvent(room.rolledEventId).narration?.moveOn ? "moveOn" : "take";
+    return this.choiceAction(caseKey, () => {
       const eventId = getRoom(this.state.floor, this.state.currentRoomId).rolledEventId;
       const err = openChest(this.state, this.ctx);
       if (!err && eventId && getEvent(eventId).retiredCharacterEvent) markRetiredCharacterEventShown(this.currentSaveSlot);
       return err;
-    });
+    }, this.choiceError(), {}, true);
   }
 
   merchantPurchase(offerIndex: number): PartyActionError | null {
-    return this.eventAction(() => merchantPurchase(this.state, offerIndex));
+    return this.choiceAction("purchase", () => merchantPurchase(this.state, offerIndex), this.choiceError(), {}, true);
   }
 
   merchantRefresh(): PartyActionError | null {
-    return merchantRefresh(this.state, this.ctx);
+    return this.choiceAction("refresh", () => merchantRefresh(this.state, this.ctx), this.choiceError());
   }
 
   merchantLeave(): void {
-    this.eventAction(() => merchantLeave(this.state));
+    this.choiceAction("leave", () => merchantLeave(this.state), undefined, {}, true);
   }
 
   bloodAltarPay(characterId: Id): PartyActionError | null {
-    return this.eventAction(() => bloodAltarPay(this.state, this.ctx, characterId));
+    return this.choiceAction("pay", () => bloodAltarPay(this.state, this.ctx, characterId), this.choiceError(), { characterId }, true);
   }
 
   bloodAltarLeave(): void {
-    this.eventAction(() => bloodAltarLeave(this.state));
+    this.choiceAction("leave", () => bloodAltarLeave(this.state), undefined, {}, true);
   }
 
   cursedShrineDecide(accept: boolean): PartyActionError | null {
-    return this.eventAction(() => cursedShrineDecide(this.state, accept));
+    return this.choiceAction(accept ? "accept" : "decline", () => cursedShrineDecide(this.state, accept), this.choiceError(), {}, true);
   }
 
   twinAltarsChoose(offerIndex: 0 | 1): PartyActionError | null {
-    return this.eventAction(() => twinAltarsChoose(this.state, offerIndex));
+    return this.choiceAction(offerIndex === 0 ? "chooseFirst" : "chooseSecond", () => twinAltarsChoose(this.state, offerIndex), this.choiceError(), {}, true);
   }
 
   sacrifice(sacrificeArtifactId: Id): PartyActionError | null {
-    return sacrifice(this.state, this.ctx, sacrificeArtifactId);
+    return this.choiceAction("sacrifice", () => {
+      const result = sacrifice(this.state, this.ctx, sacrificeArtifactId);
+      const room = getRoom(this.state.floor, this.state.currentRoomId);
+      if (!result) room.eventSacrificesThisVisit = (room.eventSacrificesThisVisit ?? 0) + 1;
+      return result;
+    }, this.choiceError(), {}, true);
   }
 
   sacrificeLeave(): void {
-    this.eventAction(() => sacrificeLeave(this.state));
+    this.choiceAction("leave", () => sacrificeLeave(this.state), undefined, {}, true);
   }
 
   gamblingDenEnter(): PartyActionError | null {
-    return this.eventAction(() => gamblingDenEnter(this.state, this.ctx));
+    return this.choiceAction("enter", () => gamblingDenEnter(this.state, this.ctx), this.choiceError(), {}, true);
   }
 
   gamblingDenContinue(): PartyActionError | null {
-    return this.eventAction(() => gamblingDenContinue(this.state, this.ctx));
+    return this.choiceAction("continue", () => gamblingDenContinue(this.state, this.ctx), this.choiceError(), {}, true);
   }
 
   gamblingDenStop(): PartyActionError | null {
-    return this.eventAction(() => gamblingDenStop(this.state));
+    return this.choiceAction("stop", () => gamblingDenStop(this.state), this.choiceError(), {}, true);
   }
 
   gamblingDenLeave(): void {
-    this.eventAction(() => gamblingDenLeave(this.state));
+    this.choiceAction("leave", () => gamblingDenLeave(this.state), undefined, {}, true);
   }
 
   hermitExchangeFortune(artifactId: Id): PartyActionError | null {
-    return this.eventAction(() => hermitExchangeFortune(this.state, this.ctx, artifactId));
+    return this.choiceAction("exchange", () => hermitExchangeFortune(this.state, this.ctx, artifactId), this.choiceError(), {}, true);
   }
 
   hermitLeave(): void {
-    this.eventAction(() => hermitLeave(this.state));
+    this.choiceAction("leave", () => hermitLeave(this.state), undefined, {}, true);
   }
 
   collapsedFloorAttempt(characterId: Id): PartyActionError | null {
-    return this.eventAction(() => collapsedFloorAttempt(this.state, this.ctx, characterId));
+    return this.choiceAction("rescue", () => collapsedFloorAttempt(this.state, this.ctx, characterId), this.choiceError(), { characterId }, true);
   }
 
   collapsedFloorLeave(): void {
-    this.eventAction(() => collapsedFloorLeave(this.state));
+    this.choiceAction("leave", () => collapsedFloorLeave(this.state), undefined, {}, true);
   }
 
   enterGuardianFight(): PartyActionError | null {
-    const error = guardianFightEnter(this.state, this.ctx);
-    this.noteSeenMonsters();
-    return error;
+    return this.choiceAction("fight", () => {
+      const error = guardianFightEnter(this.state, this.ctx);
+      this.noteSeenMonsters();
+      return error;
+    }, this.choiceError());
   }
 
   skipGuardianFight(): PartyActionError | null {
-    return this.eventAction(() => guardianFightSkip(this.state));
+    return this.choiceAction("leave", () => guardianFightSkip(this.state), this.choiceError(), {}, true);
   }
 
-  pickReflectionStance(stance: "curious" | "wary" | "dismissive"): void {
-    const pending = this.state.pendingReflection;
-    if (!pending) return;
-    this.state.eventReflectionStances[pending.eventId] = stance;
-    this.state.pendingReflection = null;
+  /** `index` is into the answers `shownOptions` returns for the pending event's reflection; returns the outcome that was rolled. */
+  pickReflectionAnswer(index: number): ReflectionOutcome | null {
+    const pending = this.state.pendingEventExit;
+    const reflection = pending?.withReflection ? getEvent(pending.eventId).reflection : undefined;
+    const option = reflection && shownOptions(this.state, reflection.options)[index];
+    if (!pending || !option) return null;
+    this.state.eventReflectionStances[pending.eventId] = option.stance;
+    const outcome = resolveOutcome(this.state, this.ctx, option);
+    applyReflectionEffects(this.state, outcome.effects);
+    this.state.pendingEventExit = null;
+    return outcome;
   }
 
-  /** Tier 4 writes the synthetic tag the-wanderer/wandering-hermit's crossEventVariants read. */
-  pickCampReflectionChoice(choice: 0 | 1 | 2): void {
+  /** Leaves the cleared event room without a word: no effect, and no stance recorded. */
+  leaveEventRoom(): void {
+    this.state.pendingEventExit = null;
+  }
+
+  /** `index` is into the pending tier's shown answers. Tier 4 writes the synthetic tag the-wanderer/wandering-hermit's crossEventVariants read. */
+  pickCampReflectionChoice(index: number): ReflectionOutcome | null {
     const tier = this.state.pendingCampReflectionTier;
-    if (tier === null) return;
-    this.state.campReflectionChoices[tier] = choice;
+    const option = tier !== null ? shownOptions(this.state, campReflectionContent(tier).options)[index] : undefined;
+    if (tier === null || !option) return null;
+    const outcome = resolveOutcome(this.state, this.ctx, option);
+    applyReflectionEffects(this.state, outcome.effects);
+    this.state.campReflectionChoices[tier] = index;
     this.state.pendingCampReflectionTier = null;
     if (tier === 4) this.state.eventOutcomes["camp-reflection"] = "unaware";
+    return outcome;
   }
 
   resolve(): void {
     if (!this.state.combat) return;
     // Coins/EXP/satiety only change in `grantVictoryRewards`, so this is the reveal's baseline for the whole round.
     this.state.combat.roundStartPartySnapshot = { coins: this.state.coins, partyExp: this.state.partyExp, satiety: this.state.satiety };
-    resolveRound(this.state.combat, this.ctx, this.state.floor.depth, this.state.satiety);
+    resolveRound(this.state.combat, this.ctx, this.state.floor.depth, this.state.satiety, this.state.faith);
     // A round can summon monsters the fight did not start with.
     this.noteSeenMonsters();
     if (this.state.combat.phase === "over") {
@@ -791,6 +855,8 @@ export class Game {
       return;
     }
     const nextDepth = this.state.floor.depth + 1;
+    this.state.boon = null;
+    recomputeAllPartyStats(this.state);
     this.state.pendingBarterBuffs = []; // a buff bartered for this floor's elite/boss room is lost if the floor ends without it
     this.state.restRunner = null; // room ids repeat on every floor, so a leftover runner must not match a room on the next one
     this.state.journalHandledRoomId = null;
@@ -799,6 +865,7 @@ export class Game {
     this.state.floor = floor;
     this.state.currentRoomId = floor.entryRoomId;
     this.state.roomPath = [floor.entryRoomId];
+    drainFaithOnFirstEntry(this.state, getRoom(floor, floor.entryRoomId), true);
     this.state.message = t("game.nextFloor", { depth: nextDepth });
     if (nextDepth === FOUNDER_FLOOR_DEPTH && this.state.continuedPastCheckpoint) {
       this.state.pendingFounderDialogue = true;

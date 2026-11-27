@@ -2,6 +2,7 @@ import { RGBA, type TextChunk } from "@opentui/core";
 import type { BackdropsFile, PixelGrid, ResolvedScene, UnitShadow } from "../data/backdrops";
 import { BATTLEFIELD_CONTENT_WIDTH, ICON_BAND_ROWS } from "./layout";
 import { MAX_BOSS_HEIGHT } from "./sprites";
+import { PALETTE } from "./theme";
 
 export const BACKDROP_ROWS = ICON_BAND_ROWS + MAX_BOSS_HEIGHT + 1;
 
@@ -96,6 +97,27 @@ export function paintBackdrop(scene: ResolvedScene, width: number, contentLeft: 
     row.map((c, x) => {
       const edge = cols > 0 ? Math.min(1, floor + ((1 - floor) * Math.min(x, width - 1 - x)) / cols) : 1;
       return toHex(scale(c, edge * (render.topFade[y] ?? 1) * (dimmed ? render.dimFactor : 1)));
+    }),
+  );
+}
+
+export function paintTorchGlow(
+  backdrop: string[][] | null,
+  width: number,
+  light: { x: number; y: number; faith: number; color: string; dimFactor: number },
+): string[][] | null {
+  const faith = Math.max(0, Math.min(100, light.faith)) / 100;
+  if (faith === 0) return backdrop;
+  const radius = 2 + 8 * faith;
+  const target = scale(parse(light.color), light.dimFactor);
+  return Array.from({ length: BACKDROP_ROWS }, (_, y) =>
+    Array.from({ length: width }, (_, x) => {
+      const hex = backdrop?.[y]?.[x] ?? PALETTE.panelBg;
+      const distance = Math.hypot((x - light.x) / 2, y - light.y);
+      if (distance >= radius) return hex;
+      const strength = 0.64 * faith * Math.pow(1 - distance / radius, 1.6);
+      const base = parse(hex);
+      return toHex([base[0] + (target[0] - base[0]) * strength, base[1] + (target[1] - base[1]) * strength, base[2] + (target[2] - base[2]) * strength]);
     }),
   );
 }

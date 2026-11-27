@@ -6,6 +6,8 @@ import { CAMP_KIT_ITEM_ID } from "../../data/items";
 export interface ScreenContext {
   game: Game;
   setUi(next: UiState): void;
+  /** False on the first press of `keyName` (it asks the player to press it again), true on the second. */
+  confirm(keyName: string): boolean;
   reportUnusable(reason: string): void;
   logInfo(text: string): void;
   syncUiToGameState(): void;

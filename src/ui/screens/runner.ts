@@ -60,6 +60,7 @@ export function handleKey(ctx: ScreenContext, ui: RunnerUiState, key: KeyEvent, 
       if (key.name === "return") {
         ctx.game.leaveRunner();
         ctx.logInfo(ctx.game.state.message);
+        ctx.setUi({ kind: "rest" });
         ctx.syncUiToGameState();
       } else if (key.name === "r") {
         report(ctx, ctx.game.runnerRefresh());

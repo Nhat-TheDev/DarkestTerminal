@@ -3,7 +3,8 @@ import type { ActiveStatusEffect, CombatantSnapshot, CombatState, GameState, Id,
 import { MAX_EQUIPPED_ARTIFACTS, characterBaseStats } from "./party";
 import { Rng, derivedRng } from "./rng";
 import { getItem } from "../data/items";
-import { RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
+import { getEvent, RETIRED_CHARACTER_EVENT_IDS } from "../data/events";
+import { getReligion } from "../data/religions";
 import { getClass, getSkill } from "../data/classes";
 import { SUMMON_ARCHETYPES } from "../data/summons";
 import { getStatusEffect } from "../data/statusEffects";
@@ -135,11 +136,21 @@ function migrateToV1_2_1(state: GameState): void {
   for (const room of state.floor.rooms) room.name = V1_2_1_ROOM_RENAMES[room.name] ?? room.name;
 }
 
+/** Saves before 1.3.0, which added Faith and moved the pending reflection into the exit scene. */
+function migrateToV1_3_0(state: GameState & { pendingReflection?: { eventId: Id } | null }): void {
+  if (typeof state.faith !== "number") state.faith = BALANCE.faith.initial;
+  if (state.boon === undefined) state.boon = null;
+  const pending = state.pendingReflection;
+  if (pending && state.pendingEventExit === undefined) state.pendingEventExit = { eventId: pending.eventId, withReflection: true };
+  delete state.pendingReflection;
+}
+
 /** One step per release that changed what a saved value means, oldest first. */
 const VERSION_MIGRATIONS: { version: string; migrate: (state: GameState) => void }[] = [
   { version: "1.1.1", migrate: migrateToV1_1_1 },
   { version: "1.2.0", migrate: migrateToV1_2_0 },
   { version: "1.2.1", migrate: migrateToV1_2_1 },
+  { version: "1.3.0", migrate: migrateToV1_3_0 },
 ];
 
 /**
@@ -250,6 +261,15 @@ export function migrateGameState(raw: unknown, saveVersion?: string): GameState 
   if (typeof state.narrativeCounters.guardianGrudgeFiredCount !== "number") state.narrativeCounters.guardianGrudgeFiredCount = 0;
   if (typeof state.narrativeCounters.freeRewardsTakenCount !== "number") state.narrativeCounters.freeRewardsTakenCount = 0;
   if (!state.eventReflectionStances) state.eventReflectionStances = {};
+  if (state.pendingEventExit === undefined) state.pendingEventExit = null;
+  const narration = state.pendingChoiceNarration;
+  const narrationRoom = state.floor.rooms.find((room) => room.id === narration?.roomId && room.id === state.currentRoomId);
+  const validNarrationSource = narration?.source === "event"
+    ? narrationRoom?.type === "event" && narrationRoom.rolledEventId === narration.sourceId && isKnown(getEvent, narration.sourceId)
+    : narration?.source === "temple" && narrationRoom?.type === "temple" && narrationRoom.templeReligionId === narration.sourceId && isKnown(getReligion, narration.sourceId);
+  if (!narration || narration.floorDepth !== state.floor.depth || !validNarrationSource) {
+    state.pendingChoiceNarration = null;
+  }
   if (!state.eventOutcomes) state.eventOutcomes = {};
   if (!Array.isArray(state.firedOnceEventIds)) state.firedOnceEventIds = [];
   if (typeof state.loreExposureCount !== "number") state.loreExposureCount = 0;

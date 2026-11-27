@@ -1,15 +1,20 @@
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { getCatalog, computeCharacter, computeMonster, computeDamage, computeSkillPreview, computeMatchup, simulateLevelByDepth } from "./calc";
-import type { MonsterArchetype, MonsterTier, SkillDefinition } from "../../src/types";
+import type { MonsterArchetype, MonsterTier, SkillDefinition, SkillEffect, StatusEffectDefinition, CharacterClass, ArtifactDefinition, AbilityDefinition } from "../../src/types";
 import { MONSTER_ARCHETYPES, MONSTER_SKILLS, assertMonsterDataConsistent, assertMonsterKitConsistent } from "../../src/data/monsters";
 import type { FearTier } from "../../src/engine/resolver";
 import { parseBackdrops, type BackdropsFile } from "../../src/data/backdrops";
 import { parseRoomNames, type RoomNameEntry } from "../../src/data/roomNames";
 import { propBoundsError } from "../../src/ui/backdrop";
+import { DIVIDER_WIDTH } from "../../src/ui/layout";
 import type { EventDefinition } from "../../src/types";
 import { previewScene, type PreviewOptions } from "./backdropPreview";
 import { targetingConfigError, type TargetingConfig } from "../../src/data/balanceConfig";
+import { NESTED_BALANCE_SECTIONS, nestedBalanceError } from "./balanceCheck";
+import { validateAnimationReferences, validateReactionReferences, validateReactionAnimation, type CombatFxConfig } from "../../src/data/combatFx";
+import { editSkillEffectAnimation, editCombatFxPreset, isCombatFxEffect, mergeCombatFxDraft, mergeCombatFxEffect, previewCombatFx, type CombatFxPlayback } from "./combatFxPreview";
+import { IMPACT_TICKS, REVEAL_TICK_MS, SESSION_MIN_TICKS } from "../../src/ui/revealQueue";
 
 const HTML_PATH = path.resolve(import.meta.dir, "index.html");
 const DATA_DIR = path.resolve(import.meta.dir, "../../data");
@@ -18,6 +23,13 @@ const MONSTERS_PATH = path.join(DATA_DIR, "monsters.json");
 const BACKDROPS_PATH = path.join(DATA_DIR, "backdrops.json");
 const ROOM_NAMES_PATH = path.join(DATA_DIR, "room-names.json");
 const PORT = 4592;
+let combatFxWrites: Promise<void> = Promise.resolve();
+
+function queueCombatFxWrite<T>(operation: () => Promise<T>): Promise<T> {
+  const write = combatFxWrites.then(operation);
+  combatFxWrites = write.then(() => {}, () => {});
+  return write;
+}
 
 function json(data: unknown, status = 200): Response {
   return Response.json(data, { status });
@@ -54,6 +66,26 @@ function applyNumericPatch(target: Record<string, unknown>, patch: Record<string
     if (!allowedKeys.includes(key)) return `Field "${key}" is not editable.`;
     if (typeof value !== "number" || !Number.isFinite(value)) return `Field "${key}" must be a finite number.`;
     target[key] = value;
+  }
+  return null;
+}
+
+/** Sets the numbers `patch` names, each of which must already exist in `target` as a number; nested objects are followed, arrays and new keys are refused. */
+function applyNestedNumericPatch(target: Record<string, unknown>, patch: Record<string, unknown>, trail = ""): string | null {
+  for (const [key, value] of Object.entries(patch)) {
+    const path = trail + key;
+    const current = target[key];
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      if (typeof current !== "object" || current === null || Array.isArray(current)) return `Field "${path}" is not editable.`;
+      const err = applyNestedNumericPatch(current as Record<string, unknown>, value as Record<string, unknown>, `${path}.`);
+      if (err) return err;
+    } else if (typeof current !== "number") {
+      return `Field "${path}" is not editable.`;
+    } else if (typeof value !== "number" || !Number.isFinite(value)) {
+      return `Field "${path}" must be a finite number.`;
+    } else {
+      target[key] = value;
+    }
   }
   return null;
 }
@@ -99,23 +131,26 @@ interface SpriteData {
 
 interface SpritesFile {
   classes: Record<string, SpriteData>;
+  summons: Record<string, SpriteData>;
   monsters: Record<string, SpriteData>;
   elites: Record<string, SpriteData>;
   bosses: Record<string, SpriteData>;
   events: Record<string, SpriteData>;
   rest: Record<string, SpriteData>;
   treasure: Record<string, SpriteData>;
+  temple: Record<string, SpriteData>;
+  torch: Record<string, SpriteData>;
 }
 
-type Category = "classes" | "monsters" | "elites" | "bosses" | "events" | "rest" | "treasure";
-const CATEGORIES: Category[] = ["classes", "monsters", "elites", "bosses", "events", "rest", "treasure"];
+type Category = "classes" | "monsters" | "elites" | "bosses" | "summons" | "events" | "rest" | "treasure" | "temple" | "torch";
+const CATEGORIES: Category[] = ["classes", "monsters", "elites", "bosses", "summons", "events", "rest", "treasure", "temple", "torch"];
 
 function isCategory(value: unknown): value is Category {
   return typeof value === "string" && (CATEGORIES as string[]).includes(value);
 }
 
-const MAX_HEIGHT: Record<Category, number> = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
-const MAX_WIDTH: Partial<Record<Category, number>> = { events: 30, rest: 30, treasure: 30 };
+const MAX_HEIGHT: Record<Category, number> = { classes: 10, monsters: 10, elites: 11, bosses: 15, summons: 10, events: 15, rest: 15, treasure: 15, temple: 15, torch: 15 };
+const MAX_WIDTH: Partial<Record<Category, number>> = { summons: 13, events: 30, rest: 30, treasure: 30, temple: 30, torch: DIVIDER_WIDTH };
 
 function validateSprite(sprite: unknown, category: Category): string | null {
   if (typeof sprite !== "object" || sprite === null) return "Missing sprite data.";
@@ -183,6 +218,36 @@ const ENTITY_FILES: Record<EntityType, string> = {
   status: "status-effects.json",
   "monster-skill": "monster-skills.json",
 };
+
+const COMBAT_FX_CATALOG_MAPPINGS: Partial<Record<EntityType, (file: CombatFxConfig) => [string, Record<string, string | null>]>> = {
+  item: (file) => ["items", file.items],
+  status: (file) => ["statuses", file.statuses],
+  monster: (file) => ["basicAttacks.monsters", file.basicAttacks.monsters],
+};
+
+async function assertNewCombatFxMappingsOnDisk(current: CombatFxConfig, next: CombatFxConfig): Promise<void> {
+  for (const type of ENTITY_TYPES) {
+    const mapping = COMBAT_FX_CATALOG_MAPPINGS[type];
+    if (!mapping) continue;
+    const [section, table] = mapping(next);
+    const [, before] = mapping(current);
+    const ids = Object.keys(table).filter((id) => !Object.hasOwn(before, id));
+    if (ids.length === 0) continue;
+    const entries = await readJsonFile(ENTITY_FILES[type]) as { id: string }[];
+    const missing = ids.find((id) => !entries.some((entry) => entry.id === id));
+    if (missing) throw new Error(`Catalog entry for ${section}.${missing} no longer exists. Reload to refresh the catalogs.`);
+  }
+}
+
+/** `pending` holds catalog files (by name) as they would be after the write being checked. */
+async function assertEffectAnimationsOnDisk(file: CombatFxConfig, pending: Record<string, unknown> = {}): Promise<void> {
+  const read = (name: string) => Object.hasOwn(pending, name) ? Promise.resolve(pending[name]) : readJsonFile(name);
+  const [classes, monsters, summons, items, statuses, artifacts, abilities] = await Promise.all(["classes.json", "monster-skills.json", "summons.json", "items.json", "status-effects.json", "artifacts.json", "abilities.json"].map(read)) as [
+    CharacterClass[], SkillDefinition[], { skills: SkillDefinition[] }, { effects?: SkillEffect[] }[], StatusEffectDefinition[], ArtifactDefinition[], AbilityDefinition[],
+  ];
+  validateAnimationReferences([...classes.flatMap((entry) => entry.skills), ...monsters, ...summons.skills], items, statuses, file);
+  validateReactionReferences(file, statuses, classes, [...artifacts, ...abilities]);
+}
 
 /**
  * The same checks the game runs when data/monsters.json and data/monster-skills.json load, run on the
@@ -256,6 +321,117 @@ Bun.serve({
       return new Response(data, { headers: { "content-type": "application/json" } });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/combat-fx") {
+      return json(await readJsonFile("combat-fx.json"));
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/combat-fx-catalogs") {
+      const files = { classes: "classes.json", monsters: "monsters.json", summons: "summons.json", items: "items.json", statuses: "status-effects.json", monsterSkills: "monster-skills.json", artifacts: "artifacts.json", abilities: "abilities.json" };
+      return json(Object.fromEntries(await Promise.all(Object.entries(files).map(async ([key, name]) => [key, await readJsonFile(name)]))));
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/reaction-animation") {
+      try {
+        const body = await req.json() as { catalog: string; id: string; path: (string | number)[]; base: unknown; animation: string | null };
+        if (!["classes", "status-effects", "artifacts", "abilities"].includes(body.catalog) || !Array.isArray(body.path)) return badRequest("Choose a reaction catalog and field.");
+        return await queueCombatFxWrite(async () => {
+          const filename = body.catalog + ".json";
+          const entries = await readJsonFile(filename) as { id: string; [key: string]: unknown }[];
+          const entry = entries.find((record) => record.id === body.id);
+          if (!entry) return badRequest("Choose an existing catalog entry.");
+          const [section, key, leaf] = body.path;
+          const nested = entry[section as string];
+          let target: { [key: string]: unknown } | undefined;
+          let field = "animation";
+          if (body.catalog === "classes" && section === "passiveSkill" && body.path.length === 2 && ["bonusDamageAnimation", "secondCloneAnimation"].includes(String(key))) {
+            target = nested as typeof target;
+            field = key as string;
+          } else if (body.catalog === "status-effects" && body.path.length === 2 && ["woundOnHit", "counterAttack", "onHitAoeDamage"].includes(String(section)) && key === "animation") {
+            target = nested as typeof target;
+          } else if (body.path.length === 3 && leaf === "animation" && Number.isSafeInteger(key) && (key as number) >= 0 && Array.isArray(nested)) {
+            const candidate = nested[key as number] as { [key: string]: unknown } | undefined;
+            if (body.catalog === "status-effects" && section === "perTurnEffects" && candidate?.kind === "damage"
+              || ["artifacts", "abilities"].includes(body.catalog) && section === "effects" && candidate?.kind === "autoDamage") target = candidate;
+          }
+          if (!target || typeof target !== "object") return badRequest("Choose an existing reaction field.");
+          if (JSON.stringify(entry) !== JSON.stringify(body.base)) return json({ error: "This catalog entry changed on disk. Reload before saving." }, 409);
+          const animation = body.animation === "__default__" ? undefined : body.animation;
+          if (animation !== undefined && animation !== null && typeof animation !== "string") return badRequest("Choose an animation, Game default or No effect.");
+          const config = await readJsonFile("combat-fx.json") as CombatFxConfig;
+          validateReactionAnimation(animation, config, `${body.catalog}.${body.id}.${body.path.join(".")}`);
+          if (animation === undefined) delete target[field];
+          else target[field] = animation;
+          await assertEffectAnimationsOnDisk(config, { [filename]: entries });
+          await writeJsonFile(filename, entries);
+          return json({ entry });
+        });
+      } catch (error) {
+        return badRequest(error instanceof Error ? error.message : "Invalid reaction animation.");
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/skill-animation") {
+      try {
+        const body = await req.json() as { catalog: string; skillId: string; rank?: number; section: string; index: unknown; base: unknown; animation: unknown };
+        if (!["classes", "monster-skills", "summons"].includes(body.catalog) || !["effects", "chargeEffects"].includes(body.section)) return badRequest("Choose a skill catalog and effect section.");
+        return await queueCombatFxWrite(async () => {
+          const filename = body.catalog + ".json";
+          const data = await readJsonFile(filename);
+          const skills: SkillDefinition[] = body.catalog === "classes" ? (data as { skills: SkillDefinition[] }[]).flatMap((entry) => entry.skills) : body.catalog === "summons" ? (data as { skills: SkillDefinition[] }).skills : data as SkillDefinition[];
+          const skill = skills.find((entry) => entry.id === body.skillId);
+          const owner = body.rank === undefined ? skill : skill?.ranks?.find((rank) => rank.rank === body.rank);
+          const section = body.section as "effects" | "chargeEffects";
+          if (!owner || section === "chargeEffects" && body.rank !== undefined) return badRequest("Choose an existing skill or rank.");
+          const record = owner as Pick<SkillDefinition, "effects" | "chargeEffects">;
+          record[section] = editSkillEffectAnimation(record[section] ?? [], body.index, body.base, body.animation, await readJsonFile("combat-fx.json") as CombatFxConfig);
+          await writeJsonFile(filename, data);
+          return json({ effect: record[section]![body.index as number] });
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Invalid skill animation.";
+        return json({ error: message }, message.startsWith("Conflict at ") ? 409 : 400);
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/combat-fx") {
+      try {
+        const body = await req.json() as { base?: unknown; draft?: unknown; effect?: unknown; animation?: unknown };
+        const write = queueCombatFxWrite(async () => {
+          const current = await readJsonFile("combat-fx.json") as CombatFxConfig;
+          const next = Object.hasOwn(body, "draft") ? mergeCombatFxDraft(current, body.base, body.draft) : mergeCombatFxEffect(current, body.effect, body.animation);
+          await assertNewCombatFxMappingsOnDisk(current, next);
+          await assertEffectAnimationsOnDisk(next);
+          await writeJsonFile("combat-fx.json", next);
+          return next;
+        });
+        return json({ ok: true, file: await write });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Invalid combat animation.";
+        return json({ error: message }, message.startsWith("Conflict at ") ? 409 : 400);
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/combat-fx-preset") {
+      try {
+        const body = await req.json() as { file: CombatFxConfig; action?: unknown; id?: unknown; newId?: unknown };
+        const next = editCombatFxPreset(body.file, body.action, body.id, body.newId);
+        await assertEffectAnimationsOnDisk(next);
+        return json(next);
+      } catch (error) {
+        return badRequest(error instanceof Error ? error.message : "Invalid preset action.");
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/combat-fx-preview") {
+      try {
+        const body = await req.json() as { file: CombatFxConfig; effect?: unknown; frameIndex?: number; playback?: CombatFxPlayback; reaction?: boolean; reverse?: unknown; classId?: unknown; monsterId?: unknown };
+        if (!isCombatFxEffect(body.effect, body.file) || typeof body.reverse !== "boolean" || typeof body.classId !== "string" || typeof body.monsterId !== "string") return badRequest("Invalid preview options.");
+        return json({ cells: previewCombatFx(body.file, { effect: body.effect, frameIndex: body.frameIndex, playback: body.playback, reaction: body.reaction, reverse: body.reverse, classId: body.classId, monsterId: body.monsterId }), timing: { tickMs: REVEAL_TICK_MS, impactTicks: IMPACT_TICKS, minTicks: SESSION_MIN_TICKS } });
+      } catch (error) {
+        return badRequest(error instanceof Error ? error.message : "Invalid combat preview.");
+      }
+    }
+
     if (req.method === "GET" && url.pathname === "/api/monsters") {
       const data = await readFile(MONSTERS_PATH, "utf8");
       return new Response(data, { headers: { "content-type": "application/json" } });
@@ -277,11 +453,12 @@ Bun.serve({
       const validationError = validateSprite(sprite, category);
       if (validationError) return badRequest(validationError);
       
-      const raw = await readFile(SPRITES_PATH, "utf8");
-      const data = JSON.parse(raw) as SpritesFile;
-      data[category][id] = sprite as SpriteData;
-      await writeFile(SPRITES_PATH, JSON.stringify(data, null, 2) + "\n", "utf8");
-      return json({ ok: true });
+      return queueCombatFxWrite(async () => {
+        const data = JSON.parse(await readFile(SPRITES_PATH, "utf8")) as SpritesFile;
+        data[category][id] = sprite as SpriteData;
+        await writeFile(SPRITES_PATH, JSON.stringify(data, null, 2) + "\n", "utf8");
+        return json({ ok: true });
+      });
     }
 
     if (req.method === "GET" && url.pathname === "/api/backdrops") {
@@ -427,61 +604,70 @@ Bun.serve({
     }
 
     if (req.method === "POST" && url.pathname === "/api/edit/class") {
-      let body: { classId?: unknown; base?: unknown; growthWeights?: unknown };
+      let body: { classId?: unknown; base?: unknown; growthWeights?: unknown; religionId?: unknown };
       try { body = (await req.json()) as typeof body; } catch { return badRequest("Body is not valid JSON."); }
       if (typeof body.classId !== "string") return badRequest("classId is required.");
-      const classes = (await readJsonFile("classes.json")) as Record<string, unknown>[];
-      const cls = classes.find((c) => c.id === body.classId);
-      if (!cls) return badRequest(`Unknown class id "${body.classId}".`);
-      if (body.base !== undefined) {
-        if (typeof body.base !== "object" || body.base === null) return badRequest("base must be an object.");
-        const err = applyNumericPatch(cls, body.base as Record<string, unknown>, CLASS_BASE_FIELDS);
-        if (err) return badRequest(err);
-      }
-      if (body.growthWeights !== undefined) {
-        if (typeof body.growthWeights !== "object" || body.growthWeights === null) return badRequest("growthWeights must be an object.");
-        const gwData = (await readJsonFile("growth-weights.json")) as Record<string, unknown>;
-        const classGws = gwData.classGrowthWeights as Record<string, unknown>;
-        const clsGw = classGws[body.classId as string] as Record<string, unknown>;
-        const err = applyNumericPatch(clsGw, body.growthWeights as Record<string, unknown>, CLASS_GROWTH_FIELDS);
-        if (err) return badRequest(err);
-        await writeJsonFile("growth-weights.json", gwData);
-      }
-      await writeJsonFile("classes.json", classes);
-      return json({ ok: true });
+      return queueCombatFxWrite(async () => {
+        const classes = (await readJsonFile("classes.json")) as Record<string, unknown>[];
+        const cls = classes.find((c) => c.id === body.classId);
+        if (!cls) return badRequest(`Unknown class id "${body.classId}".`);
+        if (body.base !== undefined) {
+          if (typeof body.base !== "object" || body.base === null) return badRequest("base must be an object.");
+          const err = applyNumericPatch(cls, body.base as Record<string, unknown>, CLASS_BASE_FIELDS);
+          if (err) return badRequest(err);
+        }
+        if (body.religionId !== undefined) {
+          const religions = (await readJsonFile("religions.json")) as { id: string }[];
+          if (typeof body.religionId !== "string" || !religions.some((r) => r.id === body.religionId)) return badRequest(`Unknown religion id "${String(body.religionId)}".`);
+          cls.religionId = body.religionId;
+        }
+        if (body.growthWeights !== undefined) {
+          if (typeof body.growthWeights !== "object" || body.growthWeights === null) return badRequest("growthWeights must be an object.");
+          const gwData = (await readJsonFile("growth-weights.json")) as Record<string, unknown>;
+          const classGws = gwData.classGrowthWeights as Record<string, unknown>;
+          const clsGw = classGws[body.classId as string] as Record<string, unknown>;
+          const err = applyNumericPatch(clsGw, body.growthWeights as Record<string, unknown>, CLASS_GROWTH_FIELDS);
+          if (err) return badRequest(err);
+          await writeJsonFile("growth-weights.json", gwData);
+        }
+        await writeJsonFile("classes.json", classes);
+        return json({ ok: true });
+      });
     }
     
     if (req.method === "POST" && url.pathname === "/api/edit/monster") {
       let body: { archetypeId?: unknown; base?: unknown; actionWeights?: unknown };
       try { body = (await req.json()) as typeof body; } catch { return badRequest("Body is not valid JSON."); }
       if (typeof body.archetypeId !== "string") return badRequest("archetypeId is required.");
-      const monsters = (await readJsonFile("monsters.json")) as Record<string, unknown>[];
-      const monster = monsters.find((m) => m.id === body.archetypeId);
-      if (!monster) return badRequest(`Unknown monster archetype id "${body.archetypeId}".`);
-      if (body.base !== undefined) {
-        if (typeof body.base !== "object" || body.base === null) return badRequest("base must be an object.");
-        const err = applyNumericPatch(monster, body.base as Record<string, unknown>, MONSTER_BASE_FIELDS);
-        if (err) return badRequest(err);
-      }
-      if (body.actionWeights !== undefined) {
-        if (typeof body.actionWeights !== "object" || body.actionWeights === null) return badRequest("actionWeights must be an object.");
-        const existingWeights = (monster.actionWeights ?? {}) as Record<string, unknown>;
-        for (const [tier, tierPatch] of Object.entries(body.actionWeights as Record<string, unknown>)) {
-          if (typeof tierPatch !== "object" || tierPatch === null) return badRequest(`actionWeights.${tier} must be an object.`);
-          const existingTier = (existingWeights[tier] ?? {}) as Record<string, unknown>;
-          const allowedActionKeys = Object.keys(existingTier);
-          const err = applyNumericPatch(existingTier, tierPatch as Record<string, unknown>, allowedActionKeys);
+      return queueCombatFxWrite(async () => {
+        const monsters = (await readJsonFile("monsters.json")) as Record<string, unknown>[];
+        const monster = monsters.find((m) => m.id === body.archetypeId);
+        if (!monster) return badRequest(`Unknown monster archetype id "${body.archetypeId}".`);
+        if (body.base !== undefined) {
+          if (typeof body.base !== "object" || body.base === null) return badRequest("base must be an object.");
+          const err = applyNumericPatch(monster, body.base as Record<string, unknown>, MONSTER_BASE_FIELDS);
           if (err) return badRequest(err);
-          existingWeights[tier] = existingTier;
         }
-        monster.actionWeights = existingWeights;
-      }
-      await writeJsonFile("monsters.json", monsters);
-      return json({ ok: true });
+        if (body.actionWeights !== undefined) {
+          if (typeof body.actionWeights !== "object" || body.actionWeights === null) return badRequest("actionWeights must be an object.");
+          const existingWeights = (monster.actionWeights ?? {}) as Record<string, unknown>;
+          for (const [tier, tierPatch] of Object.entries(body.actionWeights as Record<string, unknown>)) {
+            if (typeof tierPatch !== "object" || tierPatch === null) return badRequest(`actionWeights.${tier} must be an object.`);
+            const existingTier = (existingWeights[tier] ?? {}) as Record<string, unknown>;
+            const allowedActionKeys = Object.keys(existingTier);
+            const err = applyNumericPatch(existingTier, tierPatch as Record<string, unknown>, allowedActionKeys);
+            if (err) return badRequest(err);
+            existingWeights[tier] = existingTier;
+          }
+          monster.actionWeights = existingWeights;
+        }
+        await writeJsonFile("monsters.json", monsters);
+        return json({ ok: true });
+      });
     }
 
     if (req.method === "POST" && url.pathname === "/api/edit/balance") {
-      let body: { combat?: unknown; survival?: unknown; party?: unknown; items?: unknown; floorGeneration?: unknown; events?: unknown; currency?: unknown; targeting?: unknown };
+      let body: { combat?: unknown; survival?: unknown; party?: unknown; items?: unknown; floorGeneration?: unknown; events?: unknown; currency?: unknown; targeting?: unknown; faith?: unknown; temple?: unknown; rest?: unknown; reflection?: unknown };
       try { body = (await req.json()) as typeof body; } catch { return badRequest("Body is not valid JSON."); }
       const balance = (await readJsonFile("balance-config.json")) as Record<string, unknown>;
       const flatSections: [string, readonly string[]][] = [
@@ -497,6 +683,17 @@ Bun.serve({
         if (patch === undefined) continue;
         if (typeof patch !== "object" || patch === null) return badRequest(`${key} must be an object.`);
         const err = applyNumericPatch(balance[key] as Record<string, unknown>, patch as Record<string, unknown>, allowed);
+        if (err) return badRequest(err);
+      }
+      for (const key of NESTED_BALANCE_SECTIONS) {
+        const patch = body[key];
+        if (patch === undefined) continue;
+        if (typeof patch !== "object" || patch === null) return badRequest(`${key} must be an object.`);
+        const err = applyNestedNumericPatch(balance[key] as Record<string, unknown>, patch as Record<string, unknown>, `${key}.`);
+        if (err) return badRequest(err);
+      }
+      if (NESTED_BALANCE_SECTIONS.some((key) => body[key] !== undefined)) {
+        const err = nestedBalanceError(balance);
         if (err) return badRequest(err);
       }
       if (body.currency !== undefined) {
@@ -563,6 +760,18 @@ Bun.serve({
       return new Response(await readFile(path.join(DATA_DIR, "monster-races.json"), "utf8"), { headers: { "content-type": "application/json" } });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/classes") {
+      return new Response(await readFile(path.join(DATA_DIR, "classes.json"), "utf8"), { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/religions") {
+      return new Response(await readFile(path.join(DATA_DIR, "religions.json"), "utf8"), { headers: { "content-type": "application/json" } });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/summons") {
+      return new Response(await readFile(path.join(DATA_DIR, "summons.json"), "utf8"), { headers: { "content-type": "application/json" } });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/events") {
       return new Response(await readFile(path.join(DATA_DIR, "events.json"), "utf8"), { headers: { "content-type": "application/json" } });
     }
@@ -587,51 +796,63 @@ Bun.serve({
         try { body = await req.json(); } catch { return badRequest("Body is not valid JSON."); }
         const entryError = validateEntry(body);
         if (entryError) return badRequest(entryError);
-        const entry = body as { id: string };
-        const entries = (await readJsonFile(file)) as { id: string }[];
-        if (entries.some((e) => e.id === entry.id)) return badRequest(`"${entry.id}" already exists.`);
-        const pairingError = entityType === "item" ? trophyPairingError(undefined, entry) : null;
-        if (pairingError) return badRequest(pairingError);
-        entries.push(entry);
-        const catalogError = monsterCatalogError(entityType, entries);
-        if (catalogError) return badRequest(catalogError);
-        // Must run before writing monsters.json: that write makes `bun --watch` restart this process,
-        // cutting off any await after it. sprites.json isn't imported, so writing it doesn't restart.
-        if (entityType === "monster") await ensureMonsterSprites(entry as { id: string; roles?: MonsterTier[] });
-        await writeJsonFile(file, entries);
-        return json({ ok: true });
+        return queueCombatFxWrite(async () => {
+          const entry = body as { id: string };
+          const entries = (await readJsonFile(file)) as { id: string }[];
+          if (entries.some((e) => e.id === entry.id)) return badRequest(`"${entry.id}" already exists.`);
+          const pairingError = entityType === "item" ? trophyPairingError(undefined, entry) : null;
+          if (pairingError) return badRequest(pairingError);
+          entries.push(entry);
+          if (entityType === "monster-skill" || entityType === "item" || entityType === "status" || entityType === "artifact") {
+            try { await assertEffectAnimationsOnDisk(await readJsonFile("combat-fx.json") as CombatFxConfig, { [file]: entries }); }
+            catch (error) { return badRequest(error instanceof Error ? error.message : "Invalid skill animation."); }
+          }
+          const catalogError = monsterCatalogError(entityType, entries);
+          if (catalogError) return badRequest(catalogError);
+          // Must run before writing monsters.json: that write makes `bun --watch` restart this process,
+          // cutting off any await after it. sprites.json isn't imported, so writing it doesn't restart.
+          if (entityType === "monster") await ensureMonsterSprites(entry as { id: string; roles?: MonsterTier[] });
+          await writeJsonFile(file, entries);
+          return json({ ok: true });
+        });
       }
 
-      if (req.method === "PUT" && id) {
-        let body: unknown;
-        try { body = await req.json(); } catch { return badRequest("Body is not valid JSON."); }
-        const entryError = validateEntry(body);
-        if (entryError) return badRequest(entryError);
-        const entry = body as { id: string };
-        const entries = (await readJsonFile(file)) as { id: string }[];
-        const index = entries.findIndex((e) => e.id === id);
-        if (index === -1) return badRequest(`"${id}" does not exist.`);
-        if (entry.id !== id && entries.some((e) => e.id === entry.id)) return badRequest(`"${entry.id}" already exists.`);
-        const pairingError = entityType === "item" ? trophyPairingError(entries[index], entry) : null;
-        if (pairingError) return badRequest(pairingError);
-        entries[index] = entry;
-        const catalogError = monsterCatalogError(entityType, entries);
-        if (catalogError) return badRequest(catalogError);
-        await writeJsonFile(file, entries);
-        return json({ ok: true });
-      }
-
-      if (req.method === "DELETE" && id) {
-        const entries = (await readJsonFile(file)) as { id: string }[];
-        const index = entries.findIndex((e) => e.id === id);
-        if (index === -1) return badRequest(`"${id}" does not exist.`);
-        const pairingError = entityType === "item" ? trophyPairingError(entries[index], undefined) : null;
-        if (pairingError) return badRequest(pairingError);
-        entries.splice(index, 1);
-        const catalogError = monsterCatalogError(entityType, entries);
-        if (catalogError) return badRequest(catalogError);
-        await writeJsonFile(file, entries);
-        return json({ ok: true });
+      if ((req.method === "PUT" || req.method === "DELETE") && id) {
+        let entry: { id: string } | undefined;
+        let base: unknown;
+        if (req.method === "PUT") {
+          let body: { entry?: unknown; base?: unknown };
+          try { body = (await req.json()) as typeof body; } catch { return badRequest("Body is not valid JSON."); }
+          if (typeof body !== "object" || body === null || !Object.hasOwn(body, "entry") || !Object.hasOwn(body, "base")) return badRequest("Body must be { entry, base }: the edited entry and the entry as it was loaded.");
+          const entryError = validateEntry(body.entry);
+          if (entryError) return badRequest(entryError);
+          entry = body.entry as { id: string };
+          base = body.base;
+        }
+        return queueCombatFxWrite(async () => {
+          const entries = (await readJsonFile(file)) as { id: string }[];
+          const index = entries.findIndex((e) => e.id === id);
+          if (index === -1) return badRequest(`"${id}" does not exist.`);
+          if (entry && JSON.stringify(entries[index]) !== JSON.stringify(base)) return json({ error: `"${id}" changed on disk since it was loaded. Reload it before saving.` }, 409);
+          if (entry && entry.id !== id && entries.some((e) => e.id === entry.id)) return badRequest(`"${entry.id}" already exists.`);
+          const pairingError = entityType === "item" ? trophyPairingError(entries[index], entry) : null;
+          if (pairingError) return badRequest(pairingError);
+          const mapping = COMBAT_FX_CATALOG_MAPPINGS[entityType];
+          if (mapping && entry?.id !== id) {
+            const [section, table] = mapping(await readJsonFile("combat-fx.json") as CombatFxConfig);
+            if (Object.hasOwn(table, id)) return badRequest(`Saved Combat Effects mapping ${section}.${id} references this ID. Select Unmapped (game default) and save Combat Effects first.`);
+          }
+          if (entry) entries[index] = entry;
+          else entries.splice(index, 1);
+          if (entityType === "monster-skill" || entityType === "item" || entityType === "status" || entityType === "artifact") {
+            try { await assertEffectAnimationsOnDisk(await readJsonFile("combat-fx.json") as CombatFxConfig, { [file]: entries }); }
+            catch (error) { return badRequest(error instanceof Error ? error.message : "Invalid skill animation."); }
+          }
+          const catalogError = monsterCatalogError(entityType, entries);
+          if (catalogError) return badRequest(catalogError);
+          await writeJsonFile(file, entries);
+          return json({ ok: true });
+        });
       }
     }
 

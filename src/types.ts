@@ -24,6 +24,7 @@ export type CombatStat = "attack" | "defense" | "aggro" | "speed" | "magicPower"
 
 export interface SkillEffect {
   kind: SkillEffectKind;
+  animation?: string | null;
   amount?: number;
   /** "satiety" is party-wide, so resolving it needs the GameState. */
   stat?: keyof SurvivalStats | "satiety";
@@ -314,10 +315,12 @@ export interface PassiveSkillDefinition {
   ranks: PassiveRankDefinition[]; // exactly 3
   requiresTargetStatusId?: Id; // also matches a rankOf variant of this status
   bonusDamageType?: DamageType;
+  bonusDamageAnimation?: string | null;
   selfDamagePerHitMaxHPPercent?: number;
   maxClones?: number;
   cloneSummonCastId?: Id; // the cast the second-clone proc spawns; maxClones counts its archetype
   secondCloneName?: string;
+  secondCloneAnimation?: string | null;
   debuffPool?: Id[];
   procRolls?: number; // times per hit `procChancePercent` is rolled for a debuff from `debuffPool`; 1 if absent
   ignoresFearEffects?: boolean; // fear still builds, but none of its combat penalties apply
@@ -346,6 +349,19 @@ export interface UnitStyle {
   color: string;
 }
 
+/** The stat a religion's boon leans on; `offense` is attack and magic power. */
+export type BoonStat = "offense" | "defense" | "speed";
+
+export interface Religion {
+  id: Id;
+  name: string;
+  templeDescription: string;
+  templeSpriteId: Id;
+  narration: Record<string, string>;
+  style: UnitStyle;
+  boon: { emphasis: BoonStat | null; recoversHpMp: boolean };
+}
+
 export interface CharacterClass {
   id: Id;
   name: string;
@@ -362,6 +378,8 @@ export interface CharacterClass {
   attackRange: AttackRange;
   /** Its hidden personality (`data/personalities.json`): what it notices, and when its bad side shows in the journal. */
   personalityId: Id;
+  /** Its religion (`data/religions.json`), shown at party select and on the character info screen. */
+  religionId: Id;
   /** Abilities the party-select screen marks as a good fit for this class. */
   recommendedAbilityIds: Id[];
   skills: SkillDefinition[];
@@ -403,7 +421,7 @@ export interface StatusEffectDefinition {
   description: string;
   perTurnEffects: SkillEffect[];
   onHitStatusEffectId?: Id;
-  onHitAoeDamage?: { amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number; damageType?: DamageType };
+  onHitAoeDamage?: { animation?: string | null; amount: number; isMagic?: boolean; ignoreDefensePercent?: number; offenseMultiplierPercent?: number; damageType?: DamageType };
   accuracyPenaltyPercent?: number;
   stuns?: boolean;
   vulnerableTo?: { statusEffectId: Id; multiplier: number };
@@ -435,7 +453,7 @@ export interface StatusEffectDefinition {
    * When a monster's direct hit lands on the bearer, the bearer strikes back; after `maxCounters` counters the status ends.
    * `"attacker"` answers only the monster whose hit triggered it; absent or `"allEnemies"` answers every targetable enemy.
    */
-  counterAttack?: { maxCounters: number; amount: number; offenseMultiplierPercent: number; target?: "allEnemies" | "attacker" };
+  counterAttack?: { animation?: string | null; maxCounters: number; amount: number; offenseMultiplierPercent: number; target?: "allEnemies" | "attacker" };
   /** For a stackable status: the moment it reaches `maxStacks`, every stack goes and the bearer gets this status instead. */
   onMaxStacks?: { statusEffectId: Id; durationTurns: number };
   /** While the bearer carries this status, its basic attack (slot 0) becomes this strike instead. */
@@ -468,7 +486,7 @@ export interface StatusEffectDefinition {
    * Each direct hit the bearer survives deals `amount` + a percent of its max HP more, of `damageType`, blunted by a monster's tier share of its defense.
    * The percent climbs from `minMaxHpPercent` at full HP to `maxMaxHpPercent` once the bearer is at `fullAtHpPercent` HP or below.
    */
-  woundOnHit?: { amount: number; minMaxHpPercent: number; maxMaxHpPercent: number; fullAtHpPercent: number; damageType: DamageType };
+  woundOnHit?: { animation?: string | null; amount: number; minMaxHpPercent: number; maxMaxHpPercent: number; fullAtHpPercent: number; damageType: DamageType };
   /** When a character other than the one who applied it lands a damaging hit on the bearer, that character has `chance` (0–1) to get `statusEffectId`. */
   buffsAttackerOnHit?: { statusEffectId: Id; chance: number; durationTurns: number };
   /** Should the bearer fall while it lasts, it gets back up at this percent of its max HP, and the status is spent. */
@@ -518,7 +536,7 @@ export type ArtifactEffect =
   /** `minPercent` floors the heal at `baseMaxHp * minPercent / 100` (class-plus-level max HP, not the live one). */
   | { kind: "healOnKill"; amount: number; minPercent?: number }
   /** With `offenseMultiplierPercent`, a mitigated hit scaling off the bearer's base attack/magicPower; absent = fixed, unmitigated `amount`. */
-  | { kind: "autoDamage"; amount: number; offenseMultiplierPercent?: number; isMagic?: boolean }
+  | { kind: "autoDamage"; animation?: string | null; amount: number; offenseMultiplierPercent?: number; isMagic?: boolean }
   | { kind: "expBoost"; percent: number }
   | { kind: "fearResist"; percent: number }
   | { kind: "cooldownReduction"; turns: number }
@@ -723,6 +741,7 @@ export interface EventDefinition {
   description: string;
   kind: EventKind;
   tier: EventTier;
+  narration?: Record<string, string>;
   forceEquip?: boolean;
   minFloorDepth?: number;
   onceLifetime?: boolean;
@@ -749,7 +768,7 @@ export interface EventDefinition {
   /** Replaces `description` from the 2nd encounter on; the object form branches on the last visit's outcome. */
   returnDescription?: string | Record<"won" | "lost" | "declined", string>;
   /** Appended to `returnDescription` by the party's dominant reflection stance; flavor only. */
-  stanceEcho?: { curious: string; wary: string; dismissive: string };
+  stanceEcho?: Partial<Record<ReflectionStance, string>>;
   /** Appended to a `returnDescription` visit once `eventOutcomes["camp-reflection"]` is "unaware"; `crossEventVariants` only cover the first meeting. */
   campReflectionUnawareEcho?: string;
   /** Replaces `description` once `narrativeCounters.guardianFightsSkipped` reaches 2. */
@@ -776,8 +795,49 @@ export interface EventDefinition {
     escalatedPrompt?: string;
     escalated2Prompt?: string;
     escalated3Prompt?: string;
-    options: { curious: string; wary: string; dismissive: string };
+    options: ReflectionOption[];
   };
+}
+
+export type ReflectionStance = "curious" | "wary" | "dismissive" | "devout" | "defiant";
+
+export type ReflectionCondition =
+  | { religionInParty: Id }
+  | { counterAtLeast: { counter: keyof GameState["narrativeCounters"]; threshold: string } }
+  | { lastGambleOutcome: "won" | "lost" | "declined" };
+
+export type ReflectionEffectStat = "faith" | "fear" | "satiety" | "hp" | "mp";
+export type ReflectionEffectSize = "small" | "medium" | "large";
+
+export interface ReflectionEffect {
+  stat: ReflectionEffectStat;
+  size: ReflectionEffectSize;
+  sign: 1 | -1;
+  /** Defaults to the whole party; Faith and Satiety are always party-wide. */
+  target?: "party" | "mostAfraid" | "mostHurt" | { religion: Id };
+  /** The phrase of the answer text that shows this effect. */
+  readFrom: string;
+}
+
+export interface ReflectionOutcome {
+  /** Share of the roll; the plain outcomes of one answer sum to 1. */
+  chance?: number;
+  /** The first outcome whose conditions all hold is used; the plain ones are rolled otherwise. */
+  when?: ReflectionCondition[];
+  effects: ReflectionEffect[];
+}
+
+export interface ReflectionAnswer {
+  text: string;
+  /** All must hold for the answer to be shown. */
+  requires?: ReflectionCondition[];
+  /** The gesture eats or drinks; only then may an effect raise Satiety. */
+  feeds?: boolean;
+  outcomes: ReflectionOutcome[];
+}
+
+export interface ReflectionOption extends ReflectionAnswer {
+  stance: ReflectionStance;
 }
 
 export interface ActiveStatusEffect {
@@ -822,7 +882,35 @@ export interface RestRunner {
   barterOffers?: BarterOffer[];
 }
 
-export type RoomType = "combat" | "rest" | "boss" | "event";
+export interface ActiveBoon {
+  religionId: Id;
+  /** The floor depth it was asked on. */
+  depth: number;
+}
+
+export interface ChoiceNarrationResult {
+  coinsDelta?: number;
+  faithDelta?: number;
+  hpChanges?: { characterId: Id; name: string; before: number; after: number }[];
+  offeredArtifacts?: { artifactId: Id; name: string }[];
+  removedArtifacts?: { artifactId: Id; name: string }[];
+  receivedItems?: { itemId: Id; name: string; count: number }[];
+  gamble?: { round: number; potBefore: number; potAfter: number; outcome: "win" | "loss" | "banked" | "jackpot" };
+  boon?: { religionId: Id; name: string; depth: number };
+}
+
+export interface PendingChoiceNarration {
+  source: "event" | "temple";
+  sourceId: Id;
+  roomId: Id;
+  floorDepth: number;
+  caseKey: string;
+  title: string;
+  text: string;
+  result: ChoiceNarrationResult;
+}
+
+export type RoomType = "combat" | "rest" | "boss" | "event" | "temple";
 
 export interface Room {
   id: Id;
@@ -833,9 +921,14 @@ export interface Room {
   connectedRoomIds: Id[];
   monsterIds: Id[];
   cleared: boolean;
+  /** A rest room whose rest action (Eat & Drink, Chat or Pray) has been taken; the room stays open for the runner until the party leaves. */
+  rested?: boolean;
   /** Shown as unknown until the party enters it; absent means visible. */
   hidden?: boolean;
   rolledEventId?: Id;
+  eventSacrificesThisVisit?: number;
+  /** The religion this floor's temple belongs to; set only on a temple room. */
+  templeReligionId?: Id;
   chainVariant?: "buildup" | "forced" | "forced2" | "forced3";
   /** Index into `[event.description, ...event.descriptionVariants]`; undefined when the event has no variants. */
   descriptionVariantIndex?: number;
@@ -1001,6 +1094,8 @@ export interface Summon {
 export interface SummonArchetype {
   id: Id;
   name: string;
+  /** The battlefield label while the summon holds its owner's slot. */
+  abbr: string;
   /** Independent of the owner's speed; its first action, right after the cast, ignores speed. */
   speed: number;
   /** Whether a monster sees it as a melee or a ranged fighter (the `range` targeting factor). */
@@ -1064,7 +1159,7 @@ export interface PartyStateSnapshot {
 
 /**
  * One actor's action (or one actor-less tick block); every `LogEntry` it produces shares this object.
- * Ids are battlefield unit ids, so a summon is recorded as its owner.
+ * The actor and role ids represent a summon by its owner.
  */
 export interface LogSession {
   /** Index in `CombatState.log` of its first entry; stable across a save round trip. */
@@ -1087,6 +1182,10 @@ export interface LogSession {
   lostTurnIds: Id[];
   /** Owners whose summon took part; not set for the session that summons it. */
   summonIds: Id[];
+  /** The acting summon's instance id. */
+  summonActorId?: Id;
+  /** Instance ids of summons that took part in the session. */
+  summonParticipantIds?: Id[];
   /** Lit without a role: DoT ticks, dying damage, an artifact's bearer, an expiring summon's owner. */
   affectedIds: Id[];
   /** Shown a beat after the character's other changes. */
@@ -1097,6 +1196,15 @@ export interface LogSession {
   immuneIds: Id[];
   /** What an actor-less session was, so its lit units get the matching icon. */
   cause?: "dot" | "dying" | "artifact" | "fear";
+}
+
+export type PhysicalAttackVisual = "thrust" | "slash" | "blunt";
+
+export interface CombatEffectCue {
+  damage?: number;
+  targetId: Id;
+  sourceId?: Id;
+  visual: string;
 }
 
 export interface HitMark {
@@ -1112,10 +1220,13 @@ export interface LogEntry {
   snapshot?: CombatantSnapshot[];
   partySnapshot?: PartyStateSnapshot;
   session?: LogSession;
+  /** On the first entry of each interrupted run, the summon participants in that run. */
+  summonParticipantIds?: Id[];
   /** Carries a session that has no line to show; never rendered. */
   hidden?: true;
   /** Direct hits only, not damage-over-time ticks. */
-  hit?: HitMark & { targetId: Id };
+  hit?: HitMark & { targetId: Id; sourceId?: Id; visual?: string };
+  effect?: CombatEffectCue;
   healCritOf?: Id;
   /** Unit (a summon's owner) that lost a status whose `statusRole` is "buff". */
   buffLostOf?: Id;
@@ -1181,6 +1292,11 @@ export interface GameState {
   inventory: Record<Id, number>;
   coins: number;
   satiety: number;
+  /** Party-wide, 0-100, one decimal. */
+  faith: number;
+  /** The boon asked at this floor's temple; cleared when the floor ends. */
+  boon: ActiveBoon | null;
+  pendingChoiceNarration?: PendingChoiceNarration | null;
   pendingArtifactDecision?: { artifactId: Id; forceEquip: boolean } | null;
   /** Gambling Den's 2nd jackpot artifact, waiting until the 1st is resolved. */
   secondJackpotArtifactId?: Id | null;
@@ -1206,11 +1322,12 @@ export interface GameState {
     /** Resolved `freeTake` events. */
     freeRewardsTakenCount: number;
   };
-  pendingReflection?: { eventId: Id } | null;
-  eventReflectionStances: Partial<Record<Id, "curious" | "wary" | "dismissive">>;
+  /** Set once an event room is cleared; the party leaves the room only after it is answered or left. */
+  pendingEventExit: { eventId: Id; withReflection: boolean } | null;
+  eventReflectionStances: Partial<Record<Id, ReflectionStance>>;
   /** Events resolved from `LORE_EXPOSURE_EVENT_IDS`; never decreases. */
   loreExposureCount: number;
-  /** Set on rest-room entry when a new tier exceeds the highest answered one; skipped while `pendingReflection` is set. */
+  /** Set on rest-room entry when a new tier exceeds the highest answered one; skipped while `pendingEventExit` is set. */
   pendingCampReflectionTier: 1 | 2 | 3 | 4 | null;
   /** The omen picked on a milestone-floor boss victory; cleared by `Game.dismissFloorMilestoneMessage()`. */
   pendingFloorMilestoneOmenId?: Id | null;
@@ -1240,7 +1357,7 @@ export interface GameState {
   journalEchoesFired: Id[];
   /** The echoes the ending showed, for the Last page. */
   journalEndingEchoIds: Id[];
-  campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, 0 | 1 | 2>>;
+  campReflectionChoices: Partial<Record<1 | 2 | 3 | 4, number>>;
   /** Set once an event's defining choice resolves; most get the generic "resolved" from `closeEvent()`. */
   eventOutcomes: Partial<Record<Id, string>>;
   /** `onceLifetime` events already fired, plus every `removedOnFounderVictory` id once the founder falls; excluded from future rolls. */

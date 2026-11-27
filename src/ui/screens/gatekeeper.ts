@@ -1,4 +1,4 @@
-import type { KeyEvent } from "@opentui/core";
+import type { KeyEvent, StyledText } from "@opentui/core";
 import type { Game } from "../../engine/game";
 import { t } from "../../data/strings";
 import { getEvent } from "../../data/events";
@@ -10,6 +10,8 @@ import { getRoom } from "../../engine/dungeon";
 import { pathChoiceLine } from "./room";
 import type { UiState } from "../state";
 import type { ScreenContext } from "./context";
+import { eventTextLines } from "./events";
+import { PALETTE, colorChunk, joinLines } from "../theme";
 
 export type GatekeeperUiState = Extract<UiState, { kind: "gatekeeper" }>;
 
@@ -39,16 +41,16 @@ function blessingStats(): string {
     .join(", ");
 }
 
-export function renderMain(game: Game, ui: GatekeeperUiState): string {
+export function renderMain(game: Game, ui: GatekeeperUiState): string | StyledText {
   const answer = game.state.gatekeeperAnswer;
   if (answer === null) {
     const toll = BALANCE.gatekeeper.tollCoins;
-    return [
-      getEvent(GATEKEEPER_EVENT_ID).description.replace("{{toll}}", String(toll)),
-      "",
-      t("ui.gatekeeperLeaveCoins", { toll }),
-      t("ui.gatekeeperKeepCoins"),
-    ].join("\n");
+    return joinLines([
+      ...eventTextLines(getEvent(GATEKEEPER_EVENT_ID).description.replace("{{toll}}", String(toll))),
+      [],
+      [colorChunk(t("ui.gatekeeperLeaveCoins", { toll }), PALETTE.text)],
+      [colorChunk(t("ui.gatekeeperKeepCoins"), PALETTE.text)],
+    ]);
   }
   if (!ui.mapTaken) {
     return [answer === "paid" ? t("ui.gatekeeperPaid") : t("ui.gatekeeperRefused"), "", t("ui.gatekeeperMap"), "", t("ui.gatekeeperTakeMap")].join("\n");

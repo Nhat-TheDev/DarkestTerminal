@@ -1,8 +1,10 @@
 import { describe, test, expect } from "bun:test";
 import { RGBA } from "@opentui/core";
-import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, assertMonsterSpritesConsistent, renderSpriteInSlot, compositeSpriteRow, type Sprite } from "../src/ui/sprites";
+import { SLOT_WIDTH, SLOT_GAP, DIVIDER_WIDTH, BATTLEFIELD_CONTENT_WIDTH } from "../src/ui/layout";
+import { ALL_SPRITES, spriteWidth, spriteHeight, spriteForClass, spriteForMonster, spriteForSummon, assertMonsterSpritesConsistent, renderSpriteInSlot, compositeSpriteRow, torchFrameForFaith, TORCH_SPRITES, CLASS_SPRITES, MONSTER_SPRITES, ELITE_SPRITES, SUMMON_SPRITES, MAX_UNIT_HEIGHT, spriteSlotLayout, type Sprite } from "../src/ui/sprites";
 import { CLASSES } from "../src/data/classes";
 import { MONSTER_ARCHETYPES, getArchetype, COMBAT_ROOM_ARCHETYPES, GUARD_ROOM_ARCHETYPES, FINAL_BOSS_ARCHETYPE } from "../src/data/monsters";
+import { SUMMON_ARCHETYPES } from "../src/data/summons";
 
 describe("sprite dimensions and palette consistency", () => {
   for (const { name, sprite, maxHeight } of ALL_SPRITES) {
@@ -37,6 +39,23 @@ describe("sprite dimensions and palette consistency", () => {
     for (const cls of CLASSES) {
       expect(() => spriteForClass(cls.id)).not.toThrow();
     }
+  });
+
+  test("every summon archetype has a dedicated sprite that fits a unit slot", () => {
+    expect(Object.keys(SUMMON_SPRITES).sort()).toEqual(SUMMON_ARCHETYPES.map(({ id }) => id).sort());
+    const summonSprites = SUMMON_ARCHETYPES.map(({ id }) => {
+      const sprite = spriteForSummon(id);
+      expect(sprite).toBe(SUMMON_SPRITES[id]!);
+      expect(ALL_SPRITES).toContainEqual({ name: `${id}-summon`, sprite, maxHeight: MAX_UNIT_HEIGHT });
+      expect(spriteWidth(sprite)).toBeLessThanOrEqual(SLOT_WIDTH);
+      return sprite.rows.join("\n");
+    });
+    expect(new Set(summonSprites).size).toBe(SUMMON_ARCHETYPES.length);
+  });
+
+  test("summon sprite lookup rejects unknown ids", () => {
+    expect(() => spriteForSummon("unknown-summon")).toThrow("No sprite for summon archetype: unknown-summon");
+    expect(() => spriteForSummon("toString")).toThrow("No sprite for summon archetype: toString");
   });
 
   test("sprite coverage matches roles exactly: normal/elite/boss/final-boss", () => {
@@ -162,5 +181,42 @@ describe("compositeSpriteRow: overlap when a sprite is wider than its slot", () 
     const [row] = compositeSpriteRow([left, huge, right], 3, 1, 1);
     const rightColumns = row!.filter((c) => isColor(c, "#444444"));
     expect(rightColumns).toHaveLength(3);
+  });
+});
+
+describe("the torch", () => {
+  test("torch has exactly four upright handheld frames", () => {
+    expect(Object.keys(TORCH_SPRITES).sort()).toEqual(["embers", "full", "low", "strong"]);
+    for (const frame of Object.values(TORCH_SPRITES)) {
+      expect(spriteWidth(frame)).toBe(6);
+      expect(spriteHeight(frame)).toBe(14);
+      expect(frame.rows.slice(7, 13)).toEqual(Array(6).fill("..BD.."));
+    }
+  });
+
+  test.each([
+    [100, "full"], [75, "full"], [74.9, "strong"], [50, "strong"],
+    [49.9, "low"], [25, "low"], [24.9, "embers"], [0, "embers"],
+  ] as const)("Faith %s selects the %s torch", (faith, frame) => {
+    expect(torchFrameForFaith(faith)).toBe(TORCH_SPRITES[frame]!);
+  });
+});
+
+describe("battlefield width (normal and elite fights)", () => {
+  const permutations = <T,>(items: T[]): T[][] =>
+    items.length <= 1 ? [items] : items.flatMap((item, i) => permutations([...items.slice(0, i), ...items.slice(i + 1)]).map((rest) => [item, ...rest]));
+  const widest = (sprites: Sprite[], count: number) =>
+    sprites.map(spriteWidth).sort((a, b) => b - a).slice(0, count);
+  const sideWidth = (widths: number[]) =>
+    Math.max(...permutations(widths).map((order) => spriteSlotLayout(order.map((w) => ({ rows: ["x".repeat(w)], palette: {} })), SLOT_WIDTH, SLOT_GAP).canvasWidth));
+
+  test("the battlefield fits the panel at 150 wide for normal and elite fights", () => {
+    const party = sideWidth(widest(Object.values(CLASS_SPRITES), 4));
+    const monsters = sideWidth(widest([...Object.values(MONSTER_SPRITES), ...Object.values(ELITE_SPRITES)], 3));
+    expect(party + DIVIDER_WIDTH + monsters).toBeLessThanOrEqual(BATTLEFIELD_CONTENT_WIDTH);
+  });
+
+  test("the torch fits the divider", () => {
+    for (const frame of Object.values(TORCH_SPRITES)) expect(spriteWidth(frame)).toBeLessThanOrEqual(DIVIDER_WIDTH);
   });
 });

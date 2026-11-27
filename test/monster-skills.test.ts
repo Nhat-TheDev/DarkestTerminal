@@ -1,3 +1,4 @@
+import type { SkillEffect } from "../src/types";
 import { describe, test, expect } from "bun:test";
 import { startCombat, queueAction, resolveRound, livingCharacterRefs, type EngineContext } from "../src/engine/combat";
 import { spawnMonster, getMonsterSkill, getArchetype, assertMonsterDataConsistent, assertMonsterKitConsistent, MONSTER_ARCHETYPES, MONSTER_SKILLS } from "../src/data/monsters";
@@ -11,6 +12,8 @@ import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
 import { makeCtx, spawnInto, pickAnyAction, sk, withFixture } from "./helpers";
 import { getClass } from "../src/data/classes";
+
+const gameplayEffects = (effects: SkillEffect[] | undefined) => effects?.map(({ animation, ...effect }) => effect);
 
 describe("elite/boss skill kit", () => {
   function queueTrivialActions(ctx: EngineContext, combat: ReturnType<typeof startCombat>) {
@@ -170,21 +173,21 @@ describe("elite/boss skill kit", () => {
 
 describe("regular monster skills", () => {
   test("Black Bat's Blood Drain has lifestealPercent 50", () => {
-    expect(getMonsterSkill("blood-drain").effects).toEqual([{ kind: "damage", amount: 12, lifestealPercent: 50 }]);
+    expect(gameplayEffects(getMonsterSkill("blood-drain").effects)).toEqual([{ kind: "damage", amount: 12, lifestealPercent: 50 }]);
   });
 
   test("Zombie's Regeneration is a self-heal that floors at 20% of its own maxHp", () => {
     const skill = getMonsterSkill("regeneration");
     expect(skill.target).toBe("self");
-    expect(skill.effects).toEqual([{ kind: "heal", amount: 15, maxHpPercent: 20 }]);
+    expect(gameplayEffects(skill.effects)).toEqual([{ kind: "heal", amount: 15, maxHpPercent: 20 }]);
   });
 
   test("Slime's Acid Spit procs acid-burn and corroded together, Spider's Web Spit procs webbed", () => {
-    expect(getMonsterSkill("acid-spit").effects).toEqual([
+    expect(gameplayEffects(getMonsterSkill("acid-spit").effects)).toEqual([
       { kind: "damage", amount: 10 },
       { kind: "applyStatusEffect", statusEffectId: "acid-burn", alsoApplyStatusEffectIds: ["corroded"], chance: 0.5, durationTurns: 2 },
     ]);
-    expect(getMonsterSkill("web-spit").effects).toEqual([
+    expect(gameplayEffects(getMonsterSkill("web-spit").effects)).toEqual([
       { kind: "damage", amount: 13 },
       { kind: "applyStatusEffect", statusEffectId: "webbed", chance: 0.5, durationTurns: 2 },
     ]);
@@ -193,7 +196,7 @@ describe("regular monster skills", () => {
   test("Skeleton Warrior's Guard Stance applies the shared guard status", () => {
     const skill = getMonsterSkill("guard-stance");
     expect(skill.target).toBe("self");
-    expect(skill.effects).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 2 }]);
+    expect(gameplayEffects(skill.effects)).toEqual([{ kind: "applyStatusEffect", statusEffectId: "guard", durationTurns: 2 }]);
   });
 
   test("actionWeights.normal is 70/30 for random archetypes, 100/0 for Zombie/Skeleton Warrior", () => {

@@ -561,7 +561,7 @@ describe("Summoner self-buff on summon", () => {
     expect(summoner.maxHp).toBe(baseMax + 15);
     expect(summoner.maxHp - summoner.hp).toBe(20);
 
-    recomputeCharacterStats(summoner, 100);
+    recomputeCharacterStats(summoner, 100, null);
     expect(summoner.maxHp).toBe(baseMax + 15);
 
     expireStatusEffect(summoner, summoner.activeStatusEffects.find((s) => s.statusEffectId === "spirit-bound")!, { log } as never);

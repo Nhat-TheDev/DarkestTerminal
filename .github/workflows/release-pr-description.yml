@@ -1,0 +1,108 @@
+name: Release PR Description
+
+on:
+  push:
+    branches: ["release/**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: release-pr-description-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.event.deleted == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Update release changes
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const branch = context.ref.slice('refs/heads/'.length);
+            const targets = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', base: 'main',
+              head: `${owner}:${branch}`, per_page: 100,
+            });
+            const target = targets.find(pr => pr.head.repo?.full_name === `${owner}/${repo}`);
+            if (!target) {
+              core.info(`No open ${branch} -> main pull request; skipping.`);
+              return;
+            }
+
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'closed', base: branch, per_page: 100,
+            });
+            const merged = pulls.filter(pr => pr.merged_at)
+              .sort((a, b) => a.merged_at.localeCompare(b.merged_at) || a.number - b.number);
+            const text = value => value.replace(/[\r\n]+/g, ' ')
+              .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+              .replace(/[\\`*_[\]]/g, '\\$&');
+            const lines = ['## Changes', ''];
+            for (const pr of merged) {
+              lines.push(`- [${text(pr.title)} (#${pr.number})](${pr.html_url})`);
+              let after = null;
+              let count = 0;
+              let commits;
+              do {
+                const result = await github.graphql(`
+                  query($owner: String!, $repo: String!, $number: Int!, $after: String) {
+                    repository(owner: $owner, name: $repo) {
+                      pullRequest(number: $number) {
+                        commits(first: 100, after: $after) {
+                          totalCount
+                          nodes { commit { oid url messageHeadline } }
+                          pageInfo { hasNextPage endCursor }
+                        }
+                      }
+                    }
+                  }
+                `, { owner, repo, number: pr.number, after });
+                commits = result.repository.pullRequest.commits;
+                for (const { commit } of commits.nodes) {
+                  lines.push(`  - [${commit.oid.slice(0, 7)}](${commit.url}) — ${text(commit.messageHeadline)}`);
+                  count++;
+                }
+                after = commits.pageInfo.endCursor;
+              } while (commits.pageInfo.hasNextPage);
+              if (count !== commits.totalCount) {
+                throw new Error(`Incomplete commit list for PR #${pr.number}; description unchanged.`);
+              }
+              lines.push('');
+            }
+
+            const { data: current } = await github.rest.pulls.get({
+              owner, repo, pull_number: target.number,
+            });
+            if (current.state !== 'open' || current.base.ref !== 'main' ||
+                current.head.ref !== branch || current.head.repo?.full_name !== `${owner}/${repo}`) {
+              core.info('Release pull request closed or retargeted; skipping.');
+              return;
+            }
+            const start = '<!-- release-changes:start -->';
+            const end = '<!-- release-changes:end -->';
+            const block = `${start}\n${lines.join('\n').trimEnd()}\n${end}`;
+            const original = current.body ?? '';
+            const from = original.indexOf(start);
+            const to = original.indexOf(end);
+            if ((from !== -1 || to !== -1) && (from === -1 || to < from ||
+                original.indexOf(start, from + start.length) !== -1 ||
+                original.indexOf(end, to + end.length) !== -1)) {
+              throw new Error('Invalid release changes markers; description unchanged.');
+            }
+            const body = from === -1
+              ? `${original}${original ? '\n\n' : ''}${block}`
+              : original.slice(0, from) + block + original.slice(to + end.length);
+            if (body.length > 65536) {
+              throw new Error('Release description exceeds 65,536 characters; description unchanged.');
+            }
+            if (body === original) {
+              core.info('Release changes are already up to date.');
+              return;
+            }
+            await github.rest.pulls.update({ owner, repo, pull_number: target.number, body });
+            core.info(`Updated release PR #${target.number} with ${merged.length} merged pull requests.`);

@@ -2,6 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { createFloor } from "../src/data/floor";
 import { Rng } from "../src/engine/rng";
 import { MONSTER_ARCHETYPES } from "../src/data/monsters";
+import { CONFIGURED_TEMPLE_CHANCE, withTempleChance } from "./setup";
+import { RELIGIONS } from "../src/data/religions";
+
+const religionIds = RELIGIONS.map((r) => r.id);
 
 function archetypeFor(monsterId: string) {
   const archetypeId = monsterId.replace(/-\d+$/, ""); // spawnMonster ids are "${archetypeId}-${counter}"
@@ -34,14 +38,66 @@ describe("floor generation respects minFloor", () => {
     expect(sawAtFloor20).toBe(true);
   });
 
-  test("floor 1's only possible 'strong'-tier pick is skeleton-guard (the one strong-tier archetype with minFloor 0, by design)", () => {
+  test.each([
+    { depth: 1, expectedStrong: ["skeleton-guard", "zombie"] },
+    { depth: 9, expectedStrong: ["skeleton-guard", "zombie"] },
+    { depth: 10, expectedStrong: ["goblin-shaman", "skeleton-guard", "zombie"] },
+    { depth: 19, expectedStrong: ["goblin-shaman", "skeleton-guard", "zombie"] },
+  ])("floor $depth shares ordinary strong slots among the unlocked archetypes", ({ depth, expectedStrong }) => {
+    const counts = new Map<string, number>();
     for (let seed = 0; seed < 200; seed++) {
-      const rng = new Rng(seed);
-      const { monsters } = createFloor(rng, 1);
-      for (const m of monsters) {
-        const archetype = archetypeFor(m.id);
-        if (archetype.powerTier === "strong") expect(archetype.id).toBe("skeleton-guard");
+      const { floor, monsters } = createFloor(new Rng(seed), depth);
+      const byId = new Map(monsters.map((monster) => [monster.id, monster]));
+      for (const room of floor.rooms.filter((room) => room.type === "combat")) {
+        for (const id of room.monsterIds) {
+          const monster = byId.get(id)!;
+          const archetype = archetypeFor(id);
+          expect(monster.tier).toBe("normal");
+          expect(archetype.minFloor ?? 0).toBeLessThanOrEqual(depth);
+          if (archetype.powerTier === "strong") counts.set(archetype.id, (counts.get(archetype.id) ?? 0) + 1);
+        }
       }
+    }
+    expect([...counts.keys()].sort()).toEqual([...expectedStrong]);
+    const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
+    for (const count of counts.values()) expect(Math.abs(count / total - 1 / expectedStrong.length)).toBeLessThan(0.05);
+  });
+});
+
+describe("temple placement", () => {
+  const SEEDS = Array.from({ length: 2000 }, (_, i) => i + 1);
+
+  test("temple rolls at the configured chance", () => {
+    const hits = withTempleChance(CONFIGURED_TEMPLE_CHANCE, () => SEEDS.filter((seed) => createFloor(new Rng(seed), 1).floor.rooms[0]!.type === "temple").length);
+    expect(Math.abs(hits / SEEDS.length - CONFIGURED_TEMPLE_CHANCE)).toBeLessThan(0.03);
+  });
+
+  test("temple entry leads to the old visible combat entrance", () => {
+    let temples = 0;
+    for (const seed of SEEDS.slice(0, 200)) {
+      const { floor } = withTempleChance(CONFIGURED_TEMPLE_CHANCE, () => createFloor(new Rng(seed), 1 + (seed % 9)));
+      const first = floor.rooms[0]!;
+      if (first.type !== "temple") continue;
+      temples++;
+      expect(floor.entryRoomId).toBe(first.id);
+      expect(first.connectedRoomIds).toHaveLength(1);
+      expect(first.hidden).toBeUndefined();
+      expect(first.monsterIds).toEqual([]);
+      const next = floor.rooms.find((r) => r.id === first.connectedRoomIds[0])!;
+      expect(next.type).toBe("combat");
+      expect(next.hidden).toBeUndefined();
+      expect(religionIds).toContain(first.templeReligionId!);
+    }
+    expect(temples).toBeGreaterThan(0);
+  });
+
+  test("layout and monsters unchanged by the temple", () => {
+    for (const seed of SEEDS.slice(0, 50)) {
+      const withTemple = withTempleChance(1, () => createFloor(new Rng(seed), 3));
+      const without = createFloor(new Rng(seed), 3);
+      const shape = (r: { floor: { rooms: unknown[] }; monsters: unknown[] }) => JSON.parse(JSON.stringify({ rooms: r.floor.rooms, monsters: r.monsters }).replace(/-\d+"/g, '"'));
+      expect(shape({ floor: { rooms: withTemple.floor.rooms.slice(1) }, monsters: withTemple.monsters })).toEqual(shape(without));
+      expect(without.floor.entryRoomId).toBe(withTemple.floor.rooms[1]!.id);
     }
   });
 });

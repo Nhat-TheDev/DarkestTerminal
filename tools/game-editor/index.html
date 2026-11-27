@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Darkest Terminal — Game Editor</title>
 <style>
 
@@ -21,6 +22,12 @@
     --locked: #8a5acb;
     --ok: #5fa85f;
     --accent: #7aa2c9;
+    --control-height: 28px;
+    --control-padding: 4px 8px;
+    --control-radius: 3px;
+    --control-hover-bg: #60442c;
+    --space-control: 6px;
+    --space-group: 12px;
   }
   * { box-sizing: border-box; }
   html, body { overflow-x: clip; }
@@ -103,15 +110,17 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
-  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+  .row { display: flex; gap: var(--space-control); flex-wrap: wrap; align-items: flex-end; }
+  .field + .row, .row:has(> .field) + .row { margin-top: var(--space-control); }
   .field { display: flex; flex-direction: column; gap: 3px; min-width: 130px; }
   label { color: var(--dim); font-size: 11px; }
-  select, input[type="text"], input[type="number"] {
+  select, input[type="text"], input[type="number"], input[type="search"] {
     background: var(--bg);
     color: var(--text);
     border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 5px 6px;
+    border-radius: var(--control-radius);
+    min-height: var(--control-height);
+    padding: var(--control-padding);
     font-family: inherit;
     font-size: 12px;
   }
@@ -120,13 +129,18 @@
     background: var(--border);
     color: var(--text);
     border: 1px solid var(--border-accent);
-    border-radius: 3px;
-    padding: 6px 14px;
+    border-radius: var(--control-radius);
+    min-height: var(--control-height);
+    padding: var(--control-padding);
     cursor: pointer;
     font-family: inherit;
     font-size: 12px;
+    line-height: 18px;
+    white-space: nowrap;
   }
-  button.action:hover { background: var(--border-accent); }
+  button.action:hover:not(:disabled) { background: var(--control-hover-bg); }
+  button.action:disabled { opacity: .45; cursor: not-allowed; }
+  button.action:active:not(:disabled) { transform: translateY(1px); }
   table { border-collapse: collapse; width: 100%; margin: 6px 0 4px; font-size: 12px; }
   th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
   th { color: var(--dim); font-weight: normal; text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; }
@@ -176,12 +190,12 @@
   button.action.primary:hover { background: var(--title-hover); }
 
   /* Sprite editor specific styles */
-  #panel-sprites fieldset { margin-bottom: 0; }
+  #panel-sprites fieldset { margin-bottom: 0; min-width: 0; }
   #panel-sprites .row { gap: 6px; }
   .sprite-editor-layout { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
-  .sprite-editor-col { flex: 0 0 300px; }
+  .sprite-editor-col { flex: 0 1 300px; min-width: 0; max-width: 100%; }
   .sprite-editor-col-palette { flex: 1 1 260px; min-width: 260px; }
-  #gridWrap { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; display: inline-block; }
+  #gridWrap { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; display: inline-block; max-width:100%; overflow-x:auto; }
 
 
   /* Backdrops editor */
@@ -221,6 +235,98 @@
   .swatch.eraser .key { color: var(--danger); }
   #preview { background: var(--panel-bg); border: 1px solid var(--border); display: inline-block; padding: 8px; border-radius: 4px; }
   #previewCanvas { display: block; image-rendering: pixelated; }
+  #panel-combat-fx { --dim: #aa9c86; }
+  #panel-combat-fx .hint { line-height:1.6; }
+  #panel-combat-fx button { min-height:var(--control-height); }
+  #panel-combat-fx button:disabled { opacity:.45; cursor:default; }
+  #panel-combat-fx button:disabled:hover { background:var(--border); }
+  #panel-combat-fx button:active:not(:disabled) { transform:translateY(1px); }
+  #panel-combat-fx .field { min-width:0; }
+  #panel-combat-fx input[type="number"], #panel-combat-fx input[type="text"], #panel-combat-fx input[type="search"], #panel-combat-fx select { width:100%; min-width:0; }
+  #panel-combat-fx details > summary { cursor:pointer; padding:4px 0; color:var(--text); }
+  #panel-combat-fx fieldset { padding:8px; margin-bottom:var(--space-group); }
+  .fx-command-bar { position:sticky; top:0; z-index:2; background:var(--bg); padding:8px 0; border-bottom:1px solid var(--border-accent); margin-bottom:var(--space-group); }
+  .fx-command-row { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+  .fx-command-row > .field { flex:1 1 200px; max-width:320px; }
+  .fx-save-actions { display:flex; gap:8px; margin-left:auto; }
+  .fx-timeline { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-control) var(--space-group); }
+  .fx-timeline > .row { gap:var(--space-control); margin:0; }
+  .fx-workbench { border:1px solid var(--border); border-radius:4px; padding:8px; margin-bottom:var(--space-group); background:var(--panel-bg); }
+  #panel-combat-fx .fx-workbench fieldset { margin:0; border-color:transparent; }
+  #panel-combat-fx .fx-workbench .fx-timeline { margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .fx-workspace { display:grid; grid-template-columns:minmax(0, 1fr) 320px; gap:var(--space-group); align-items:start; }
+  .fx-workspace > *, .fx-properties > * { min-width:0; }
+  .fx-pixels { display:grid; grid-template-columns:minmax(0, 1fr) 230px; gap:12px; align-items:start; }
+  .fx-pixels > * { min-width:0; }
+  .fx-pixels:has(#fxPaintGrid[hidden]) { display:none; }
+  .fx-workspace:has(#fxPaintGrid[hidden]) { grid-template-columns:minmax(0, 1fr); }
+  .fx-properties { display:grid; grid-template-columns:minmax(0, 1fr); gap:8px; }
+  #fxTiming > .field { display:grid; grid-template-columns:100px minmax(0, 1fr); align-items:center; gap:var(--space-control); }
+  .fx-properties .row { gap:8px; }
+  .fx-properties .row .field { flex:1 1 64px; }
+  .fx-properties .field { margin-bottom:4px; }
+  .fx-properties .hint { margin:8px 0; }
+  .fx-properties details > summary { padding:4px 0; }
+  .fx-properties [hidden] { display:none; }
+  .fx-move-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px; }
+  .fx-move-tools > span { color:var(--dim); }
+  .fx-game-preview .row { gap:8px; margin-bottom:12px; }
+  .fx-game-preview .field { flex:1 1 130px; }
+  .fx-advanced { border-top:1px solid var(--border); }
+  .fx-advanced .row { gap:8px; }
+  .fx-transfer { display:flex; flex-wrap:wrap; gap:var(--space-control); align-items:center; padding:0 8px 8px; }
+  #fxTransferStatus { flex:1 0 100%; min-height:1.5em; line-height:1.5; color:var(--ok); font-size:11px; }
+  #fxTransferManual { flex:1 1 100%; min-width:0; }
+  #fxTransferManual > summary { width:fit-content; margin:0; font-size:11px; }
+  #fxTransferManual .field { margin:6px 0; }
+  #fxTransferManual [aria-invalid="true"] { border-color:var(--danger); }
+  @media (max-width:1000px) {
+    .fx-workspace { grid-template-columns:minmax(0, 1fr); }
+    .fx-properties { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); }
+  }
+  @media (max-width:600px) {
+    .fx-pixels, .fx-properties { grid-template-columns:minmax(0, 1fr); }
+    .fx-workbench { padding:4px; }
+    #fxTransferStatus { min-height:3em; }
+  }
+  @media (max-width:480px) {
+    .fx-command-row > .field { max-width:none; flex-basis:100%; }
+    .fx-command-row #fxDirty { flex:1 1 100%; }
+    .fx-save-actions { margin-left:0; }
+    #panel-combat-fx fieldset { padding:8px; }
+  }
+  @media (pointer:coarse) {
+    :root { --control-height:44px; }
+    button.action { min-width:44px; }
+  }
+  #fxMappings { width:100%; border-collapse:collapse; }
+  #fxMappings td { padding:6px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  #fxMappings select { min-width:160px; width:100%; }
+  #fxMappings small { display:block; color:var(--dim); margin-top:3px; }
+  #fxPalette input.key { width:18px; min-height:20px; padding:0; border-color:transparent; background:transparent; font-size:12px; }
+  #fxFrames { display:flex; flex-wrap:wrap; gap:5px; }
+  #fxFrames [aria-pressed="true"], #fxPalette [aria-pressed="true"] { border-color:var(--title); color:var(--title); }
+  .fx-canvas-wrap { overflow:auto; max-width:100%; border:1px solid var(--border); background:var(--bg); padding:8px; }
+  #fxCanvas { display:block; image-rendering:pixelated; touch-action:none; cursor:crosshair; }
+  #fxFrameJson { width:100%; padding:6px 8px; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:var(--control-radius); font:inherit; resize:vertical; }
+  #fxPreview { display:block; width:100%; height:auto; image-rendering:pixelated; }
+  #fxPalette { display:flex; flex-direction:column; gap:var(--space-control); margin:8px 0; }
+  #fxPalette .swatch { min-width:0; }
+  #fxPalette .swatch .hex { min-width:0; }
+  #fxPalette .swatch button { min-height:24px; width:24px; padding:0; flex-shrink:0; }
+  #fxPalette button.fx-paint { flex:1; width:auto; min-width:0; border:0; background:transparent; color:var(--dim); font:inherit; font-size:11px; text-align:left; cursor:pointer; }
+  #fxPalette button.fx-paint:hover { color:var(--text); }
+  #fxPalette .eraser .fx-paint { color:var(--dim); }
+  #fxAddColor { width:100%; }
+  @media (pointer:coarse) {
+    .swatch { flex-wrap:wrap; }
+    .swatch input[type="color"], #fxPalette input.key { min-width:44px; min-height:44px; }
+    .swatch button, #fxPalette .swatch button { min-width:44px; min-height:44px; }
+  }
+  #fxError { color:var(--text); margin:8px 0 0; padding:8px 12px; border-left:3px solid var(--danger); }
+  #fxError:empty { display:none; }
+  .fx-edit-surface { min-height:240px; max-height:340px; display:grid; place-items:center; }
+  #fxDirty { color:var(--title); }
 
 </style>
 </head>
@@ -244,6 +350,7 @@
   <button data-panel="other">Other Balance</button>
 
   <button data-panel="sprites">Sprite Editor</button>
+  <button data-panel="combat-fx">Combat Effects</button>
   <button data-panel="backdrops">Backdrops</button>
   <button data-panel="creator">Data Editor</button>
 </nav>
@@ -288,7 +395,7 @@
           </select>
         </div>
       </div>
-      <p class="hint">Base-stat editing lives in the <b>Rebalance — Char &amp; Monster</b> tab now — this tab is read-only, for testing matchups against whatever is currently in data/*.json.</p>
+      <p class="hint">Edit base stats in <b>Rebalance — Char &amp; Monster</b>.</p>
     </fieldset>
 
     <div class="two-col" id="overview-output"></div>
@@ -300,14 +407,7 @@
 
     <h2 class="tab-section-title">Floor depth ↔ average character level</h2>
     <fieldset>
-      <legend>Live simulation against current data</legend>
-      <p class="hint">
-        Reproduces the methodology in <code>docs/gameplay-decisions/06-level-system.md</code> §6.7: replays the
-        real <code>createFloor(rng, depth)</code> floor generator from floor 1 onward, walking one random path per floor
-        from the entry room to the guard room and summing the <code>expReward</code> of the monsters in the rooms it
-        passes, across multiple seeds, averaged.
-        This is a live simulation against the current data — not a hand-maintained table.
-      </p>
+      <legend>Simulation</legend>
       <div class="row">
         <div class="field"><label for="floor-seeds">Seeds to average</label><input type="number" id="floor-seeds" min="1" max="500" value="30" /></div>
         <div class="field"><label for="floor-maxdepth">Max depth</label><input type="number" id="floor-maxdepth" min="1" max="500" value="60" /></div>
@@ -385,9 +485,12 @@
           <option value="monsters">Common monsters (monsters)</option>
           <option value="elites">Elites (elites)</option>
           <option value="bosses">Bosses (bosses)</option>
+          <option value="summons">Player summons (summons)</option>
           <option value="events">Event rooms (events)</option>
           <option value="rest">Rest rooms (rest)</option>
           <option value="treasure">Treasure rooms (treasure)</option>
+          <option value="temple">Religion temples (temple)</option>
+          <option value="torch">Faith torch frames (torch)</option>
         </select>
       </div>
 
@@ -461,7 +564,7 @@
       </div>
     </fieldset>
     <div class="row" style="margin-top:12px;">
-      <button id="saveBtn" class="action primary" style="flex:1;">Save to data/sprites.json</button>
+      <button id="saveBtn" class="action primary" style="flex:1;">Save sprites</button>
     </div>
   </div>
   </div>
@@ -470,6 +573,94 @@
 
 
   <!-- ============================== BACKDROPS ============================== -->
+  <section class="panel" id="panel-combat-fx">
+    <h2 class="tab-section-title">Combat Effects</h2>
+    <p class="hint">Choose an effect, edit its frames, then check it in the game preview. Save when ready.</p>
+    <div class="fx-command-bar">
+      <div class="fx-command-row">
+        <div class="field"><label for="fxEffect">Effect</label><select id="fxEffect" disabled></select></div>
+        <span id="fxDirty" role="status" aria-live="polite"></span>
+        <div class="fx-save-actions"><button class="action" id="fxReload" title="Reload saved effects; unsaved changes require confirmation">Reload</button><button class="action primary" id="fxSave" disabled>Save changes</button></div>
+      </div>
+      <p id="fxError" role="alert"></p>
+    </div>
+    <div class="fx-workbench">
+    <fieldset class="fx-timeline"><legend>Animation frames</legend>
+          <div id="fxFrames" role="group" aria-label="Animation frames"></div>
+          <div class="row"><button class="action" id="fxAdd">Add frame</button><button class="action" id="fxDuplicate">Duplicate frame</button><button class="action" id="fxDelete">Delete frame</button></div>
+          <div class="row"><button class="action" id="fxEarlier">Move earlier</button><button class="action" id="fxLater">Move later</button></div>
+    </fieldset>
+    <div class="fx-transfer" role="group" aria-label="Copy, parse and revert selected frame">
+      <button class="action" id="fxCopy" disabled>Copy frame</button>
+      <button class="action" id="fxParse" title="Replace the selected frame with JSON from the clipboard" disabled>Parse frame</button>
+      <button class="action" id="fxRevert" title="Undo the last parse on this frame, before further edits or saving" disabled>Revert</button>
+      <span id="fxTransferStatus" role="status" aria-live="polite"></span>
+      <details id="fxTransferManual"><summary>Paste manually</summary>
+        <div class="field"><label for="fxFrameJson">Frame JSON</label><textarea id="fxFrameJson" rows="3" spellcheck="false" aria-describedby="fxTransferHint fxError"></textarea></div>
+        <div class="row"><button class="action" id="fxParseManual" disabled>Apply JSON</button><span class="hint" id="fxTransferHint">Replaces this frame after validation against the shared palette.</span></div>
+      </details>
+    </div>
+    <div class="fx-workspace">
+      <div class="fx-pixels" id="fxPixelPanel">
+        <fieldset id="fxPaintGrid"><legend>Paint selected frame</legend>
+          <p class="hint">Click or drag to paint. Right-click to erase. Arrow keys move the cursor; Space paints.</p>
+          <div class="fx-canvas-wrap fx-edit-surface"><canvas id="fxCanvas" tabindex="0" role="img" aria-label="Editable animation pixel grid"></canvas></div>
+          <div class="fx-move-tools" role="group" aria-label="Move pixels in selected frame">
+            <span>Move pixels</span>
+            <button class="action" id="fxMoveLeft" aria-label="Move pixels left">← Left</button>
+            <button class="action" id="fxMoveUp" aria-label="Move pixels up">↑ Up</button>
+            <button class="action" id="fxMoveDown" aria-label="Move pixels down">↓ Down</button>
+            <button class="action" id="fxMoveRight" aria-label="Move pixels right">→ Right</button>
+          </div>
+          <p class="hint">One cell per click. Painted pixels cannot move outside the frame.</p>
+        </fieldset>
+      <div class="fx-colors" id="fxColorPanel"><fieldset><legend>Shared palette</legend><div id="fxPalette"></div><button class="action" id="fxAddColor">+ Add color</button><p class="hint">Palette colors apply to every frame in this effect.</p></fieldset></div>
+      </div>
+    <div class="fx-properties">
+        <fieldset id="fxGeometry"><legend>Frame size and position</legend>
+          <div class="row"><div class="field"><label for="fxWidth">Width</label><input id="fxWidth" type="number" min="1" max="113"></div><div class="field"><label for="fxHeight">Height</label><input id="fxHeight" type="number" min="1" max="17"></div><button class="action" id="fxResize">Resize frame</button></div>
+          <div class="row" style="margin-top:8px"><div class="field"><label for="fxX">Position X</label><input id="fxX" type="number" step="1"></div><div class="field"><label for="fxY">Position Y</label><input id="fxY" type="number" step="1"></div></div>
+          <p class="hint">Y = 0 aligns the frame's bottom row with the units' common baseline. Negative Y moves up; positive Y moves down. Taller frames grow upward. +X follows the attack.</p>
+        </fieldset>
+        <fieldset id="fxTiming"><legend>Placement and timing</legend>
+          <div class="field"><label for="fxPlacement">Placement</label><select id="fxPlacement"><option value="target">At target</option><option value="projectile">Source to target</option><option value="beam">Connecting beam</option></select></div>
+          <div class="field"><label for="fxPhase">When</label><select id="fxPhase"><option value="approach">Before impact</option><option value="impact">On impact</option></select></div>
+          <div class="field"><label for="fxTicks">Duration (reveal ticks)</label><input id="fxTicks" type="number" min="1" max="100" step="1"></div><div class="checkbox-row"><input id="fxDefaultTicks" type="checkbox"><label for="fxDefaultTicks">Use frame count as duration</label></div>
+          <p class="hint" id="fxTimingHint">Attack wind-up uses the game's existing timing.</p>
+          <details><summary>Beam placement help</summary><p class="hint">Connecting beam repeats the frame at its original size. Match left and right edges for a continuous join; the final repeat is cropped at the target.</p></details>
+        </fieldset>
+        <fieldset id="fxFlash" hidden><legend>Selected flash frame</legend>
+          <div class="field"><label for="fxPartyColor">Character tint</label><input id="fxPartyColor" type="color"></div><div class="checkbox-row"><input id="fxPartyClear" type="checkbox"><label for="fxPartyClear">Transparent on characters</label></div>
+          <div class="field" style="margin-top:10px"><label for="fxMonsterColor">Monster tint</label><input id="fxMonsterColor" type="color"></div><div class="checkbox-row"><input id="fxMonsterClear" type="checkbox"><label for="fxMonsterClear">Transparent on monsters</label></div>
+          <p class="hint">Only opaque cells of the target sprite are tinted. Each flash frame lasts one game reveal tick.</p>
+        </fieldset>
+    </div>
+    </div>
+    </div>
+    <fieldset class="fx-game-preview"><legend>Game preview</legend>
+      <div class="row"><div class="field"><label for="fxClass">Character</label><select id="fxClass"></select></div><div class="field"><label for="fxMonster">Monster</label><select id="fxMonster"></select></div>
+        <div class="field"><label for="fxPreviewContext">Playback context</label><select id="fxPreviewContext" disabled><option value="auto">Automatic</option><option value="attack">Attack</option><option value="support">Support</option><option value="reaction">Reaction</option></select></div>
+        <button class="action" id="fxPlay">Play</button><button class="action" id="fxReverse" aria-pressed="false">Reverse direction</button><span id="fxPreviewLabel" class="hint"></span></div>
+      <div class="fx-canvas-wrap"><canvas id="fxPreview" width="904" height="320" aria-label="Animation on the game battlefield" role="img"></canvas></div>
+      <p class="hint">Attack wind-up uses the game's timing. On-impact effects use their authored duration.</p>
+    </fieldset>
+    <details class="fx-advanced"><summary>Manage presets</summary>
+      <fieldset><legend>Preset tools</legend>
+          <div class="field" style="margin-top:10px"><label for="fxPresetId">New preset ID</label><input id="fxPresetId" type="text" placeholder="new-effect-id" spellcheck="false"></div>
+          <div class="row" style="margin-top:8px"><button class="action" id="fxPresetCreate">Create</button><button class="action" id="fxPresetDuplicate">Duplicate preset</button><button class="action" id="fxPresetRename">Rename</button><button class="action" id="fxPresetDelete">Delete preset</button></div>
+          <p class="hint" id="fxPresetHint"></p>
+      </fieldset>
+    </details>
+    <details class="fx-advanced"><summary>Effect mappings — skills, items, statuses and defaults</summary>
+      <fieldset><legend>Choose which effect each action uses</legend>
+        <div class="row"><div class="field"><label for="fxMapGroup">Group</label><select id="fxMapGroup"><option value="skills">Skill effects</option><option value="items">Items</option><option value="basicAttacks.monsters">Monster basic attacks</option><option value="basicAttacks.summons">Summon basic attacks</option><option value="statuses">Statuses</option><option value="outcomes">Recovery and status defaults</option><option value="damageTypes">Damage type overrides</option><option value="reactions">Reactive effects</option><option value="reactionOverrides">Reaction overrides</option></select></div>
+        <div class="field"><label for="fxMapSearch">Find name, ID or effect</label><input id="fxMapSearch" type="search" placeholder="Search mappings"></div></div>
+        <p class="hint" id="fxMapHint"></p><p class="hint" id="fxMapCount" role="status"></p>
+        <div style="overflow:auto;max-height:420px"><table id="fxMappings"><thead><tr><th scope="col">Action / ID</th><th scope="col">Effect</th><th scope="col">Preview</th></tr></thead><tbody id="fxMappingRows"></tbody></table></div>
+      </fieldset>
+    </details>
+  </section>
+
   <section class="panel" id="panel-backdrops">
     <h2 class="tab-section-title">Backdrops — the wall, floor and props behind the Battlefield</h2>
     <div class="backdrop-layout">
@@ -521,8 +712,8 @@
           <div class="row"><button id="bdAddColor" class="action">+ Add color</button></div>
         </fieldset>
         <div class="row">
-          <button id="bdSaveBackdrops" class="action primary">Save data/backdrops.json</button>
-          <button id="bdSaveRooms" class="action primary">Save data/room-names.json</button>
+          <button id="bdSaveBackdrops" class="action primary">Save backdrops</button>
+          <button id="bdSaveRooms" class="action primary">Save room scenes</button>
           <span id="bdSaveStatus" class="save-status"></span>
         </div>
       </div>
@@ -751,7 +942,7 @@ function wireSaveButton(saveBtn, status, apiPath, readBody, afterSave) {
  * fieldset in the Defense Coefficient and Other Balance tabs so each one is its own visually
  * distinct block (avoids mixing e.g. survival fields with events fields in one giant form). */
 function buildBalanceEditCard(title, filePath, sectionKey, fields, afterSave) {
-  const card = el("div", { class: "card" }, [el("h3", { text: title + " — saves to " + filePath })]);
+  const card = el("div", { class: "card" }, [el("h3", { text: title, title: filePath })]);
   const ids = fields.map((f) => "edit-" + sectionKey + "-" + f.key);
   const form = el("div", { class: "edit-form" });
   fields.forEach((f, i) => form.appendChild(editField(ids[i], f.label || f.key, f.value)));
@@ -765,6 +956,45 @@ function buildBalanceEditCard(title, filePath, sectionKey, fields, afterSave) {
       const patch = {};
       fields.forEach((f, i) => {
         patch[f.key] = Number($("#" + ids[i]).value);
+      });
+      return { [sectionKey]: patch };
+    },
+    afterSave
+  );
+  form.appendChild(saveBtn);
+  form.appendChild(status);
+  card.appendChild(form);
+  return card;
+}
+
+/** The numbers of a nested balance section as { path: ["giveBlood", "hpCost"], value }, skipping arrays and text. */
+function numericLeaves(section, trail = []) {
+  return Object.entries(section).flatMap(([key, value]) => {
+    if (typeof value === "number") return [{ path: [...trail, key], value }];
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) return numericLeaves(value, [...trail, key]);
+    return [];
+  });
+}
+
+/** Like buildBalanceEditCard for a section with nested groups; each number is saved at its own path. */
+function buildNestedBalanceCard(title, sectionKey, section, afterSave) {
+  const leaves = numericLeaves(section);
+  const card = el("div", { class: "card" }, [el("h3", { text: title })]);
+  const form = el("div", { class: "edit-form" });
+  const ids = leaves.map((leaf) => ["edit", sectionKey, ...leaf.path].join("-"));
+  leaves.forEach((leaf, i) => form.appendChild(editField(ids[i], leaf.path.join("."), leaf.value)));
+  const saveBtn = el("button", { class: "action", text: "Save" });
+  const status = el("span", { class: "save-status" });
+  wireSaveButton(
+    saveBtn,
+    status,
+    "/api/edit/balance",
+    () => {
+      const patch = {};
+      leaves.forEach((leaf, i) => {
+        let at = patch;
+        for (const key of leaf.path.slice(0, -1)) at = at[key] ??= {};
+        at[leaf.path[leaf.path.length - 1]] = Number($("#" + ids[i]).value);
       });
       return { [sectionKey]: patch };
     },
@@ -1300,7 +1530,7 @@ async function runFloorSim() {
 // --------------------------------------------------------------------------
 
 function buildClassBaseEditCard(classId, data, avgBalancePoints) {
-  const card = el("div", { class: "card" }, [el("h3", { text: "Base stats — saves to data/classes.json" })]);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Base stats" })]);
 
   const scoreVal = el("b", { text: fmt(data.balancePoints, 2) });
   const scoreRatio = el("b", { text: "—" });
@@ -1374,7 +1604,7 @@ function buildClassBaseEditCard(classId, data, avgBalancePoints) {
 }
 
 function buildClassGrowthEditCard(classId, clsMeta) {
-  const card = el("div", { class: "card" }, [el("h3", { text: "Growth weights — saves to data/classes.json" })]);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Growth weights" })]);
   const growthIds = ["edit-gwAttack", "edit-gwDefense", "edit-gwMaxHp", "edit-gwMaxMp", "edit-gwMagicPower"];
   const growthTotalEl = el("b", { text: fmt(clsMeta.growthWeightTotal, 2) });
   function recomputeGrowthTotal() {
@@ -1417,6 +1647,20 @@ function buildClassGrowthEditCard(classId, clsMeta) {
   return card;
 }
 
+async function buildClassReligionCard(classId) {
+  const [religions, classes] = await Promise.all([api("/api/religions"), api("/api/classes")]);
+  const current = classes.find((c) => c.id === classId).religionId;
+  const card = el("div", { class: "card" }, [el("h3", { text: "Religion" })]);
+  const select = el("select", {});
+  for (const r of religions) select.appendChild(el("option", { value: r.id, text: r.name }));
+  select.value = current;
+  const saveBtn = el("button", { class: "action", text: "Save" });
+  const status = el("span", { class: "save-status" });
+  wireSaveButton(saveBtn, status, "/api/edit/class", () => ({ classId, religionId: select.value }), async () => {});
+  card.appendChild(el("div", { class: "edit-form" }, [el("div", { class: "field" }, [el("label", { text: "religionId" }), select]), saveBtn, status]));
+  return card;
+}
+
 async function renderRebalanceCharacter() {
   const classId = $("#rb-char-class").value;
   const out = $("#rb-char-output");
@@ -1427,6 +1671,7 @@ async function renderRebalanceCharacter() {
     const clsMeta = META.classes.find((c) => c.id === classId);
     out.appendChild(buildClassBaseEditCard(classId, data, avgBalancePoints));
     out.appendChild(buildClassGrowthEditCard(classId, clsMeta));
+    out.appendChild(await buildClassReligionCard(classId));
   } catch (err) {
     out.appendChild(el("p", { class: "hint", text: "Error: " + err.message }));
   }
@@ -1438,7 +1683,7 @@ async function renderRebalanceCharacter() {
 // --------------------------------------------------------------------------
 
 function buildMonsterBaseEditCard(archetypeId, data, tierAvgInfo) {
-  const card = el("div", { class: "card" }, [el("h3", { text: "Base stats — saves to data/monsters.json" })]);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Base stats" })]);
 
   const scoreVal = el("b", { text: fmt(data.balancePoints, 2) });
   const scoreRatio = el("b", { text: "—" });
@@ -1504,7 +1749,7 @@ function buildMonsterBaseEditCard(archetypeId, data, tierAvgInfo) {
 }
 
 function buildMonsterExpEditCard(archetypeId, data) {
-  const card = el("div", { class: "card" }, [el("h3", { text: "Exp reward — saves to data/monsters.json" })]);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Exp reward" })]);
   card.appendChild(el("div", { class: "edit-form" }, [editField("edit-mon-expReward", "expReward", data.final.expReward)]));
   const saveRow = el("div", { class: "edit-form" });
   const saveBtn = el("button", { class: "action", text: "Save" });
@@ -1523,7 +1768,7 @@ function buildMonsterExpEditCard(archetypeId, data) {
 }
 
 function buildMonsterActionWeightsEditCard(archetypeId, data, tier) {
-  const card = el("div", { class: "card" }, [el("h3", { text: "Action weights (tier: " + tier + ") — saves to data/monsters.json" })]);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Action weights (tier: " + tier + ")" })]);
   if (!data.actionWeights) {
     card.appendChild(el("p", { class: "hint", text: "No actionWeights defined for this archetype/tier." }));
     return card;
@@ -1594,7 +1839,7 @@ function renderRebalanceCoin() {
   out.innerHTML = "";
   const tiers = ["weak", "medium", "strong", "elite", "boss"];
   const coin = META.balance.currency.coinDropByTier;
-  const card = el("div", { class: "card" }, [el("h3", { text: "Coin drop by tier — saves to data/balance-config.json" })]);
+  const card = el("div", { class: "card" }, [el("h3", { text: "Coin drop by tier" })]);
   const form = el("div", { class: "edit-form" });
   for (const tier of tiers) {
     form.appendChild(editField("edit-coin-" + tier + "-min", tier + " min", coin[tier][0]));
@@ -1632,8 +1877,8 @@ function renderRebalanceTargeting() {
   const targeting = META.balance.targeting;
   const factors = META.targetingFactors;
   const patterns = Object.keys(targeting.profiles);
-  const card = el("div", { class: "card" }, [el("h3", { text: "Targeting weights — saves to data/balance-config.json" })]);
-  card.appendChild(el("p", { class: "hint", html: "Each row is one <code>aiPattern</code>; its weights must sum to 1. See <code>docs/gameplay-decisions/02-monster.md</code>, \"Targeting\"." }));
+  const card = el("div", { class: "card" }, [el("h3", { text: "Targeting weights" })]);
+  card.appendChild(el("p", { class: "hint", html: "Each pattern’s weights must sum to 1." }));
   const id = (pattern, factor) => "edit-targeting-" + pattern + "-" + factor;
   const table = el("table", {}, [el("tr", {}, [el("th", { text: "Pattern" }), ...factors.map((f) => el("th", { class: "num", text: f })), el("th", { class: "num", text: "Sum" })])]);
   const sumCells = {};
@@ -1704,10 +1949,10 @@ function renderDefense() {
   out.innerHTML = "";
 
   const formulaCard = el("div", { class: "card" }, [el("h3", { text: "Formula" })]);
-  formulaCard.appendChild(el("p", { class: "hint", html: "<code>mitigatedOffense(offense, defense) = offense − offense × (defense / (X + defense)) − defense / Y</code> — X controls how fast % reduction ramps up with defense, Y is a flat extra subtraction. See <code>docs/technical-decisions.md</code>." }));
+  formulaCard.appendChild(el("p", { class: "hint", html: "<code>mitigatedOffense(offense, defense) = offense − offense × (defense / (X + defense)) − defense / Y</code> — X controls percentage reduction; Y controls flat reduction." }));
   out.appendChild(formulaCard);
 
-  const editCard = el("div", { class: "card" }, [el("h3", { text: "Edit — saves to data/balance-config.json" })]);
+  const editCard = el("div", { class: "card" }, [el("h3", { text: "Edit" })]);
   const form = el("div", { class: "edit-form" }, [
     editField("edit-def-defenseMitigationX", "defenseMitigationX", META.balance.combat.defenseMitigationX),
     editField("edit-def-defenseMitigationY", "defenseMitigationY", META.balance.combat.defenseMitigationY),
@@ -1845,6 +2090,22 @@ function renderOther() {
     )
   );
 
+  out.appendChild(el("h2", { class: "tab-section-title", text: "Faith, temples and rest" }));
+  out.appendChild(buildNestedBalanceCard("Faith", "faith", b.faith, renderOther));
+  out.appendChild(el("p", { class: "hint", text: "faith.torchFrameThresholds is a list, not editable here — edit data/balance-config.json directly." }));
+  out.appendChild(buildNestedBalanceCard("Temples", "temple", b.temple, renderOther));
+  out.appendChild(buildNestedBalanceCard("Rest options", "rest", b.rest, renderOther));
+  out.appendChild(buildNestedBalanceCard("Reflection effect sizes", "reflection", b.reflection, renderOther));
+  const religionCard = el("div", { class: "card" }, [el("h3", { text: "Religions (read-only)" })]);
+  const religionTable = el("table", {}, [el("tr", {}, [el("th", { text: "id" }), el("th", { text: "name" }), el("th", { text: "boon emphasis" }), el("th", { text: "boon recovers HP/MP" })])]);
+  religionCard.appendChild(religionTable);
+  out.appendChild(religionCard);
+  api("/api/religions").then((religions) => {
+    for (const r of religions) {
+      religionTable.appendChild(el("tr", {}, [el("td", { text: r.id }), el("td", { text: r.name }), el("td", { text: r.boon.emphasis }), el("td", { text: String(r.boon.recoversHpMp) })]));
+    }
+  });
+
   out.appendChild(el("h2", { class: "tab-section-title", text: "Events" }));
   out.appendChild(
     buildBalanceEditCard(
@@ -1895,7 +2156,7 @@ function renderOther() {
   out.appendChild(el("h2", { class: "tab-section-title", text: "Party" }));
   out.appendChild(buildBalanceEditCard("Party", "data/balance-config.json", "party", Object.entries(b.party).map(([key, value]) => ({ key, value })), renderOther));
 
-  out.appendChild(el("h2", { class: "tab-section-title", text: "Combat / AI misc (not defense-coefficient — see the Defense Coefficient tab for X/Y)" }));
+  out.appendChild(el("h2", { class: "tab-section-title", text: "Combat / AI" }));
   out.appendChild(
     buildBalanceEditCard(
       "Combat / AI misc",
@@ -1915,7 +2176,7 @@ function renderOther() {
   multCard.appendChild(multTable);
   out.appendChild(multCard);
 
-  const multEditCard = el("div", { class: "card" }, [el("h3", { text: "Edit multipliers — saves to data/level-growth.json" })]);
+  const multEditCard = el("div", { class: "card" }, [el("h3", { text: "Edit multipliers" })]);
   const multForm = el("div", { class: "edit-form" }, [
     editField("edit-lg-elite-maxHp", "Elite maxHp ×", META.levelGrowth.eliteMultiplier.maxHp),
     editField("edit-lg-elite-attack", "Elite attack ×", META.levelGrowth.eliteMultiplier.attack),
@@ -1961,13 +2222,13 @@ function renderOther() {
 
   out.appendChild(el("h2", { class: "tab-section-title", text: "Reference (read-only)" }));
 
-  const fearCard = el("div", { class: "card" }, [el("h3", { text: "Fear tiers (data/balance-config.json combat)" })]);
+  const fearCard = el("div", { class: "card" }, [el("h3", { text: "Fear tiers" })]);
   const fearTable = el("table", {}, [el("tr", {}, [el("th", { text: "Tier" }), el("th", { class: "num", text: "Accuracy penalty" }), el("th", { class: "num", text: "Damage penalty" }), el("th", { class: "num", text: "Lose control" })])]);
   for (const f of META.fearTiers) {
     fearTable.appendChild(el("tr", {}, [el("td", { text: f.tier + " — " + f.name }), el("td", { class: "num", text: pct(f.accuracyPenaltyPercent) }), el("td", { class: "num", text: pct(f.damagePenaltyPercent) }), el("td", { class: "num", text: pct(f.loseControlChancePercent) })]));
   }
   fearCard.appendChild(fearTable);
-  fearCard.appendChild(el("p", { class: "hint", text: "Losing control skips the turn entirely — not a damage/accuracy modifier, see rollLosesControl()." }));
+  fearCard.appendChild(el("p", { class: "hint", text: "Losing control skips the turn." }));
   out.appendChild(fearCard);
 
   const expCard = el("div", { class: "card scroll-y" }, [el("h3", { text: "EXP curve (cumulative EXP required per level)" })]);
@@ -1980,7 +2241,7 @@ function renderOther() {
   expCard.appendChild(expTable);
   out.appendChild(expCard);
 
-  const statusCard = el("div", { class: "card" }, [el("h3", { text: "Status effects (data/status-effects.json)" })]);
+  const statusCard = el("div", { class: "card" }, [el("h3", { text: "Status effects" })]);
   const statusTable = el("table", {}, [el("tr", {}, [el("th", { text: "ID" }), el("th", { text: "Name" }), el("th", { class: "num", text: "Duration" }), el("th", { text: "Per-turn effects" }), el("th", { text: "Flags" })])]);
   for (const s of META.statusEffects) {
     const flags = [s.stuns ? "stuns" : null, s.onHitStatusEffectId ? "on-hit → " + s.onHitStatusEffectId : null, s.vulnerableTo ? "vulnerable to " + s.vulnerableTo.statusEffectId + " ×" + s.vulnerableTo.multiplier : null].filter(Boolean).join(", ");
@@ -2025,14 +2286,16 @@ boot();
   // Event ids from data/events.json (loadSpritesData) — for the "events" category, the ID must match one
   // of these to actually take effect in-game (see spriteForEvent in src/ui/sprites.ts).
   let EVENT_IDS = [];
+  let SUMMON_IDS = [];
+  let TEMPLE_SPRITE_IDS = [];
   // "rest" and "treasure" only ever show 1 sprite each in-game (CAMPFIRE_SPRITE/TREASURE_CHEST_SPRITE
   // in src/ui/sprites.ts look up exactly this id) — unlike events there's no variety to pick from.
   const ROOM_SPRITE_ID = { rest: "campfire", treasure: "chest" };
   // Mirrors MAX_UNIT_HEIGHT/MAX_ELITE_HEIGHT/MAX_BOSS_HEIGHT in src/ui/sprites.ts.
-  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 15, events: 15, rest: 15, treasure: 15 };
+  const MAX_HEIGHT = { classes: 10, monsters: 10, elites: 11, bosses: 15, summons: 10, events: 15, rest: 15, treasure: 15, temple: 15, torch: 15 };
   // Event/rest/treasure sprites render into a fixed-width slot (EMPTY_ENEMY_WIDTH in
   // src/ui/layout.ts) — going wider silently overflows the battlefield panel on a ~100-col terminal.
-  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, events: 30, rest: 30, treasure: 30 };
+  const MAX_WIDTH = { classes: 20, monsters: 20, elites: 20, bosses: 20, summons: 13, events: 30, rest: 30, treasure: 30, temple: 30, torch: 7 };
 
   const elId = (id) => $("#" + id);
   const categoryEl = elId("category");
@@ -2061,10 +2324,16 @@ boot();
       text = `ID must match 1 archetype with the matching role in data/monsters.json to take effect in-game, e.g.: ${ROLE_SPRITE_IDS[category].join(", ")}.`;
     } else if (category === "events") {
       text = `ID must match 1 event in data/events.json to take effect in-game: ${EVENT_IDS.join(", ")}.`;
+    } else if (category === "summons") {
+      text = `ID must match a summon archetype in data/summons.json to take effect in-game: ${SUMMON_IDS.join(", ")}.`;
     } else if (category === "treasure") {
       text = `The "treasure" room uses exactly 1 sprite — the ID must be "${ROOM_SPRITE_ID.treasure}". Note: this room type is not generated in the current random path yet, so the sprite won't appear in play until it is enabled.`;
     } else if (category === "rest") {
       text = `The "rest" room uses exactly 1 sprite in-game — the ID must be "${ROOM_SPRITE_ID.rest}" to take effect.`;
+    } else if (category === "temple") {
+      text = `A temple uses its religion's templeSpriteId in data/religions.json: ${TEMPLE_SPRITE_IDS.join(", ")}. Each preview cell is 1:2, as in the terminal.`;
+    } else if (category === "torch") {
+      text = `The game reads only the ids already in this category: ${Object.keys(currentSection()).join(", ")}. A torch frame is picked by Faith (faith.torchFrameThresholds in data/balance-config.json), 7 columns wide.`;
     }
     idHintEl.title = text;
     idHintEl.style.display = text ? "" : "none";
@@ -2077,6 +2346,8 @@ boot();
     const idsWithRole = (role) => archetypes.filter((a) => a.roles.includes(role)).map((a) => a.id).sort();
     ROLE_SPRITE_IDS = { monsters: idsWithRole("normal"), elites: idsWithRole("elite"), bosses: idsWithRole("boss") };
     EVENT_IDS = (await (await fetch("/api/events")).json()).map((e) => e.id);
+    SUMMON_IDS = (await (await fetch("/api/summons")).json()).archetypes.map((a) => a.id);
+    TEMPLE_SPRITE_IDS = (await (await fetch("/api/religions")).json()).map((r) => r.templeSpriteId);
   }
 
   function currentSection() {
@@ -2151,6 +2422,9 @@ boot();
       if (missing) idInputEl.value = missing;
     } else if (category === "events") {
       const missing = EVENT_IDS.find((id) => !currentSection()[id]);
+      if (missing) idInputEl.value = missing;
+    } else if (category === "summons") {
+      const missing = SUMMON_IDS.find((id) => !currentSection()[id]);
       if (missing) idInputEl.value = missing;
     } else if (category === "rest" || category === "treasure") {
       idInputEl.value = ROOM_SPRITE_ID[category];
@@ -2390,7 +2664,7 @@ boot();
 
   async function saveHandler() {
     const rows = grid.map((r) => r.join(""));
-    const sprite = { rows, palette };
+    const sprite = { rows, palette: { ...palette } };
 
     const id = idInputEl.value.trim();
     if (!/^[a-z][a-z0-9-]*$/.test(id)) {
@@ -2402,26 +2676,36 @@ boot();
         ? ` (Warning: "${id}" has no ${category === "monsters" ? "normal" : category === "elites" ? "elite" : "boss"} role in data/monsters.json — the game won't use this sprite.)`
         : category === "events" && !EVENT_IDS.includes(id)
           ? ` (Warning: "${id}" is not an event id in data/events.json — the game won't use this sprite.)`
-          : (category === "rest" || category === "treasure") && id !== ROOM_SPRITE_ID[category]
-            ? ` (Warning: the game only reads id "${ROOM_SPRITE_ID[category]}" for ${category} rooms — "${id}" won't be used.)`
-            : "";
+          : category === "summons" && !SUMMON_IDS.includes(id)
+            ? ` (Warning: "${id}" is not a summon archetype in data/summons.json — the game won't use this sprite.)`
+          : category === "temple" && !TEMPLE_SPRITE_IDS.includes(id)
+            ? ` (Warning: no religion names "${id}" in its templeSpriteId — the game won't use this sprite.)`
+          : category === "torch" && !currentSection()[id]
+            ? ` (Warning: the game only reads the ids already in "${category}" — "${id}" won't be used.)`
+            : (category === "rest" || category === "treasure") && id !== ROOM_SPRITE_ID[category]
+              ? ` (Warning: the game only reads id "${ROOM_SPRITE_ID[category]}" for ${category} rooms — "${id}" won't be used.)`
+              : "";
 
+    const savedCategory = category;
+    const section = currentSection();
     try {
       const res = await fetch("/api/sprites", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ category, id, sprite }),
+        body: JSON.stringify({ category: savedCategory, id, sprite }),
       });
       const data = await res.json();
       if (!data.ok) {
         setStatus("Error: " + data.error, "error");
         return;
       }
-      setStatus(`Saved "${id}" to data/sprites.json${unusedIdWarning}`, unusedIdWarning ? "error" : "ok");
-      await loadSpritesData();
-      populateExistingIds();
-      existingIdEl.value = id;
-      idInputEl.value = id;
+      section[id] = sprite;
+      if (category === savedCategory && idInputEl.value.trim() === id) {
+        populateExistingIds();
+        existingIdEl.value = id;
+        idInputEl.value = id;
+        setStatus(`Saved "${id}" to data/sprites.json${unusedIdWarning}`, unusedIdWarning ? "error" : "ok");
+      }
     } catch (e) {
       setStatus("Connection error: " + e.message, "error");
     }
@@ -2477,6 +2761,7 @@ boot();
 
 // ============================== DATA EDITOR (CRUD) ==============================
 (() => {
+  let combatFxCatalog = { presets: {} };
   const SKILL_TARGETS = ["self", "singleAlly", "allAllies", "singleEnemy", "allEnemies", "singleAllyOrEnemy", "allAlliesAndEnemies"];
   const ITEM_TIERS = ["common", "uncommon", "rare", "unique", "epic", "legendary"];
   const DAMAGE_TYPES = ["physical", "magic", "fire", "ice", "lightning", "poison", "bleed", "holy"];
@@ -2505,7 +2790,7 @@ boot();
     lifesteal: ["percent"],
     dodgeChance: ["chance"],
     healOnKill: ["amount", "minPercent"],
-    autoDamage: ["amount", "offenseMultiplierPercent", "isMagic"],
+    autoDamage: ["amount", "offenseMultiplierPercent", "isMagic", "animation"],
     expBoost: ["percent"],
     fearResist: ["percent"],
     cooldownReduction: ["turns"],
@@ -2612,11 +2897,22 @@ boot();
     }
   }
 
+  function reactionAnimationInput(value) {
+    const choices = ["__default__", "", ...Object.keys(combatFxCatalog.presets).filter((id) => combatFxCatalog.presets[id].phase === "impact" && (combatFxCatalog.presets[id].placement ?? "target") === "target")];
+    const input = selectInput(choices, value === undefined ? "__default__" : value ?? "");
+    input.options[0].textContent = "Game default"; input.options[1].textContent = "No effect";
+    return input;
+  }
+  function readReactionAnimation(input) { return input.value === "__default__" ? undefined : input.value || null; }
+
   // --- SkillEffect row (used by Item.effects, Status.perTurnEffects, MonsterSkill.effects) ---
 
-  function skillEffectRow(effect) {
+  function skillEffectRow(effect, reaction = false) {
     effect = effect || {};
     const kind = selectInput(SKILL_EFFECT_KINDS, effect.kind || "damage");
+    const animation = selectInput(["__default__", "", ...Object.keys(combatFxCatalog.presets)], effect.animation === undefined ? "__default__" : effect.animation ?? "");
+    animation.options[0].textContent = "Game default";
+    animation.options[1].textContent = "No effect";
     const amount = numberInput(effect.amount, "any");
     const chance = numberInput(effect.chance, "0.01");
     const target = selectInput(["", ...SKILL_TARGETS], effect.target || "");
@@ -2640,6 +2936,7 @@ boot();
     removeBtn.addEventListener("click", () => row.remove());
     row.appendChild(el("div", { class: "effect-row-head" }, [field("Kind", kind), removeBtn]));
     const body = el("div", { class: "row" }, [
+      field(reaction ? "Per-turn animation" : "Animation", animation, "animation"),
       field("Amount", amount, "amount"),
       field("Chance (0-1)", chance, "chance"),
       field("Target override", target, "target"),
@@ -2660,17 +2957,23 @@ boot();
     ]);
     row.appendChild(body);
 
-    const refresh = () => applyFieldVisibility(row, SKILL_EFFECT_FIELDS[kind.value] || []);
+    const refresh = () => {
+      applyFieldVisibility(row, [...(SKILL_EFFECT_FIELDS[kind.value] || []), "animation"]);
+      for (const option of animation.options) {
+        const preset = combatFxCatalog.presets[option.value];
+        option.disabled = !!preset && (reaction || !["damage", "throwDice"].includes(kind.value)) && (preset.phase !== "impact" || (preset.placement ?? "target") !== "target");
+      }
+    };
     kind.addEventListener("change", refresh);
     refresh();
 
     // The row renders only some of an effect's fields; the rest (hitCountRange, critChance,
     // scalesWithStatusStacks, ...) are carried over from the effect as it was loaded.
-    const RENDERED = ["amount", "chance", "target", "offenseMultiplierPercent", "minPercent", "damageType", "stat", "combatStat", "statusEffectId", "durationTurns", "onHitDurationTurns", "ignoreDefensePercent", "lifestealPercent", "maxHpPercent", "alsoApplyStatusEffectIds", "monsterArchetypeId", "count"];
+    const RENDERED = ["animation", "amount", "chance", "target", "offenseMultiplierPercent", "minPercent", "damageType", "stat", "combatStat", "statusEffectId", "durationTurns", "onHitDurationTurns", "ignoreDefensePercent", "lifestealPercent", "maxHpPercent", "alsoApplyStatusEffectIds", "monsterArchetypeId", "count"];
     row._collect = () => {
       const out = { ...effect, kind: kind.value };
       const visible = SKILL_EFFECT_FIELDS[kind.value] || [];
-      const next = {};
+      const next = { animation: animation.value === "__default__" ? undefined : animation.value || null };
       if (visible.includes("amount")) next.amount = numOrUndefined(amount);
       if (visible.includes("chance")) next.chance = numOrUndefined(chance);
       if (visible.includes("target") && target.value) next.target = target.value;
@@ -2702,6 +3005,7 @@ boot();
   function artifactEffectRow(effect) {
     effect = effect || {};
     const kind = selectInput(ARTIFACT_EFFECT_KINDS, effect.kind || "statBoost");
+    const animation = reactionAnimationInput(effect.animation);
     const stat = selectInput(STAT_BOOST_STATS, effect.stat || "attack");
     const amount = numberInput(effect.amount, "any");
     const percent = numberInput(effect.percent, "any");
@@ -2719,6 +3023,7 @@ boot();
     row.appendChild(el("div", { class: "effect-row-head" }, [field("Kind", kind), removeBtn]));
     const body = el("div", { class: "row" }, [
       field("Stat", stat, "stat"),
+      field("Animation", animation, "animation"),
       field("Amount", amount, "amount"),
       field("Percent", percent, "percent"),
       field("Chance (0-1)", chance, "chance"),
@@ -2737,6 +3042,7 @@ boot();
 
     row._collect = () => {
       const out = { kind: kind.value };
+      if (kind.value === "autoDamage") setOrDelete(out, "animation", readReactionAnimation(animation));
       const visible = ARTIFACT_EFFECT_FIELDS[kind.value] || [];
       if (visible.includes("stat")) out.stat = stat.value;
       if (visible.includes("amount")) out.amount = numOrUndefined(amount) ?? 0;
@@ -3012,12 +3318,13 @@ boot();
     const perStackBonusPercent = numberInput(entry.perStackBonusPercent, "1");
     const accuracyPenaltyPercent = numberInput(entry.accuracyPenaltyPercent, "1");
     const onHitStatusEffectId = selectInput(["", ...statusEffectsCatalog.map((s) => s.id)], entry.onHitStatusEffectId || "");
-    const effectsEditor = effectListEditor("Per-turn effects", entry.perTurnEffects, skillEffectRow);
+    const effectsEditor = effectListEditor("Per-turn effects — separate from status application", entry.perTurnEffects, (effect) => skillEffectRow(effect, true));
     const rankOf = textInput(entry.rankOf || "");
     const rankLevel = numberInput(entry.rankLevel, "1");
     const tickCategory = textInput(entry.tickCategory || "");
     const vulnerableToId = textInput((entry.vulnerableTo && entry.vulnerableTo.statusEffectId) || "");
     const vulnerableToMultiplier = numberInput(entry.vulnerableTo && entry.vulnerableTo.multiplier, "0.1");
+    const reactionControls = ["woundOnHit", "counterAttack", "onHitAoeDamage"].filter((key) => entry[key]).map((key) => ({ key, input: reactionAnimationInput(entry[key].animation) }));
     const onHitAoeAmount = numberInput(entry.onHitAoeDamage && entry.onHitAoeDamage.amount, "any");
     const onHitAoeIsMagic = checkboxField("Is magic", entry.onHitAoeDamage && entry.onHitAoeDamage.isMagic);
     const onHitAoeIgnoreDefense = numberInput(entry.onHitAoeDamage && entry.onHitAoeDamage.ignoreDefensePercent, "1");
@@ -3064,6 +3371,7 @@ boot();
         el("div", { class: "row" }, [field("Skill damage bonus %", breakBonusSkillDmg)]),
         breakBonusCrit,
       ]),
+      ...reactionControls.map(({ key, input }) => field(key.replace(/([a-z])([A-Z])/g, "$1 $2") + " animation", input)),
       effectsEditor
     );
 
@@ -3105,6 +3413,10 @@ boot();
         }
         for (const k of ["stuns", "triggersOverwatch", "overwatchShot", "interruptChance", "untargetable", "harmful", "reflectDamagePercent", "stackable", "maxStacks", "perStackBonusPercent", "accuracyPenaltyPercent", "onHitStatusEffectId", "rankOf", "rankLevel", "tickCategory", "vulnerableTo", "onHitAoeDamage", "breakBonus"]) {
           setOrDelete(out, k, optional[k]);
+        }
+        for (const { key, input } of reactionControls) if (out[key]) {
+          out[key] = { ...out[key] };
+          setOrDelete(out[key], "animation", readReactionAnimation(input));
         }
         return out;
       },
@@ -3190,18 +3502,25 @@ boot();
   }
 
   async function loadReferenceData() {
-    [monsterRaces, monsterTraits, monsterSkillsCatalog, statusEffectsCatalog, monsterArchetypesCatalog] = await Promise.all([
+    [monsterRaces, monsterTraits, monsterSkillsCatalog, statusEffectsCatalog, monsterArchetypesCatalog, combatFxCatalog] = await Promise.all([
       api("/api/monster-races"),
       api("/api/monster-traits"),
       api("/api/data/monster-skill"),
       api("/api/data/status"),
       api("/api/data/monster"),
+      api("/api/combat-fx"),
     ]);
   }
 
   typeEl.addEventListener("change", async () => {
+    await loadReferenceData();
     await loadList();
     showForm(null);
+  });
+  // Combat Effects writes the same files, so the cached presets and entries go stale while that tab is open.
+  $('nav button[data-panel="creator"]').addEventListener("click", async () => {
+    await loadReferenceData();
+    await loadList();
   });
   filterEl.addEventListener("input", renderList);
   listEl.addEventListener("change", () => {
@@ -3229,7 +3548,7 @@ boot();
     setDataStatus("Saving...");
     try {
       if (currentEntry) {
-        await fetch("/api/data/" + typeEl.value + "/" + currentEntry.id, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+        await fetch("/api/data/" + typeEl.value + "/" + currentEntry.id, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ entry: body, base: currentEntry }) })
           .then(async (res) => { const data = await res.json(); if (!res.ok) throw new Error(data.error || ("HTTP " + res.status)); });
       } else {
         await apiPost("/api/data/" + typeEl.value, body);
@@ -3284,7 +3603,7 @@ boot();
 
 // ============================== BACKDROPS ==============================
 (() => {
-  const ROOM_TYPES = ["combat", "rest", "boss", "event"];
+  const ROOM_TYPES = ["combat", "rest", "temple", "boss", "event"];
   const ERASER = ".";
   const CELL_W = 8, CELL_H = 16, COLS = 113, ROWS = 20;
   const MAX_PARTY = 4, MONSTER_SLOTS = 3;
@@ -3680,6 +3999,544 @@ boot();
     renderPreviewControls();
     await load();
   })().catch((err) => { bd("bdPreviewError").textContent = "Load failed: " + err.message; });
+})();
+
+
+(() => {
+  const fx = (id) => document.getElementById('fx' + id);
+  let file = null, effect = 'thrust', index = 0, key = 'A', baseline = '', dirty = false, saving = false, saveEpoch = 0, presetBusy = false;
+  let catalogs = null, catalogRequest = 0, reloading = false;
+  let parseBusy = false, parseBackup = null;
+  let playing = false, playTimer = null, playTick = 0, timing = null, previewTimer = null, previewSeq = 0, previewBusy = 0;
+  let cursor = { x: 0, y: 0 };
+  const animation = () => effect === 'flash' ? file.flash : file.presets[effect];
+  const frame = () => animation().frames[index];
+  const error = (message = '') => { fx('Error').textContent = message; };
+  function stopPlayback() { playing = false; clearInterval(playTimer); playTimer = null; fx('Play').textContent = 'Play'; }
+  function draftChanges(before, after) {
+    const changes = [];
+    const compare = (path, a, b) => { if (JSON.stringify(a) !== JSON.stringify(b)) changes.push({ path, before: a, after: b }); };
+    const table = (path, a, b) => { for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) compare([...path, id], a[id], b[id]); };
+    for (const section of Object.keys(after)) {
+      if (section === 'flash') compare([section], before[section], after[section]);
+      else if (section === 'basicAttacks') for (const kind of Object.keys(after[section])) table([section, kind], before[section][kind], after[section][kind]);
+      else table([section], before[section], after[section]);
+    }
+    return changes;
+  }
+  function applyDraftChanges(target, changes) {
+    const next = structuredClone(target);
+    for (const change of changes) {
+      let parent = next;
+      for (const key of change.path.slice(0, -1)) parent = parent[key];
+      const key = change.path.at(-1);
+      if (change.after === undefined) delete parent[key]; else parent[key] = structuredClone(change.after);
+    }
+    return next;
+  }
+  function refreshEffectList() {
+    if (effect !== 'flash' && !Object.hasOwn(file.presets, effect)) effect = 'thrust';
+    fx('Effect').replaceChildren(...[...Object.keys(file.presets), 'flash'].map((id) => {
+      const option = document.createElement('option'); option.value = id; option.textContent = id === 'flash' ? 'Damage flash' : id; return option;
+    }));
+    fx('Effect').value = effect;
+  }
+  function updateDirty() {
+    dirty = file !== null && JSON.stringify(file) !== baseline;
+    fx('Dirty').textContent = dirty ? 'Unsaved changes' : 'No unsaved changes';
+    fx('Save').disabled = saving || presetBusy || !dirty;
+    fx('Effect').disabled = !file || saving || presetBusy;
+    const required = ['thrust', 'slash', 'blunt'].includes(effect), flash = effect === 'flash';
+    fx('PresetHint').textContent = flash ? 'Damage flash uses the target mask.' : required ? 'This built-in preset cannot be renamed or deleted.' : 'Renaming updates all mappings. A preset in use cannot be deleted.';
+    for (const action of ['Create', 'Duplicate', 'Rename', 'Delete']) fx('Preset' + action).disabled = !file || saving || presetBusy || (action !== 'Create' && flash) || (['Rename', 'Delete'].includes(action) && required);
+    updateFrameTransfer();
+  }
+  function selectEffect(next) {
+    if (!file || saving || presetBusy) { fx('Effect').value = effect; return; }
+    stopPlayback(); effect = next; index = 0; fx('Effect').value = effect; error(); renderFrame(); renderPalette(); updateDirty(); drawPreview();
+  }
+  function renderSkillMappings() {
+    fx('MappingRows').replaceChildren();
+    fx('MapHint').textContent = 'Animation is stored on each skill effect. Selecting a value saves that effect immediately. Save new presets first.';
+    const query = fx('MapSearch').value.trim().toLowerCase();
+    const groups = [
+      ['classes', catalogs.classes.flatMap((entry) => entry.skills)],
+      ['monster-skills', catalogs.monsterSkills],
+      ['summons', catalogs.summons.skills],
+    ];
+    let total = 0, count = 0;
+    for (const [catalog, skills] of groups) for (const skill of skills) {
+      const owners = skill.ranks?.length ? skill.ranks : [skill];
+      for (const owner of owners) for (const section of ['effects', 'chargeEffects']) for (const [index, entry] of (owner[section] ?? []).entries()) {
+        total++;
+        const label = `${skill.name ?? skill.id} · ${owner.rank ? 'Rank ' + owner.rank + ' · ' : ''}${section === 'chargeEffects' ? 'Charge · ' : ''}${index + 1}. ${entry.kind}${entry.statusEffectId ? ' · ' + entry.statusEffectId : ''}`;
+        if (!`${label} ${skill.id} ${entry.animation ?? ''}`.toLowerCase().includes(query)) continue;
+        count++;
+        const row = document.createElement('tr'), title = document.createElement('td'), cell = document.createElement('td'), tools = document.createElement('td');
+        title.textContent = label;
+        const select = document.createElement('select'); select.setAttribute('aria-label', 'Animation for ' + label);
+        const choices = Object.keys(file.presets).filter((id) => ['damage', 'throwDice'].includes(entry.kind) || file.presets[id].phase === 'impact' && (file.presets[id].placement ?? 'target') === 'target');
+        for (const id of ['', ...choices]) { const option = document.createElement('option'); option.value = id; option.textContent = id || 'No effect'; select.append(option); }
+        select.value = entry.animation ?? '';
+        const view = document.createElement('button'); view.className = 'action'; view.textContent = 'View'; view.disabled = !entry.animation;
+        view.onclick = () => { selectEffect(entry.animation); fx('Effect').scrollIntoView({ block: 'center' }); };
+        select.onchange = async () => {
+          select.disabled = true;
+          try {
+            const saved = await apiPost('/api/skill-animation', { catalog, skillId: skill.id, rank: owner.rank, section, index, base: entry, animation: select.value || null });
+            Object.assign(entry, saved.effect); error(); renderMappings();
+          } catch (err) { error(err.message); select.value = entry.animation ?? ''; }
+          finally { select.disabled = false; }
+        };
+        cell.append(select); tools.append(view); row.append(title, cell, tools); fx('MappingRows').append(row);
+      }
+    }
+    fx('MapCount').textContent = `${count} of ${total} skill effects`;
+  }
+  function renderReactionMappings() {
+    fx('MappingRows').replaceChildren();
+    fx('MapHint').textContent = 'Reaction overrides save immediately. Game default uses the status mapping for damage ticks, otherwise the reaction default. No effect disables only this event. Save new presets before assigning them; status application is configured separately in Statuses.';
+    const query = fx('MapSearch').value.trim().toLowerCase(), rows = [];
+    const add = (catalog, entry, path, label, fallback) => {
+      const parent = path.slice(0, -1).reduce((value, key) => value[key], entry);
+      rows.push({ catalog, entry, path, label, fallback, value: parent[path.at(-1)] });
+    };
+    for (const entry of catalogs.statuses ?? []) {
+      for (const [i, effect] of (entry.perTurnEffects ?? []).entries()) if (effect.kind === 'damage') add('status-effects', entry, ['perTurnEffects', i, 'animation'], 'Damage tick ' + (i + 1), file.statuses[entry.id] ?? file.reactions.damageOverTime);
+      for (const key of ['woundOnHit', 'counterAttack', 'onHitAoeDamage']) if (entry[key]) add('status-effects', entry, [key, 'animation'], key.replace(/([a-z])([A-Z])/g, '$1 $2'), file.reactions[key]);
+    }
+    for (const entry of catalogs.classes ?? []) {
+      const passive = entry.passiveSkill;
+      if (passive?.requiresTargetStatusId) add('classes', entry, ['passiveSkill', 'bonusDamageAnimation'], passive.name + ' bonus damage', file.reactions.bonusDamage);
+      if (passive?.cloneSummonCastId) add('classes', entry, ['passiveSkill', 'secondCloneAnimation'], passive.name + ' extra summon', file.reactions.passiveSummon);
+    }
+    for (const catalog of ['artifacts', 'abilities']) for (const entry of catalogs[catalog] ?? []) for (const [i, effect] of (entry.effects ?? []).entries()) if (effect.kind === 'autoDamage') add(catalog, entry, ['effects', i, 'animation'], 'Automatic damage ' + (i + 1), file.reactions.autoDamage);
+    let count = 0;
+    const choices = Object.keys(file.presets).filter((id) => file.presets[id].phase === 'impact' && (file.presets[id].placement ?? 'target') === 'target');
+    for (const item of rows) {
+      const { catalog, entry, path, label, fallback, value } = item;
+      const title = `${entry.name ?? entry.id} · ${entry.id} · ${label}`;
+      if (!`${title} ${entry.id} ${catalog} ${value ?? ''}`.toLowerCase().includes(query)) continue;
+      count++;
+      const row = document.createElement('tr'), name = document.createElement('td'), cell = document.createElement('td'), tools = document.createElement('td');
+      name.textContent = title;
+      const select = document.createElement('select'); select.setAttribute('aria-label', 'Animation for ' + title);
+      for (const id of ['__default__', '', ...choices]) { const option = document.createElement('option'); option.value = id; option.textContent = id === '__default__' ? 'Game default' : id || 'No effect'; select.append(option); }
+      select.value = value === undefined ? '__default__' : value ?? '';
+      const effective = value === undefined ? fallback : value;
+      const view = document.createElement('button'); view.className = 'action'; view.textContent = 'View'; view.disabled = !effective;
+      view.onclick = () => { selectEffect(effective); fx('PreviewContext').value = 'reaction'; drawPreview(); fx('Effect').scrollIntoView({ block: 'center' }); };
+      select.onchange = async () => {
+        select.disabled = true;
+        try {
+          const saved = await apiPost('/api/reaction-animation', { catalog, id: entry.id, path, base: entry, animation: select.value === '__default__' ? '__default__' : select.value || null });
+          Object.assign(entry, saved.entry); error(); renderReactionMappings();
+        } catch (err) { error(err.message); select.value = value === undefined ? '__default__' : value ?? ''; }
+        finally { select.disabled = false; }
+      };
+      cell.append(select); tools.append(view); row.append(name, cell, tools); fx('MappingRows').append(row);
+    }
+    fx('MapCount').textContent = `${count} of ${rows.length} reaction overrides`;
+  }
+  function mappingTable(path) { return path.split('.').reduce((value, key) => value[key], file); }
+  function renderMappings() {
+    if (!file || !catalogs) return;
+    const group = fx('MapGroup').value;
+    if (group === 'skills') { renderSkillMappings(); return; }
+    if (group === 'reactionOverrides') { renderReactionMappings(); return; }
+    const table = mappingTable(group);
+    const catalog = group === 'basicAttacks.monsters' ? catalogs.monsters
+      : group === 'basicAttacks.summons' ? catalogs.summons.archetypes : catalogs[group] ?? [];
+    const entries = new Map(catalog.map((entry) => [entry.id, entry.name ?? entry.id]));
+    for (const id of Object.keys(table)) if (!entries.has(id)) entries.set(id, id.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/-/g, ' '));
+    const query = fx('MapSearch').value.trim().toLowerCase(), support = ['statuses', 'outcomes', 'reactions'].includes(group);
+    const nullable = group === 'items' || group === 'reactions' || group.startsWith('basicAttacks.');
+    const presets = Object.keys(file.presets).filter((id) => !support || (file.presets[id].placement ?? 'target') === 'target' && file.presets[id].phase === 'impact');
+    fx('MapHint').textContent = support ? 'These effects play at the target after a successful change.' : group === 'items' ? 'Attack visual for the damage component. Healing and status effects use their own mappings.' : 'Choose a preset. Use No effect to disable an optional animation.';
+    fx('MappingRows').replaceChildren();
+    let count = 0;
+    for (const [id, name] of entries) {
+      const visual = table[id];
+      if (!`${name} ${id} ${visual ?? ''}`.toLowerCase().includes(query)) continue;
+      count++;
+      const row = document.createElement('tr'), title = document.createElement('td'), cell = document.createElement('td'), tools = document.createElement('td');
+      title.textContent = name; const small = document.createElement('small'); small.textContent = id; title.append(small);
+      row.append(title, cell, tools); fx('MappingRows').append(row);
+      const select = document.createElement('select'); select.setAttribute('aria-label', 'Effect for ' + id); select.dataset.mappingId = id;
+      const choices = [...(nullable ? [['', 'No effect']] : []), ...presets.map((preset) => [preset, preset])];
+      if (!['outcomes', 'damageTypes', 'reactions'].includes(group)) choices.unshift(['__unmapped__', 'Unmapped (game default)']);
+      for (const [value, label] of choices) { const option = document.createElement('option'); option.value = value; option.textContent = label; select.append(option); }
+      select.value = Object.hasOwn(table, id) ? table[id] ?? '' : '__unmapped__';
+      const view = document.createElement('button'); view.className = 'action'; view.textContent = 'View'; view.disabled = !table[id]; view.onclick = () => { selectEffect(table[id]); if (group === 'reactions') { fx('PreviewContext').value = 'reaction'; drawPreview(); } fx('Effect').scrollIntoView({ block: 'center' }); };
+      select.onchange = () => {
+        if (select.value === '__unmapped__') delete table[id]; else table[id] = select.value === '' ? null : select.value;
+        view.disabled = !table[id]; renderFrame(); changed();
+      };
+      cell.append(select); tools.append(view);
+    }
+    fx('MapCount').textContent = `${count} of ${entries.size} mappings`;
+  }
+  fx('MapGroup').onchange = renderMappings; fx('MapSearch').oninput = renderMappings;
+  for (const action of ['Create', 'Duplicate', 'Rename', 'Delete']) fx('Preset' + action).onclick = async () => {
+    if (!file || saving || presetBusy) return;
+    if (action === 'Delete' && !confirm('Delete this preset from the draft? Referenced presets cannot be deleted.')) return;
+    stopPlayback(); error(); presetBusy = true; updateDirty();
+    const selectedEffect = effect, before = JSON.stringify(file), newId = fx('PresetId').value.trim();
+    try {
+      const next = await apiPost('/api/combat-fx-preset', { file, action: action.toLowerCase(), id: effect, newId });
+      if (effect !== selectedEffect || JSON.stringify(file) !== before) throw new Error('Your draft changed during the preset operation. Try again.');
+      file = next; effect = action === 'Delete' ? 'thrust' : newId; index = 0; fx('PresetId').value = '';
+      refreshEffectList(); renderFrame(); renderPalette(); renderMappings(); changed();
+    } catch (err) { error('Preset: ' + err.message); }
+    finally { presetBusy = false; updateDirty(); drawPreview(); }
+  };
+  function changed() {
+    stopPlayback(); error(); updateDirty(); previewSeq++;
+    clearTimeout(previewTimer); previewTimer = setTimeout(() => drawPreview(), 120);
+  }
+  function drawEditor() {
+    if (!file || effect === 'flash') return;
+    const canvas = fx('Canvas'), rows = frame().rows, w = rows[0].length, h = rows.length;
+    cursor.x = Math.min(cursor.x, w - 1); cursor.y = Math.min(cursor.y, h - 1);
+    canvas.width = w * 18; canvas.height = h * 36;
+    const ctx = canvas.getContext('2d');
+    rows.forEach((row, y) => [...row].forEach((pixel, x) => {
+      ctx.fillStyle = (x + y) % 2 ? '#201a14' : '#171310'; ctx.fillRect(x * 18, y * 36, 18, 36);
+      if (pixel !== '.') { ctx.fillStyle = animation().palette[pixel]; ctx.fillRect(x * 18 + 1, y * 36 + 1, 17, 35); }
+    }));
+    ctx.strokeStyle = '#c9a227'; ctx.strokeRect(cursor.x * 18 + .5, cursor.y * 36 + .5, 17, 35);
+  }
+  function renderFrames() {
+    fx('Frames').replaceChildren();
+    animation().frames.forEach((_, i) => {
+      const b = document.createElement('button'); b.className = 'action'; b.textContent = String(i + 1);
+      b.setAttribute('aria-label', 'Frame ' + (i + 1)); b.setAttribute('aria-pressed', String(i === index));
+      b.onclick = () => { stopPlayback(); index = i; renderFrame(); drawPreview(); };
+      fx('Frames').append(b);
+    });
+    fx('Delete').disabled = animation().frames.length === 1;
+    fx('Earlier').disabled = index === 0; fx('Later').disabled = index === animation().frames.length - 1;
+    updateFrameTransfer();
+  }
+  function renderFrame() {
+    renderFrames();
+    const flash = effect === 'flash';
+    const context = fx('PreviewContext');
+    context.disabled = flash || animation().phase !== 'impact' || (animation().placement ?? 'target') !== 'target';
+    if (context.disabled) context.value = 'auto';
+    for (const name of ['Timing', 'Geometry', 'PaintGrid', 'ColorPanel']) fx(name).hidden = flash;
+    fx('Flash').hidden = !flash;
+    if (flash) {
+      for (const side of ['Party', 'Monster']) {
+        const color = frame()[side.toLowerCase() + 'Color'];
+        fx(side + 'Clear').checked = color === null;
+        fx(side + 'Color').value = color ?? '#ffffff'; fx(side + 'Color').disabled = color === null;
+      }
+    } else {
+      const support = supportPreset();
+      fx('Placement').value = animation().placement ?? 'target'; fx('Placement').disabled = support;
+      fx('Phase').value = animation().phase ?? 'approach'; fx('Phase').disabled = support;
+      fx('Ticks').value = animation().ticks ?? animation().frames.length; fx('DefaultTicks').checked = animation().ticks === undefined; fx('DefaultTicks').disabled = animation().phase !== 'impact'; fx('Ticks').disabled = animation().phase !== 'impact' || animation().ticks === undefined;
+      fx('TimingHint').textContent = support ? 'Support effects play at the target when they succeed.' : 'Before-impact effects use the fixed attack wind-up; on-impact duration is editable.';
+      fx('Width').value = frame().rows[0].length; fx('Height').value = frame().rows.length;
+      fx('X').value = frame().offsetX; fx('Y').value = frame().offsetY;
+      drawEditor();
+    }
+  }
+  function supportPreset() { return [...Object.values(file.outcomes), ...Object.values(file.statuses)].includes(effect); }
+  function renderPalette() {
+    fx('Palette').replaceChildren();
+    if (effect === 'flash') return;
+    if (key !== '.' && !Object.hasOwn(animation().palette, key)) key = Object.keys(animation().palette)[0] ?? '.';
+    for (const [pixel, color] of [['.', null], ...Object.entries(animation().palette)]) {
+      const row = document.createElement('div'); row.className = 'swatch' + (pixel === '.' ? ' eraser' : '') + (key === pixel ? ' active' : '');
+      row.setAttribute('role', 'group'); row.setAttribute('aria-label', pixel === '.' ? 'Eraser' : 'Palette color ' + pixel);
+      const choose = document.createElement('button'); choose.type = 'button'; choose.className = 'fx-paint hex';
+      choose.setAttribute('aria-label', pixel === '.' ? 'Erase pixels' : 'Paint color ' + pixel); choose.setAttribute('aria-pressed', String(key === pixel));
+      choose.onclick = () => {
+        const position = [...fx('Palette').children].indexOf(row); key = pixel; renderPalette();
+        fx('Palette').children[position]?.children[pixel === '.' ? 0 : 2]?.focus();
+      };
+      if (pixel === '.') {
+        choose.textContent = '· Erase (empty cell)'; row.append(choose);
+      }
+      if (pixel !== '.') {
+        const input = document.createElement('input'); input.type = 'color'; input.value = color; input.setAttribute('aria-label', 'Palette color ' + pixel);
+        choose.textContent = color;
+        input.onclick = (event) => event.stopPropagation();
+        input.oninput = () => { animation().palette[pixel] = input.value; choose.textContent = input.value; drawEditor(); changed(); };
+        const remove = document.createElement('button'); remove.className = 'action'; remove.textContent = '×';
+        remove.title = 'Remove unused color'; remove.setAttribute('aria-label', 'Remove color ' + pixel);
+        remove.onclick = (event) => {
+          event.stopPropagation();
+          if (animation().frames.some((f) => f.rows.some((r) => r.includes(pixel)))) { error('Erase this color from all frames before removing it.'); return; }
+          delete animation().palette[pixel]; renderPalette(); changed();
+        };
+        const rename = document.createElement('input'); rename.type = 'text'; rename.className = 'key'; rename.maxLength = 1; rename.value = pixel; rename.setAttribute('aria-label', 'Palette key ' + pixel);
+        rename.onclick = (event) => event.stopPropagation();
+        rename.onchange = () => {
+          const next = rename.value;
+          if (next === pixel) return;
+          if (next.length !== 1 || next === '.' || Object.hasOwn(animation().palette, next)) { rename.value = pixel; error('Choose one unused character other than a dot.'); return; }
+          animation().palette[next] = animation().palette[pixel]; delete animation().palette[pixel];
+          animation().frames.forEach((f) => { f.rows = f.rows.map((r) => r.split(pixel).join(next)); });
+          if (key === pixel) key = next; renderPalette(); drawEditor(); changed();
+        };
+        row.append(rename, input, choose, remove);
+      }
+      fx('Palette').append(row);
+    }
+  }
+  function movePixels(dx, dy) {
+    if (!file || effect === 'flash') return;
+    const rows = frame().rows, h = rows.length, w = rows[0].length;
+    const clipped = rows.some((row, y) => [...row].some((pixel, x) => pixel !== '.' && (x + dx < 0 || x + dx >= w || y + dy < 0 || y + dy >= h)));
+    if (clipped) { error("Can't move — painted cells would be clipped."); return; }
+    frame().rows = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => rows[y - dy]?.[x - dx] ?? '.').join(''));
+    changed(); drawEditor();
+  }
+  for (const [direction, dx, dy] of [['Left', -1, 0], ['Up', 0, -1], ['Down', 0, 1], ['Right', 1, 0]]) {
+    fx('Move' + direction).onclick = () => movePixels(dx, dy);
+  }
+  function paint(x, y, erase = false) {
+    if (!file || effect === 'flash' || x < 0 || y < 0 || y >= frame().rows.length || x >= frame().rows[0].length) return;
+    cursor = { x, y };
+    const row = frame().rows[y], value = erase ? '.' : key;
+    if (row[x] !== value) { frame().rows[y] = row.slice(0, x) + value + row.slice(x + 1); changed(); }
+    drawEditor();
+  }
+  function paintPointer(e) {
+    const rect = fx('Canvas').getBoundingClientRect();
+    paint(Math.floor((e.clientX - rect.left) / rect.width * frame().rows[0].length), Math.floor((e.clientY - rect.top) / rect.height * frame().rows.length), Boolean(e.buttons & 2));
+  }
+  fx('Canvas').onpointerdown = (e) => { if (!file || effect === 'flash' || ![0, 2].includes(e.button)) return; e.preventDefault(); fx('Canvas').focus(); fx('Canvas').setPointerCapture(e.pointerId); paintPointer(e); };
+  fx('Canvas').onpointermove = (e) => { if (e.buttons & 3 && file && effect !== 'flash') paintPointer(e); };
+  fx('Canvas').oncontextmenu = (e) => e.preventDefault();
+  fx('Canvas').onkeydown = (e) => {
+    if (!file || effect === 'flash') return;
+    const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (directions[e.key]) { e.preventDefault(); cursor.x = Math.max(0, Math.min(frame().rows[0].length - 1, cursor.x + directions[e.key][0])); cursor.y = Math.max(0, Math.min(frame().rows.length - 1, cursor.y + directions[e.key][1])); drawEditor(); }
+    else if (e.key === ' ' || e.key === 'Enter' || e.key === 'Delete') { e.preventDefault(); paint(cursor.x, cursor.y, e.key === 'Delete'); }
+  };
+  for (const [name, property] of [['Placement', 'placement'], ['Phase', 'phase']]) fx(name).onchange = () => {
+    if (!file || effect === 'flash') return;
+    animation()[property] = fx(name).value; renderFrame(); renderMappings(); changed();
+  };
+  fx('DefaultTicks').onchange = () => {
+    if (!file || effect === 'flash') return;
+    if (fx('DefaultTicks').checked) delete animation().ticks; else animation().ticks = animation().frames.length;
+    renderFrame(); changed();
+  };
+  fx('Ticks').oninput = () => {
+    if (!file || effect === 'flash') return;
+    const ticks = Number(fx('Ticks').value);
+    if (!Number.isSafeInteger(ticks) || ticks < 1 || ticks > 100) { error('Duration must be 1–100 reveal ticks.'); return; }
+    animation().ticks = ticks; changed();
+  };
+  for (const axis of ['X', 'Y']) fx(axis).oninput = () => {
+    if (!file) return;
+    const value = Number(fx(axis).value);
+    if (fx(axis).value === '' || !Number.isSafeInteger(value)) return;
+    frame()['offset' + axis] = value; changed();
+  };
+  fx('Resize').onclick = () => {
+    if (!file) return;
+    const w = Number(fx('Width').value), h = Number(fx('Height').value);
+    if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || w > 113 || h < 1 || h > 17) { error('Use a width of 1–113 and a height of 1–17 cells.'); return; }
+    const crop = frame().rows.some((row, y) => [...row].some((c, x) => c !== '.' && (x >= w || y >= h)));
+    if (crop && !confirm('Resizing will crop painted pixels. Continue?')) { renderFrame(); return; }
+    frame().rows = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => frame().rows[y]?.[x] ?? '.').join(''));
+    renderFrame(); changed();
+  };
+  fx('AddColor').onclick = () => {
+    if (!file || effect === 'flash') return;
+    const pixel = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'].find((k) => !Object.hasOwn(animation().palette, k));
+    if (!pixel) { error('The palette has no free color keys.'); return; }
+    animation().palette[pixel] = Object.values(animation().palette)[0] ?? '#ffffff'; key = pixel; renderPalette(); changed();
+  };
+  for (const side of ['Party', 'Monster']) {
+    const update = () => { if (!file || effect !== 'flash') return; frame()[side.toLowerCase() + 'Color'] = fx(side + 'Clear').checked ? null : fx(side + 'Color').value; fx(side + 'Color').disabled = fx(side + 'Clear').checked; changed(); };
+    fx(side + 'Color').oninput = update; fx(side + 'Clear').onchange = update;
+  }
+  for (const action of ['Add', 'Duplicate', 'Delete', 'Earlier', 'Later']) fx(action).onclick = () => {
+    if (!file) return;
+    const frames = animation().frames;
+    if (action === 'Add' || action === 'Duplicate') {
+      const next = structuredClone(frame());
+      if (action === 'Add') { if (effect === 'flash') { next.partyColor = null; next.monsterColor = null; } else next.rows = next.rows.map((r) => '.'.repeat(r.length)); }
+      frames.splice(index + 1, 0, next); index++;
+    } else if (action === 'Delete') { if (frames.length === 1) return; frames.splice(index, 1); index = Math.min(index, frames.length - 1); }
+    else { const next = index + (action === 'Earlier' ? -1 : 1); if (next < 0 || next >= frames.length) return; [frames[index], frames[next]] = [frames[next], frames[index]]; index = next; }
+    renderFrame(); changed();
+  };
+  async function drawPreview(previewEffect = effect, frameIndex = index, label = '', retry = 0, playback) {
+    if (!file || !fx('Class').value || !fx('Monster').value) return;
+    const seq = ++previewSeq; previewBusy = seq;
+    try {
+      const result = await apiPost('/api/combat-fx-preview', { file, effect: previewEffect, frameIndex, playback, reverse: fx('Reverse').getAttribute('aria-pressed') === 'true', classId: fx('Class').value, monsterId: fx('Monster').value, reaction: fx('PreviewContext').value === 'reaction' });
+      if (seq !== previewSeq) return;
+      timing = result.timing; fx('Play').disabled = false;
+      if (fx('Error').textContent.startsWith('Preview:')) error();
+      const canvas = fx('Preview'), ctx = canvas.getContext('2d'); canvas.width = 904; canvas.height = 320;
+      ctx.fillStyle = '#171310'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.font = '13px monospace'; ctx.textBaseline = 'middle';
+      result.cells.forEach((row, y) => row.forEach((cell, x) => {
+        if (cell.bg) { ctx.fillStyle = cell.bg; ctx.fillRect(x * 8, y * 16, 8, 16); }
+        if (cell.ch !== ' ' && cell.fg) { ctx.fillStyle = cell.fg; ctx.fillText(cell.ch, x * 8, y * 16 + 8); }
+      }));
+      fx('PreviewLabel').textContent = label || 'Frame ' + (index + 1) + ' · draft preview';
+    } catch (err) {
+      if (seq === previewSeq) {
+        if (err instanceof TypeError && retry < 4) previewTimer = setTimeout(() => { if (seq === previewSeq) drawPreview(previewEffect, frameIndex, label, retry + 1, playback); }, 200);
+        else error('Preview: ' + err.message);
+      }
+    }
+    finally { if (previewBusy === seq) previewBusy = 0; }
+  }
+  function playbackStep() {
+    if (previewBusy) return;
+    const preset = animation(), count = preset.frames.length, flash = effect === 'flash';
+    const picker = fx('PreviewContext'), support = !picker.disabled && (['support', 'reaction'].includes(picker.value) || picker.value === 'auto' && supportPreset());
+    const impactAge = playTick - timing.impactTicks, effectTicks = preset.phase === 'impact' ? preset.ticks ?? count : 0;
+    const flashTicks = support ? 0 : file.flash.frames.length;
+    let label = 'Rest', selected = null;
+    if (impactAge < 0 && !flash && !support && preset.phase !== 'impact') {
+      selected = Math.round(playTick / (timing.impactTicks - 1) * (count - 1)); label = 'Attack';
+    } else if (impactAge >= 0 && impactAge < effectTicks) {
+      selected = Math.round(impactAge / Math.max(1, effectTicks - 1) * (count - 1)); label = support ? 'Effect' : 'Impact';
+    } else if (impactAge >= 0 && impactAge < flashTicks) {
+      if (flash) selected = impactAge;
+      label = 'Impact';
+    }
+    if (selected !== null) { index = selected; renderFrame(); label += ' · frame ' + (index + 1); }
+    drawPreview(effect, index, label, 0, { context: picker.value === 'reaction' ? 'reaction' : support ? 'support' : 'attack', tick: playTick });
+    playTick = (playTick + 1) % Math.max(timing.minTicks, timing.impactTicks + effectTicks, timing.impactTicks + flashTicks);
+  }
+  fx('Play').onclick = () => {
+    if (playing) { stopPlayback(); return; }
+    if (!file || !timing) return;
+    playing = true; playTick = 0; fx('Play').textContent = 'Pause'; playbackStep(); playTimer = setInterval(playbackStep, timing.tickMs);
+  };
+  fx('Reverse').onclick = () => { fx('Reverse').setAttribute('aria-pressed', String(fx('Reverse').getAttribute('aria-pressed') !== 'true')); if (!playing) drawPreview(); };
+  fx('PreviewContext').onchange = () => { playTick = 0; };
+  for (const name of ['Class', 'Monster']) fx(name).onchange = () => drawPreview();
+  fx('Effect').onchange = () => selectEffect(fx('Effect').value);
+  async function reload() {
+    if (reloading || dirty && !confirm('Discard unsaved changes and reload?')) return;
+    stopPlayback();
+    const selectedEffect = effect, before = JSON.stringify(file), epoch = saveEpoch, token = '?t=' + Date.now();
+    reloading = true; catalogRequest++;
+    try {
+      const [loaded, loadedCatalogs] = await Promise.all([api('/api/combat-fx' + token), api('/api/combat-fx-catalogs' + token)]);
+      if (saveEpoch !== epoch || effect !== selectedEffect || JSON.stringify(file) !== before) throw new Error('Your draft changed while reloading. Reload again to discard those edits.');
+      file = loaded; applyCatalogs(loadedCatalogs); index = 0; baseline = JSON.stringify(file);
+      refreshEffectList(); error(); renderFrame(); renderPalette(); renderMappings(); updateDirty(); drawPreview();
+    } finally { reloading = false; }
+  }
+  function applyCatalogs(next) {
+    catalogs = next;
+    for (const [name, list] of [['Class', catalogs.classes], ['Monster', catalogs.monsters.filter((entry) => entry.roles.includes('normal'))]]) {
+      const select = fx(name), previous = select.value;
+      select.replaceChildren(...list.map((entry) => { const option = document.createElement('option'); option.value = entry.id; option.textContent = entry.name; return option; }));
+      select.value = list.some((entry) => entry.id === previous) ? previous : list[0]?.id ?? '';
+    }
+  }
+  async function refreshCatalogs() {
+    if (!file || reloading) return;
+    const request = ++catalogRequest;
+    try {
+      const loaded = await api('/api/combat-fx-catalogs?t=' + Date.now());
+      if (request !== catalogRequest) return;
+      applyCatalogs(loaded); renderMappings(); drawPreview();
+    } catch (err) { if (request === catalogRequest) error('Catalogs: ' + err.message); }
+  }
+  fx('Reload').onclick = () => reload().catch((err) => error('Reload: ' + err.message));
+  function updateFrameTransfer() {
+    const busy = !file || saving || presetBusy || parseBusy;
+    for (const name of ['Copy', 'Parse', 'ParseManual']) fx(name).disabled = busy;
+    fx('Parse').textContent = parseBusy ? 'Parsing…' : 'Parse frame';
+    fx('Revert').disabled = busy || !parseBackup || parseBackup.file !== file || parseBackup.effect !== effect || parseBackup.index !== index || parseBackup.after !== JSON.stringify(animation());
+  }
+  fx('Copy').onclick = async () => {
+    if (!file || saving || presetBusy || parseBusy) return;
+    stopPlayback();
+    const text = JSON.stringify(frame(), null, 2);
+    fx('TransferStatus').textContent = '';
+    try { await navigator.clipboard.writeText(text); error(); fx('TransferStatus').textContent = 'Frame copied.'; }
+    catch (_) {
+      fx('TransferManual').open = true; fx('FrameJson').value = text; fx('FrameJson').focus(); fx('FrameJson').select();
+      error('Clipboard unavailable. Copy the selected JSON manually.');
+    }
+  };
+  async function parseFrame(manual = false) {
+    if (!file || saving || presetBusy || parseBusy) return;
+    stopPlayback(); error();
+    fx('TransferStatus').textContent = ''; fx('FrameJson').removeAttribute('aria-invalid');
+    const selectedFile = file, selectedEffect = effect, selectedIndex = index, before = JSON.stringify(animation()), previous = structuredClone(frame());
+    parseBusy = true; updateFrameTransfer();
+    try {
+      let text;
+      try { text = manual ? fx('FrameJson').value : await navigator.clipboard.readText(); }
+      catch (_) {
+        fx('TransferManual').open = true; fx('FrameJson').focus();
+        throw new Error('Clipboard unavailable. Paste your frame JSON below, then choose Apply JSON.');
+      }
+      if (file !== selectedFile || effect !== selectedEffect || index !== selectedIndex || JSON.stringify(animation()) !== before) throw new Error('The frame changed while parsing. Try again.');
+      const parsed = JSON.parse(text), draft = structuredClone(file);
+      (selectedEffect === 'flash' ? draft.flash : draft.presets[selectedEffect]).frames[selectedIndex] = parsed;
+      await apiPost('/api/combat-fx-preview', { file: draft, effect: selectedEffect, frameIndex: selectedIndex, reverse: false, classId: fx('Class').value, monsterId: fx('Monster').value, reaction: fx('PreviewContext').value === 'reaction' });
+      if (file !== selectedFile || effect !== selectedEffect || index !== selectedIndex || JSON.stringify(animation()) !== before) throw new Error('The frame changed while parsing. Try again.');
+      animation().frames[index] = parsed;
+      parseBackup = { file, effect, index, before: previous, after: JSON.stringify(animation()) };
+      fx('TransferManual').open = false; renderFrame(); changed();
+      fx('TransferStatus').textContent = 'Frame parsed. Revert is available until you edit or save.';
+    } catch (err) { if (manual) fx('FrameJson').setAttribute('aria-invalid', 'true'); error('Parse: ' + err.message); }
+    finally { parseBusy = false; updateFrameTransfer(); }
+  }
+  fx('Parse').onclick = () => parseFrame();
+  fx('ParseManual').onclick = () => parseFrame(true);
+  fx('Revert').onclick = () => {
+    updateFrameTransfer();
+    if (fx('Revert').disabled) return;
+    stopPlayback(); animation().frames[index] = parseBackup.before; parseBackup = null;
+    renderFrame(); changed(); fx('TransferStatus').textContent = 'Frame restored to before the last parse.';
+  };
+  fx('Save').onclick = async () => {
+    if (!file || saving || presetBusy || !dirty) return;
+    stopPlayback(); saving = true; saveEpoch++; fx('Reload').disabled = true; updateDirty(); error();
+    const base = JSON.parse(baseline), snapshot = structuredClone(file), changes = draftChanges(base, snapshot);
+    let failure = null, verified = false;
+    try { await apiPost('/api/combat-fx', { base, draft: snapshot }); } catch (err) { failure = err; }
+    try {
+      let saved = null;
+      for (let i = 0; i < 8; i++) {
+        try {
+          const current = await api('/api/combat-fx?t=' + Date.now());
+          if (changes.every((change) => JSON.stringify(change.path.reduce((value, key) => value?.[key], current)) === JSON.stringify(change.after))) { saved = current; break; }
+        } catch (_) {}
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      if (!saved) throw failure || new Error('Could not verify the save. Your draft is still here.');
+      const newer = draftChanges(snapshot, file);
+      const conflict = newer.find((change) => {
+        const onDisk = change.path.reduce((value, key) => value?.[key], saved);
+        return JSON.stringify(onDisk) !== JSON.stringify(change.before) && JSON.stringify(onDisk) !== JSON.stringify(change.after);
+      });
+      if (conflict) throw new Error('Earlier changes were saved, but newer edits conflict at ' + conflict.path.join('.') + '. Your draft is intact. Reload to review the saved file.');
+      file = applyDraftChanges(saved, newer); baseline = JSON.stringify(saved);
+      refreshEffectList(); index = Math.min(index, animation().frames.length - 1); renderFrame(); renderPalette(); renderMappings(); updateDirty();
+      verified = true;
+    } catch (err) { error('Save: ' + err.message); }
+    finally { saving = false; fx('Reload').disabled = false; updateDirty(); if (verified) fx('Dirty').textContent = dirty ? 'Saved; newer edits remain unsaved' : 'Saved to data/combat-fx.json'; drawPreview(); }
+  };
+  window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+  const panel = document.getElementById('panel-combat-fx');
+  new MutationObserver(() => {
+    if (panel.classList.contains('active')) return refreshCatalogs();
+    stopPlayback();
+  }).observe(panel, { attributes: true, attributeFilter: ['class'] });
+  fx('Play').disabled = true;
+  fx('Effect').disabled = true;
+  reload().catch((err) => error('Load: ' + err.message));
 })();
 
 </script>
