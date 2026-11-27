@@ -77,16 +77,21 @@ one) at the size it was reached at, and again at 150×45. Narration uses the sav
 when it finds a failure, and prints each kind of failure with the screens it hit and a command that
 replays its first occurrence; `--report none` skips `report.html` and `failures.json`, so that list
 and the exit code are the whole result. `report.html` also tabulates how each team played and the
-guards it met, for a look only: balance is measured by `bun run curve`, below. Unless skipped by label, every pull request
-runs 5 fixed seeds per team this way (`.github/workflows/random-play.yml`).
+guards it met, for a look only: balance is measured by `bun run curve`, below. Eligible pull requests
+run fixed seeds per team this way (`.github/workflows/random-play.yml`).
 
-For documentation-only or other changes that do not affect gameplay, maintainers can add the
-`skip-random-play` PR label to skip Random Play, Curve and Screen Evidence. Adding or removing the
-label triggers both workflows again: adding it cancels any previous in-progress run and skips these
-jobs; removing it runs them again. Further pushes keep skipping while the label remains. This is a
-manual decision, not a file-path check; changes to game data can affect gameplay without changing
-TypeScript. Unit tests, typechecking and build checks remain enabled. Curve captures on pushes to
-`main` and `release/**`, and evidence-branch cleanup when a PR closes, are unaffected.
+Random Play, Curve and Screen Evidence run on PRs only when the full PR diff changes files under
+`src/` or `data/`. A small job compares the PR head with its merge base, including additions,
+modifications, deletions and moves into or out of these directories. Changes only to docs, tools,
+tests, dependencies or workflows skip these jobs. A failed diff check fails the detection job rather
+than reporting no changes.
+
+Maintainers can also add the `skip-random-play` PR label to skip these jobs even when `src/` or
+`data/` changes. Adding or removing the label triggers both workflows again: adding it cancels any
+previous in-progress run and skips the jobs; removing it checks the PR paths again. Further pushes
+keep skipping while the label remains. Unit tests, typechecking and build checks remain enabled.
+Curve captures on pushes to `main` and `release/**`, and evidence-branch cleanup when a PR closes,
+are unaffected.
 
 `bun run random-play --evidence` plays fixed scenarios instead, to capture every screen rather than
 find crashes: a fresh run with its opening scenes, a rest room, every room event (each forced into an
@@ -144,7 +149,7 @@ artifacts are not modelled yet.
 guard, or a boss taking more than `BOSS_HP_LOST_TOLERANCE` less of the party's HP than its elite on
 the floors just before it. A move from the base branch is reported, not failed: whether it is
 intended is the reviewer's call. The `curve` job of `.github/workflows/random-play.yml` runs the check
-on pull requests without `skip-random-play` and on every push to `main` or a `release/**` branch, and keeps `curve.json`
+on eligible pull requests and on every push to `main` or a `release/**` branch, and keeps `curve.json`
 and `report.html` as the `guard-curve` artifact for 90 days. On a pull request it takes the base
 commit's own `guard-curve` artifact from that push run, or, when there is none (the run is missing,
 still going or expired), checks out the base and measures it with its own code. It then posts one

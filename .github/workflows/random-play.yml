@@ -15,8 +15,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'skip-random-play')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      gameplay: ${{ steps.diff.outputs.gameplay }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed_files=$(git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA" -- src/ data/)
+          if [ -n "$changed_files" ]; then
+            echo "gameplay=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "gameplay=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
   curve:
-    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-random-play')
+    needs: changes
+    if: always() && !cancelled() && (github.event_name == 'push' || needs.changes.outputs.gameplay == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -80,7 +104,8 @@ jobs:
         run: exit 1
 
   random-play:
-    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'skip-random-play')
+    needs: changes
+    if: needs.changes.outputs.gameplay == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
