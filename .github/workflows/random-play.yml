@@ -2,6 +2,7 @@ name: Random Play
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   # A push to a base branch keeps its curve as the guard-curve artifact, which its pull requests compare against.
   push:
     branches: [main, "release/**"]
@@ -15,6 +16,7 @@ concurrency:
 
 jobs:
   curve:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-random-play')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -78,7 +80,7 @@ jobs:
         run: exit 1
 
   random-play:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'skip-random-play')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
